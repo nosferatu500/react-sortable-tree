@@ -21,7 +21,6 @@ export interface TreeRendererProps {
   swapLength?: number | undefined
   scaffoldBlockPxWidth: number
   lowerSiblingCounts: number[]
-  rowDirection?: 'ltr' | 'rtl' | string | undefined
   rowHeight: number | ((treeIndex: number, node: any, path: any[]) => number)
 
   listIndex: number
@@ -46,7 +45,6 @@ const defaultProps = {
   swapLength: undefined,
   canDrop: false,
   draggedNode: undefined,
-  rowDirection: 'ltr',
 }
 
 class TreeNodeComponent extends Component<TreeRendererProps> {
@@ -70,11 +68,8 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
       getPrevRow: _getPrevRow, // Delete from otherProps
       node: _node, // Delete from otherProps
       path: _path, // Delete from otherProps
-      rowDirection,
       ...otherProps
     } = props
-
-    const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
     // Construct the scaffold representing the structure of the tree
     const scaffoldBlockCount = lowerSiblingCounts.length
@@ -131,11 +126,7 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
         <div
           key={`pre_${1 + i}`}
           style={{ width: scaffoldBlockPxWidth }}
-          className={classnames(
-            'rst__lineBlock',
-            lineClass,
-            rowDirectionClass ?? ''
-          )}
+          className={classnames('rst__lineBlock', lineClass)}
         />
       )
 
@@ -156,35 +147,22 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
           highlightLineClass = 'rst__highlightLineVertical'
         }
 
-        const style =
-          rowDirection === 'rtl'
-            ? {
-                width: scaffoldBlockPxWidth,
-                right: scaffoldBlockPxWidth * i,
-              }
-            : {
-                width: scaffoldBlockPxWidth,
-                left: scaffoldBlockPxWidth * i,
-              }
+        const style = {
+          width: scaffoldBlockPxWidth,
+          left: scaffoldBlockPxWidth * i,
+        }
 
         scaffold.push(
           <div
             key={i}
             style={style}
-            className={classnames(
-              'rst__absoluteLineBlock',
-              highlightLineClass,
-              rowDirectionClass ?? ''
-            )}
+            className={classnames('rst__absoluteLineBlock', highlightLineClass)}
           />
         )
       }
     }
 
-    const style =
-      rowDirection === 'rtl'
-        ? { right: scaffoldBlockPxWidth * scaffoldBlockCount }
-        : { left: scaffoldBlockPxWidth * scaffoldBlockCount }
+    const style = { left: scaffoldBlockPxWidth * scaffoldBlockCount }
 
     let calculatedRowHeight = rowHeight
     if (typeof rowHeight === 'function') {
@@ -194,7 +172,7 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
       <div
         {...otherProps}
         style={{ height: `${calculatedRowHeight}px` }}
-        className={classnames('rst__node', rowDirectionClass ?? '')}
+        className="rst__node"
         ref={(node) => (this.node = node)}>
         {scaffold}
 

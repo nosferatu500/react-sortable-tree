@@ -1281,12 +1281,11 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@nosferatu500/react-dnd-scrollzone@^2.0.10":
-  version "2.0.10"
-  resolved "https://registry.yarnpkg.com/@nosferatu500/react-dnd-scrollzone/-/react-dnd-scrollzone-2.0.10.tgz#7b356d924a0efa71ba81505d46b61ac85bfed59f"
-  integrity sha512-PBJtyBQrm47ifesOfIOsJd2SaxSpjkfKSoQOHewkI4UeYLyEc4hX0BY3vlVxW0zzak2+IneJghmGnp5lznVo6A==
+"@nosferatu500/react-dnd-scrollzone@3.0.0-alpha.0":
+  version "3.0.0-alpha.0"
+  resolved "https://registry.yarnpkg.com/@nosferatu500/react-dnd-scrollzone/-/react-dnd-scrollzone-3.0.0-alpha.0.tgz#c91b971c6910c65903693cb20f2f739b2300ae8d"
+  integrity sha512-3YrskhH3TN2KjTpyl7MzxwKSNL1yhV2gf5knf55UOijVbEakeQ+h0Twj8ldkUnZXN5e/OurYBJqVk1sImpqogQ==
   dependencies:
-    hoist-non-react-statics "^3.3.2"
     lodash.throttle "^4.1.1"
 
 "@npmcli/fs@^1.0.0":
@@ -8706,10 +8705,10 @@ react-syntax-highlighter@^15.4.5:
     prismjs "^1.27.0"
     refractor "^3.6.0"
 
-react-virtuoso@^2.11.2:
-  version "2.11.2"
-  resolved "https://registry.yarnpkg.com/react-virtuoso/-/react-virtuoso-2.11.2.tgz#7447874e82e1d0f313056c68908abff3ce83231a"
-  integrity sha512-vG2AmInE5SPL6tua7OrE4n1KxLBuwzpSaHC+MS4ZYWVh6y9TjRU4M9kh/IyHVIaMaF7joWpPyrqkLOiXT0xFTA==
+react-virtuoso@^2.12.0:
+  version "2.12.0"
+  resolved "https://registry.yarnpkg.com/react-virtuoso/-/react-virtuoso-2.12.0.tgz#fd3f69ce65d2a4af01770bae0d65c6a5e491317f"
+  integrity sha512-P30H7GMQfqJxaS5N4I+yfLqaUpy6w8YjZjvvYhI5m6Jw/12dj77SzcX7/Xzs14y/EFhGaI0kkh+yaU0MNjhENw==
   dependencies:
     "@virtuoso.dev/react-urx" "^0.2.12"
     "@virtuoso.dev/urx" "^0.2.12"

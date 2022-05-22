@@ -243,10 +243,7 @@ class ReactSortableTree extends Component {
       this.props.canDrop,
       this.drop,
       this.dragHover,
-      this.dndType,
-      this.state.draggingTreeData,
-      this.props.treeData,
-      this.props.getNodeKey
+      this.dndType
     )
 
     this.toggleChildrenVisibility = this.toggleChildrenVisibility.bind(this)
@@ -563,7 +560,6 @@ class ReactSortableTree extends Component {
       generateNodeProps,
       scaffoldBlockPxWidth,
       searchFocusOffset,
-      rowDirection,
       rowHeight,
     } = mergeTheme(this.props)
     const TreeNodeRenderer = this.treeNodeRenderer
@@ -593,7 +589,6 @@ class ReactSortableTree extends Component {
       node,
       path,
       treeId: this.treeId,
-      rowDirection,
     }
 
     return (
@@ -629,7 +624,6 @@ class ReactSortableTree extends Component {
       innerStyle,
       placeholderRenderer,
       getNodeKey,
-      rowDirection,
     } = mergeTheme(this.props)
     const {
       searchMatches,
@@ -641,7 +635,6 @@ class ReactSortableTree extends Component {
     } = this.state
 
     const treeData = this.state.draggingTreeData || instanceProps.treeData
-    const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
     let rows
     let swapFrom
@@ -722,7 +715,7 @@ class ReactSortableTree extends Component {
 
     return (
       <div
-        className={classnames('rst__tree', className, rowDirectionClass)}
+        className={classnames('rst__tree', className)}
         style={containerStyle}>
         {list}
       </div>
@@ -906,9 +899,6 @@ export type ReactSortableTreeProps = {
   // Specify that nodes that do not match search will be collapsed
   onlyExpandSearchedNodes?: boolean
 
-  // rtl support
-  rowDirection?: string
-
   debugMode?: boolean
 
   overscan?: number | { main: number; reverse: number }
@@ -940,7 +930,6 @@ ReactSortableTree.defaultProps = {
   theme: {},
   onDragStateChanged: () => {},
   onlyExpandSearchedNodes: false,
-  rowDirection: 'ltr',
   debugMode: false,
   overscan: 0,
 }

@@ -18,7 +18,6 @@ const defaultProps = {
   canDrop: false,
   title: undefined,
   subtitle: undefined,
-  rowDirection: 'ltr',
 }
 
 export interface NodeRendererProps {
@@ -42,7 +41,6 @@ export interface NodeRendererProps {
   swapLength?: number | undefined
   listIndex: number
   treeId: string
-  rowDirection?: 'ltr' | 'rtl' | string | undefined
 
   connectDragPreview: ConnectDragPreview
   connectDragSource: ConnectDragSource
@@ -79,15 +77,13 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
     className,
     style,
     didDrop,
-    treeId: _treeId,
-    isOver: _isOver, // Not needed, but preserved for other renderers
-    parentNode: _parentNode, // Needed for dndManager
-    rowDirection,
+    treeId: treeIdOut,
+    isOver: isOverOut, // Not needed, but preserved for other renderers
+    parentNode: parentNodeOut, // Needed for dndManager
     ...otherProps
   } = props
   const nodeTitle = title || node.title
   const nodeSubtitle = subtitle || node.subtitle
-  const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
   let handle
   if (canDrag) {
@@ -96,13 +92,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
         <div className="rst__loadingHandle">
           <div className="rst__loadingCircle">
             {[...Array.from({ length: 12 })].map((_, index) => (
-              <div
-                key={index}
-                className={classnames(
-                  'rst__loadingCirclePoint',
-                  rowDirectionClass ?? ''
-                )}
-              />
+              <div key={index} className="rst__loadingCirclePoint" />
             ))}
           </div>
         </div>
@@ -116,10 +106,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
   const isDraggedDescendant = draggedNode && isDescendant(draggedNode, node)
   const isLandingPadActive = !didDrop && isDragging
 
-  let buttonStyle = { left: -0.5 * scaffoldBlockPxWidth, right: 0 }
-  if (rowDirection === 'rtl') {
-    buttonStyle = { right: -0.5 * scaffoldBlockPxWidth, left: 0 }
-  }
+  const buttonStyle = { left: -0.5 * scaffoldBlockPxWidth, right: 0 }
 
   return (
     <div style={{ height: '100%' }} {...otherProps}>
@@ -130,10 +117,9 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
             <button
               type="button"
               aria-label={node.expanded ? 'Collapse' : 'Expand'}
-              className={classnames(
-                node.expanded ? 'rst__collapseButton' : 'rst__expandButton',
-                rowDirectionClass ?? ''
-              )}
+              className={
+                node.expanded ? 'rst__collapseButton' : 'rst__expandButton'
+              }
               style={buttonStyle}
               onClick={() =>
                 toggleChildrenVisibility({
@@ -147,16 +133,13 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
             {node.expanded && !isDragging && (
               <div
                 style={{ width: scaffoldBlockPxWidth }}
-                className={classnames(
-                  'rst__lineChildren',
-                  rowDirectionClass ?? ''
-                )}
+                className="rst__lineChildren"
               />
             )}
           </div>
         )}
 
-      <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
+      <div className="rst__rowWrapper">
         {/* Set the row preview to be used during drag and drop */}
         {connectDragPreview(
           <div
@@ -166,7 +149,6 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
               isLandingPadActive && !canDrop ? 'rst__rowCancelPad' : '',
               isSearchMatch ? 'rst__rowSearchMatch' : '',
               isSearchFocus ? 'rst__rowSearchFocus' : '',
-              rowDirectionClass ?? '',
               className ?? ''
             )}
             style={{
@@ -178,14 +160,9 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
             <div
               className={classnames(
                 'rst__rowContents',
-                !canDrag ? 'rst__rowContentsDragDisabled' : '',
-                rowDirectionClass ?? ''
+                !canDrag ? 'rst__rowContentsDragDisabled' : ''
               )}>
-              <div
-                className={classnames(
-                  'rst__rowLabel',
-                  rowDirectionClass ?? ''
-                )}>
+              <div className="rst__rowLabel">
                 <span
                   className={classnames(
                     'rst__rowTitle',

@@ -1,6 +1,6 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
-  "version": "4.1.2",
+  "version": "5.0.0-alpha.0",
   "description": "Drag-and-drop sortable component for nested data and hierarchies",
   "main": "./index.js",
   "types": "./index.d.ts",
@@ -65,11 +65,11 @@
   "license": "MIT",
   "bugs": "https://github.com/nosferatu500/react-sortable-tree/issues",
   "dependencies": {
-    "@nosferatu500/react-dnd-scrollzone": "^2.0.10",
+    "@nosferatu500/react-dnd-scrollzone": "3.0.0-alpha.0",
     "lodash.isequal": "^4.5.0",
     "react-dnd": "14.0.4",
     "react-dnd-html5-backend": "^14.1.0",
-    "react-virtuoso": "^2.11.2"
+    "react-virtuoso": "^2.12.0"
   },
   "devDependencies": {
     "@babel/core": "^7.18.0",
@@ -114,7 +114,6 @@
     "prettier": "^2.6.2",
     "prop-types": "^15.8.1",
     "react": "^17.0.2",
-    "react-dnd-touch-backend": "^14.1.1",
     "react-dom": "^17.0.2",
     "rimraf": "^3.0.2",
     "rollup": "^2.74.1",

@@ -1,7 +1,6 @@
 // @ts-nocheck
 
 import { DragSource as dragSource, DropTarget as dropTarget } from 'react-dnd'
-import { memoizedInsertNode } from './memoized-tree-data-utils'
 import { getDepth } from './tree-data-utils'
 
 let rafId = 0
@@ -116,11 +115,8 @@ const getTargetDepth = (
       blocksOffset = dropTargetProps.path.length
     }
   } else {
-    // handle row direction support
-    const direction = dropTargetProps.rowDirection === 'rtl' ? -1 : 1
-
     blocksOffset = Math.round(
-      (direction * monitor.getDifferenceFromInitialOffset().x) /
+      monitor.getDifferenceFromInitialOffset().x /
         dropTargetProps.scaffoldBlockPxWidth
     )
   }
@@ -150,10 +146,7 @@ const canDrop = (
   canNodeHaveChildren,
   treeId,
   maxDepth,
-  treeRefcanDrop,
-  draggingTreeData,
-  treeReftreeData,
-  getNodeKey
+  treeRefcanDrop
 ) => {
   if (!monitor.isOver()) {
     return false
@@ -205,10 +198,7 @@ export const wrapTarget = (
   treeRefcanDrop,
   drop,
   dragHover,
-  dndType,
-  draggingTreeData,
-  treeReftreeData,
-  getNodeKey
+  dndType
 ) => {
   const nodeDropTarget = {
     drop: (dropTargetProps, monitor, component) => {
@@ -277,10 +267,7 @@ export const wrapTarget = (
         canNodeHaveChildren,
         treeId,
         maxDepth,
-        treeRefcanDrop,
-        draggingTreeData,
-        treeReftreeData,
-        getNodeKey
+        treeRefcanDrop
       ),
   }
 
