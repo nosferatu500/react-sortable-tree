@@ -1,7 +1,7 @@
 import React from 'react'
 import { storiesOf } from '@storybook/react'
 import AddRemoveExample from './add-remove'
-import BarebonesExample from './barebones'
+import {BarebonesExample} from './barebones'
 import BarebonesExampleNoContext from './barebones-no-context'
 import CallbacksExample from './callbacks'
 import CanDropExample from './can-drop'

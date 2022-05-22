@@ -9,19 +9,18 @@
     "airbnb",
     "airbnb-typescript",
     "airbnb/hooks",
-    // "plugin:@typescript-eslint/recommended",
-    // "plugin:@typescript-eslint/recommended-requiring-type-checking",
     "prettier",
-    "plugin:sonarjs/recommended",
     "plugin:prettier/recommended",
-    "plugin:react/recommended",
-    "plugin:react/jsx-runtime",
     "plugin:import/recommended",
     "plugin:import/typescript",
+    "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:promise/recommended",
     "plugin:unicorn/recommended",
-    "plugin:storybook/recommended"
+    "plugin:sonarjs/recommended"
+    // "plugin:@typescript-eslint/recommended",
+    // "plugin:@typescript-eslint/recommended-requiring-type-checking"
   ],
   "plugins": [
     "@typescript-eslint",
@@ -42,62 +41,85 @@
     }
   },
   "rules": {
+    // Disabled
+    "no-console": "off",
     "no-continue": "off",
     "no-plusplus": "off",
     "no-case-declarations": "off",
-    // Too restrictive, writing ugly code to defend against a very unlikely scenario: https://eslint.org/docs/rules/no-prototype-builtins
     "no-prototype-builtins": "off",
-    // https://basarat.gitbooks.io/typescript/docs/tips/defaultIsBad.html
+    "no-restricted-syntax": "off",
+    "no-param-reassign": "off",
     "import/prefer-default-export": "off",
     "import/no-default-export": "off",
-    // Too restrictive: https://github.com/yannickcr/eslint-plugin-react/blob/master/docs/rules/destructuring-assignment.md
+    "import/no-extraneous-dependencies": "off",
+    "import/named": "off",
+    "import/no-named-as-default": "off",
     "react/destructuring-assignment": "off",
     "react/require-default-props": "off",
     "react/jsx-props-no-spreading": "off",
-    "react/no-unstable-nested-components": ["warn", { "allowAsProps": true }],
-    // No jsx extension: https://github.com/facebook/create-react-app/issues/87#issuecomment-234627904
     "react/jsx-filename-extension": "off",
-    // Use function hoisting to improve code readability
-    "no-use-before-define": [
-      "error",
-      { "functions": false, "classes": true, "variables": true }
-    ],
+    "react/display-name": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-no-useless-fragment": "off",
     "@typescript-eslint/no-unused-vars": "off",
-    // Allow most functions to rely on type inference. If the function is exported, then `@typescript-eslint/explicit-module-boundary-types` will ensure it's typed.
     "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-use-before-define": [
-      "error",
-      { "functions": false, "classes": true, "variables": true, "typedefs": true }
-    ],
-    // Common abbreviations are known and readable
-    "unicorn/prevent-abbreviations": "off",
-    "unicorn/filename-case": "off",
-    // Disable for simplify type checking for TS
-    "unicorn/no-useless-undefined": "off",
-    "unicorn/prefer-node-protocol": "off",
-    // Temporary turn it off.
-    "no-restricted-syntax": "off",
     "@typescript-eslint/no-unsafe-member-access": "off",
     "@typescript-eslint/no-unsafe-call": "off",
-    "import/no-extraneous-dependencies": "off",
-    "require-atomic-updates": "warn",
-    "curly": ["warn", "multi-line", "consistent"],
-    "no-console": "off",
-    "import/named": "off",
-    "import/no-named-as-default": "off",
-    "import/no-unresolved": ["error", { "commonjs": true, "amd": true }],
-    "import/export": "error",
-    "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "warn",
-    "@typescript-eslint/no-duplicate-imports": ["error"],
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-empty-function": "off",
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/no-unused-expressions": "off",
+    "unicorn/no-null": "off",
+    "unicorn/prevent-abbreviations": "off",
+    "unicorn/filename-case": "off",
+    "unicorn/no-useless-undefined": "off",
+    "unicorn/prefer-node-protocol": "off",
+    "sonarjs/cognitive-complexity": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "jsx-a11y/interactive-supports-focus": "off",
+    "jsx-a11y/control-has-associated-label": "off",
+    "jsx-a11y/media-has-caption": "off",
+    "jsx-a11y/mouse-events-have-key-events": "off",
+    "jsx-a11y/anchor-is-valid": "off",
+    //Modified
+    "require-atomic-updates": "warn",
+    "curly": [
+      "warn",
+      "multi-line",
+      "consistent"
+    ],
+    "no-use-before-define": [
+      "error",
+      {
+        "functions": false,
+        "classes": true,
+        "variables": true
+      }
+    ],
+    "sort-imports": [
+      "error",
+      {
+        "ignoreDeclarationSort": true
+      }
+    ],
+    "import/no-unresolved": [
+      "error",
+      {
+        "commonjs": true,
+        "amd": true
+      }
+    ],
+    "import/export": "error",
     "import/order": [
       "error",
       {
-        "alphabetize": { "order": "asc", "caseInsensitive": true },
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        },
         "groups": [
           "builtin",
           "external",
@@ -115,17 +137,41 @@
             "position": "before"
           }
         ],
-        "pathGroupsExcludedImportTypes": ["builtin"]
+        "pathGroupsExcludedImportTypes": [
+          "builtin"
+        ]
       }
     ],
-    "react/jsx-uses-react": "off",
-    "react/react-in-jsx-scope": "off",
-    "react/no-arrow-function-lifecycle": "warn",
-    "sort-imports": [
+    "react/no-unstable-nested-components": [
+      "warn",
+      {
+        "allowAsProps": true
+      }
+    ],
+    "react/function-component-definition": [
+      "warn",
+      {
+        "namedComponents": "arrow-function",
+        "unnamedComponents": "arrow-function"
+      }
+    ],
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "@typescript-eslint/no-duplicate-imports": [
+      "error"
+    ],
+    "@typescript-eslint/no-use-before-define": [
       "error",
       {
-        "ignoreDeclarationSort": true
+        "functions": false,
+        "classes": true,
+        "variables": true,
+        "typedefs": true
       }
+    ],
+    "sonarjs/max-switch-cases": [
+      "warn",
+      50
     ]
   },
   "settings": {

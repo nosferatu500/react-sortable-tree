@@ -18,7 +18,7 @@ type TreePlaceholderProps = {
   drop: any
 }
 
-const TreePlaceholder = (props: TreePlaceholderProps) => {
+const TreePlaceholder: React.FC<TreePlaceholderProps> = (props) => {
   props = { ...defaultProps, ...props }
   const { children, connectDropTarget, treeId, drop, ...otherProps } = props
 

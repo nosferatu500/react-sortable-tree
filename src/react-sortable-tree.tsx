@@ -934,7 +934,7 @@ ReactSortableTree.defaultProps = {
   overscan: 0,
 }
 
-const SortableTreeWithoutDndContext = function (props: ReactSortableTreeProps) {
+const SortableTreeWithoutDndContext = (props: ReactSortableTreeProps) => {
   return (
     <DndContext.Consumer>
       {({ dragDropManager }) =>
@@ -946,7 +946,7 @@ const SortableTreeWithoutDndContext = function (props: ReactSortableTreeProps) {
   )
 }
 
-const SortableTree = function (props: ReactSortableTreeProps) {
+const SortableTree = (props: ReactSortableTreeProps) => {
   return (
     <DndProvider debugMode={props.debugMode} backend={HTML5Backend}>
       <SortableTreeWithoutDndContext {...props} />
