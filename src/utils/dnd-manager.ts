@@ -26,7 +26,7 @@ export const wrapSource = (el, startDrag, endDrag, dndType) => {
       }
     },
 
-    endDrag: (props, monitor) => {
+    endDrag: (_, monitor) => {
       endDrag(monitor.getDropResult())
     },
 
@@ -53,7 +53,7 @@ const propInjection = (connect, monitor) => {
 
 export const wrapPlaceholder = (el, treeId, drop, dndType) => {
   const placeholderDropTarget = {
-    drop: (dropTargetProps, monitor) => {
+    drop: (_, monitor) => {
       const { node, path, treeIndex } = monitor.getItem()
       const result = {
         node,

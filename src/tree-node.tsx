@@ -1,4 +1,4 @@
-import React, { Children, Component, cloneElement } from 'react'
+import React, { Children, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
 import { classnames } from './utils/classnames'
 import './tree-node.css'

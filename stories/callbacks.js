@@ -34,9 +34,6 @@ export default class App extends Component {
             onChange={(treeData) => this.setState({ treeData })}
             // Need to set getNodeKey to get meaningful ids in paths
             getNodeKey={({ node }) => `node${node.title}`}
-            onVisibilityToggle={(args) =>
-              recordCall('onVisibilityToggle', args)
-            }
             onMoveNode={(args) => {
               recordCall('onMoveNode', args)
               const { prevPath, nextPath, node } = args

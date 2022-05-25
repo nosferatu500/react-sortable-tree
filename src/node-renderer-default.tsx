@@ -77,9 +77,9 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
     className,
     style,
     didDrop,
-    treeId: treeIdOut,
-    isOver: isOverOut, // Not needed, but preserved for other renderers
-    parentNode: parentNodeOut, // Needed for dndManager
+    treeId,
+    isOver, // Not needed, but preserved for other renderers
+    parentNode, // Needed for dndManager
     ...otherProps
   } = props
   const nodeTitle = title || node.title

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import SortableTree from '../src'
+import SortableTree2 from '../src'
 // In your own app, you would need to use import styles once in the app
 // import 'react-sortable-tree/styles.css';
 
@@ -8,7 +8,7 @@ export const BarebonesExample = () => {
   
   return (
     <div style={{ height: 300 }}>
-      <SortableTree
+      <SortableTree2
         treeData={treeData}
         onChange={setTreeData}
       />
