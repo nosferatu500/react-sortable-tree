@@ -5,4 +5,4 @@ export * from './utils/tree-data-utils'
 // for when component is used with other components using react-dnd.
 // see: https://github.com/gaearon/react-dnd/issues/186
 
-export { default, SortableTreeWithoutDndContext } from './react-sortable-tree2'
+export { default, SortableTreeWithoutDndContext } from './react-sortable-tree'

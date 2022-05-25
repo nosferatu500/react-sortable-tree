@@ -15,6 +15,7 @@ import PlaceholderRendererDefault from './placeholder-renderer-default'
 import './react-sortable-tree.css'
 import TreeNode from './tree-node'
 import TreePlaceholder from './tree-placeholder'
+import { mergeTheme } from './utils'
 import { classnames } from './utils/classnames'
 import {
   defaultGetNodeKey,
@@ -37,36 +38,6 @@ import {
 } from './utils/tree-data-utils'
 
 let treeIdCounter = 1
-
-const mergeTheme = (props) => {
-  const merged = {
-    ...props,
-    style: { ...props.theme.style, ...props.style },
-    innerStyle: { ...props.theme.innerStyle, ...props.innerStyle },
-  }
-
-  const overridableDefaults = {
-    nodeContentRenderer: NodeRendererDefault,
-    placeholderRenderer: PlaceholderRendererDefault,
-    scaffoldBlockPxWidth: 44,
-    slideRegionSize: 100,
-    rowHeight: 62,
-    treeNodeRenderer: TreeNode,
-  }
-  for (const propKey of Object.keys(overridableDefaults)) {
-    // If prop has been specified, do not change it
-    // If prop is specified in theme, use the theme setting
-    // If all else fails, fall back to the default
-    if (props[propKey] === undefined) {
-      merged[propKey] =
-        typeof props.theme[propKey] !== 'undefined'
-          ? props.theme[propKey]
-          : overridableDefaults[propKey]
-    }
-  }
-
-  return merged
-}
 
 class ReactSortableTree extends Component {
   // returns the new state after search
