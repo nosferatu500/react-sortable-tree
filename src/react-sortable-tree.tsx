@@ -39,6 +39,13 @@ import {
 
 let treeIdCounter = 1
 
+const scrollZoneVirtualList = withScrolling(
+  React.forwardRef((props, ref) => {
+    const { dragDropManager, rowHeight, listRef, ...otherProps } = props
+    return <Virtuoso ref={listRef} {...otherProps} />
+  })
+)
+
 class ReactSortableTree extends Component {
   // returns the new state after search
   static search(props, state, seekIndex, expand, singleSearch) {
@@ -179,12 +186,6 @@ class ReactSortableTree extends Component {
     )
 
     // Prepare scroll-on-drag options for this list
-    this.scrollZoneVirtualList = (createScrollingComponent || withScrolling)(
-      React.forwardRef((props, ref) => {
-        const { dragDropManager, rowHeight, ...otherProps } = props
-        return <Virtuoso ref={this.listRef} {...otherProps} />
-      })
-    )
     this.vStrength = createVerticalStrength(slideRegionSize)
     this.hStrength = createHorizontalStrength(slideRegionSize)
 
@@ -660,11 +661,12 @@ class ReactSortableTree extends Component {
     } else {
       containerStyle = { height: '100%', ...containerStyle }
 
-      const ScrollZoneVirtualList = this.scrollZoneVirtualList
+      const ScrollZoneVirtualList = this.props.scrollZoneVirtualList
       // Render list with react-virtuoso
       list = (
         <ScrollZoneVirtualList
           data={rows}
+          listRef={this.listRef}
           dragDropManager={dragDropManager}
           verticalStrength={this.vStrength}
           horizontalStrength={this.hStrength}
@@ -910,7 +912,7 @@ const SortableTreeWithoutDndContext = (props: ReactSortableTreeProps) => {
     <DndContext.Consumer>
       {({ dragDropManager }) =>
         dragDropManager === undefined ? undefined : (
-          <ReactSortableTree {...props} dragDropManager={dragDropManager} />
+          <ReactSortableTree {...props} dragDropManager={dragDropManager} scrollZoneVirtualList={scrollZoneVirtualList} />
         )
       }
     </DndContext.Consumer>
