@@ -1,3 +1,7 @@
+# [ATTENTION] 
+The future of this package: [Link](https://github.com/nosferatu500/react-sortable-tree/issues/25)
+
+
 # Note: TypeScript support (included from v4)
 
 <div align="center">
