@@ -15,7 +15,6 @@ import OnlyExpandSearchedNodesExample from './only-expand-searched-node'
 import RowDirectionExample from './rtl-support'
 import SearchExample from './search'
 import ThemesExample from './themes'
-import TouchSupportExample from './touch-support'
 import TreeDataIOExample from './tree-data-io'
 import TreeToTreeExample from './tree-to-tree'
 
@@ -32,7 +31,6 @@ storiesOf('Basics', module)
 
 storiesOf('Advanced', module)
   .add('Drag from external source', () => <ExternalNodeExample />)
-  .add('Touch support (Experimental)', () => <TouchSupportExample />)
   .add('Tree-to-tree dragging', () => <TreeToTreeExample />, 'tree-to-tree.js')
   .add('Playing with generateNodeProps', () => <GenerateNodePropsExample />)
   .add('Drag out to remove', () => <DragOutToRemoveExample />)
