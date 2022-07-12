@@ -856,7 +856,7 @@ export const isDescendant = (older: TreeItem, younger: TreeItem): boolean => {
     );
 };
 
-export const getDepth = (node: TreeItem, depth?: number = 0): number => {
+export const getDepth = (node: TreeItem, depth? = 0): number => {
     if (!node.children) {
         return depth;
     }

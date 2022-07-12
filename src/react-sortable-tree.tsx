@@ -186,7 +186,7 @@ class ReactSortableTree extends Component {
                 const { dragDropManager, rowHeight, classname, style, ...otherProps } = props;
                 return (
                     // <div ref={ref} classname={classname} style={style}>
-                        <Virtuoso ref={this.listRef} {...otherProps} />
+                    <Virtuoso ref={this.listRef} {...otherProps} />
                     // </div>
                 );
             })
@@ -502,7 +502,7 @@ class ReactSortableTree extends Component {
     renderRow(row, { listIndex, style, getPrevRow, matchKeys, swapFrom, swapDepth, swapLength }) {
         const { node, parentNode, path, lowerSiblingCounts, treeIndex } = row;
 
-        const { canDrag, generateNodeProps, scaffoldBlockPxWidth, searchFocusOffset, rowDirection, rowHeight } =
+        const { canDrag, generateNodeProps, scaffoldBlockPxWidth, searchFocusOffset, rowHeight } =
             mergeTheme(this.props);
         const TreeNodeRenderer = this.treeNodeRenderer;
         const NodeContentRenderer = this.nodeContentRenderer;
@@ -527,7 +527,6 @@ class ReactSortableTree extends Component {
             node,
             path,
             treeId: this.treeId,
-            rowDirection,
         };
 
         return (
@@ -557,7 +556,7 @@ class ReactSortableTree extends Component {
     }
 
     render() {
-        const { dragDropManager, style, className, innerStyle, placeholderRenderer, getNodeKey, rowDirection } =
+        const { dragDropManager, style, className, innerStyle, placeholderRenderer, getNodeKey } =
             mergeTheme(this.props);
         const {
             searchMatches,
@@ -569,7 +568,6 @@ class ReactSortableTree extends Component {
         } = this.state;
 
         const treeData = this.state.draggingTreeData || instanceProps.treeData;
-        const rowDirectionClass = rowDirection === "rtl" ? "rst__rtl" : undefined;
 
         let rows;
         let swapFrom;
@@ -644,7 +642,7 @@ class ReactSortableTree extends Component {
         }
 
         return (
-            <div className={classnames("rst__tree", className, rowDirectionClass)} style={containerStyle}>
+            <div className={classnames("rst__tree", className)} style={containerStyle}>
                 {list}
             </div>
         );
@@ -827,9 +825,6 @@ export type ReactSortableTreeProps = {
     // Specify that nodes that do not match search will be collapsed
     onlyExpandSearchedNodes?: boolean;
 
-    // rtl support
-    rowDirection?: string;
-
     debugMode?: boolean;
 
     overscan?: number | { main: number; reverse: number };
@@ -861,7 +856,6 @@ ReactSortableTree.defaultProps = {
     theme: {},
     onDragStateChanged: () => {},
     onlyExpandSearchedNodes: false,
-    rowDirection: "ltr",
     debugMode: false,
     overscan: 0,
 };

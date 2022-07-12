@@ -106,11 +106,8 @@ const getTargetDepth = (dropTargetProps, monitor, component, canNodeHaveChildren
             blocksOffset = dropTargetProps.path.length;
         }
     } else {
-        // handle row direction support
-        const direction = dropTargetProps.rowDirection === "rtl" ? -1 : 1;
-
         blocksOffset = Math.round(
-            (direction * monitor.getDifferenceFromInitialOffset().x) / dropTargetProps.scaffoldBlockPxWidth
+            (monitor.getDifferenceFromInitialOffset().x) / dropTargetProps.scaffoldBlockPxWidth
         );
     }
 
