@@ -92,10 +92,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
                 <div className="rst__loadingHandle">
                     <div className="rst__loadingCircle">
                         {[...Array.from({ length: 12 })].map((_, index) => (
-                            <div
-                                key={index}
-                                className="rst__loadingCirclePoint"
-                            />
+                            <div key={index} className="rst__loadingCirclePoint" />
                         ))}
                     </div>
                 </div>
@@ -120,9 +117,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
                         <button
                             type="button"
                             aria-label={node.expanded ? "Collapse" : "Expand"}
-                            className={
-                                node.expanded ? "rst__collapseButton" : "rst__expandButton"
-                            }
+                            className={node.expanded ? "rst__collapseButton" : "rst__expandButton"}
                             style={buttonStyle}
                             onClick={() =>
                                 toggleChildrenVisibility({
@@ -134,10 +129,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
                         />
 
                         {node.expanded && !isDragging && (
-                            <div
-                                style={{ width: scaffoldBlockPxWidth }}
-                                className="rst__lineChildren"
-                            />
+                            <div style={{ width: scaffoldBlockPxWidth }} className="rst__lineChildren" />
                         )}
                     </div>
                 )}
@@ -161,12 +153,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
                     >
                         {handle}
 
-                        <div
-                            className={classnames(
-                                "rst__rowContents",
-                                !canDrag ? "rst__rowContentsDragDisabled" : "",
-                            )}
-                        >
+                        <div className={classnames("rst__rowContents", !canDrag ? "rst__rowContentsDragDisabled" : "")}>
                             <div className="rst__rowLabel">
                                 <span
                                     className={classnames(

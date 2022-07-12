@@ -1,7 +1,6 @@
 // @ts-nocheck
 
 import { DragSource as dragSource, DropTarget as dropTarget } from "react-dnd";
-import { memoizedInsertNode } from "./memoized-tree-data-utils";
 import { getDepth } from "./tree-data-utils";
 
 let rafId = 0;
@@ -106,9 +105,7 @@ const getTargetDepth = (dropTargetProps, monitor, component, canNodeHaveChildren
             blocksOffset = dropTargetProps.path.length;
         }
     } else {
-        blocksOffset = Math.round(
-            (monitor.getDifferenceFromInitialOffset().x) / dropTargetProps.scaffoldBlockPxWidth
-        );
+        blocksOffset = Math.round(monitor.getDifferenceFromInitialOffset().x / dropTargetProps.scaffoldBlockPxWidth);
     }
 
     let targetDepth = Math.min(dropTargetDepth, Math.max(0, dragSourceInitialDepth + blocksOffset - 1));

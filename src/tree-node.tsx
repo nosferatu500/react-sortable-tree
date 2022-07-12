@@ -153,11 +153,7 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
                 };
 
                 scaffold.push(
-                    <div
-                        key={i}
-                        style={style}
-                        className={classnames("rst__absoluteLineBlock", highlightLineClass)}
-                    />
+                    <div key={i} style={style} className={classnames("rst__absoluteLineBlock", highlightLineClass)} />
                 );
             }
         }

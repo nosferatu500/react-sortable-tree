@@ -502,8 +502,9 @@ class ReactSortableTree extends Component {
     renderRow(row, { listIndex, style, getPrevRow, matchKeys, swapFrom, swapDepth, swapLength }) {
         const { node, parentNode, path, lowerSiblingCounts, treeIndex } = row;
 
-        const { canDrag, generateNodeProps, scaffoldBlockPxWidth, searchFocusOffset, rowHeight } =
-            mergeTheme(this.props);
+        const { canDrag, generateNodeProps, scaffoldBlockPxWidth, searchFocusOffset, rowHeight } = mergeTheme(
+            this.props
+        );
         const TreeNodeRenderer = this.treeNodeRenderer;
         const NodeContentRenderer = this.nodeContentRenderer;
         const nodeKey = path[path.length - 1];
@@ -556,8 +557,9 @@ class ReactSortableTree extends Component {
     }
 
     render() {
-        const { dragDropManager, style, className, innerStyle, placeholderRenderer, getNodeKey } =
-            mergeTheme(this.props);
+        const { dragDropManager, style, className, innerStyle, placeholderRenderer, getNodeKey } = mergeTheme(
+            this.props
+        );
         const {
             searchMatches,
             searchFocusTreeIndex,
