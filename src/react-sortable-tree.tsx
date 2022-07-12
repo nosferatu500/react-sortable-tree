@@ -220,10 +220,7 @@ class ReactSortableTree extends Component {
             this.props.canDrop,
             this.drop,
             this.dragHover,
-            this.dndType,
-            this.state.draggingTreeData,
-            this.props.treeData,
-            this.props.getNodeKey
+            this.dndType
         );
 
         this.toggleChildrenVisibility = this.toggleChildrenVisibility.bind(this);

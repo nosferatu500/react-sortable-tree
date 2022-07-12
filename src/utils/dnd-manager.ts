@@ -121,17 +121,7 @@ const getTargetDepth = (dropTargetProps, monitor, component, canNodeHaveChildren
     return targetDepth;
 };
 
-const canDrop = (
-    dropTargetProps,
-    monitor,
-    canNodeHaveChildren,
-    treeId,
-    maxDepth,
-    treeRefcanDrop,
-    draggingTreeData,
-    treeReftreeData,
-    getNodeKey
-) => {
+const canDrop = (dropTargetProps, monitor, canNodeHaveChildren, treeId, maxDepth, treeRefcanDrop) => {
     if (!monitor.isOver()) {
         return false;
     }
@@ -164,19 +154,7 @@ const canDrop = (
     return true;
 };
 
-export const wrapTarget = (
-    el,
-    canNodeHaveChildren,
-    treeId,
-    maxDepth,
-    treeRefcanDrop,
-    drop,
-    dragHover,
-    dndType,
-    draggingTreeData,
-    treeReftreeData,
-    getNodeKey
-) => {
+export const wrapTarget = (el, canNodeHaveChildren, treeId, maxDepth, treeRefcanDrop, drop, dragHover, dndType) => {
     const nodeDropTarget = {
         drop: (dropTargetProps, monitor, component) => {
             const result = {
@@ -231,17 +209,7 @@ export const wrapTarget = (
         },
 
         canDrop: (dropTargetProps, monitor) =>
-            canDrop(
-                dropTargetProps,
-                monitor,
-                canNodeHaveChildren,
-                treeId,
-                maxDepth,
-                treeRefcanDrop,
-                draggingTreeData,
-                treeReftreeData,
-                getNodeKey
-            ),
+            canDrop(dropTargetProps, monitor, canNodeHaveChildren, treeId, maxDepth, treeRefcanDrop),
     };
 
     return dropTarget(dndType, nodeDropTarget, propInjection)(el);
