@@ -12,14 +12,12 @@ export default class App extends Component {
         {
           id: 'trap',
           title: 'Wicked witch',
-          subtitle: 'Traps people',
           expanded: true,
           children: [{ id: 'trapped', title: 'Trapped' }],
         },
         {
           id: 'no-grandkids',
           title: 'Jeannie',
-          subtitle: "Doesn't allow grandchildren",
           expanded: true,
           children: [{ id: 'jimmy', title: 'Jimmy' }],
         },
@@ -27,13 +25,11 @@ export default class App extends Component {
           id: 'twin-1',
           title: 'Twin #1',
           isTwin: true,
-          subtitle: "Doesn't play with other twin",
         },
         {
           id: 'twin-2',
           title: 'Twin #2',
           isTwin: true,
-          subtitle: "Doesn't play with other twin",
         },
       ],
     }

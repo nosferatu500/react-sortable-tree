@@ -717,9 +717,8 @@ export type ReactSortableTreeProps = {
     };
 
     // Tree data in the following format:
-    // [{title: 'main', subtitle: 'sub'}, { title: 'value2', expanded: true, children: [{ title: 'value3') }] }]
+    // [{title: 'main'}, { title: 'value2', expanded: true, children: [{ title: 'value3') }] }]
     // `title` is the primary label for the node
-    // `subtitle` is a secondary label for the node
     // `expanded` shows children of the node if true, or hides them if false. Defaults to false.
     // `children` is an array of child nodes belonging to the node.
     treeData: any[];
@@ -744,7 +743,7 @@ export type ReactSortableTreeProps = {
 
     // The method used to search nodes.
     // Defaults to a function that uses the `searchQuery` string to search for nodes with
-    // matching `title` or `subtitle` values.
+    // matching `title` values.
     // NOTE: Changing `searchMethod` will not update the search, but changing the `searchQuery` will.
     searchMethod?: (params: SearchParams) => boolean;
 
@@ -759,8 +758,7 @@ export type ReactSortableTreeProps = {
     searchFinishCallback?: (params: SearchFinishCallbackParams) => void;
 
     // Generate an object with additional props to be passed to the node renderer.
-    // Use this for adding buttons via the `buttons` key,
-    // or additional `style` / `className` settings.
+    // Use this for adding additional `style` / `className` settings.
     generateNodeProps?: (params: GenerateNodePropsParams) => any;
 
     treeNodeRenderer?: any;

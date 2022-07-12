@@ -10,14 +10,12 @@ const defaultProps = {
     isSearchFocus: false,
     canDrag: false,
     toggleChildrenVisibility: undefined,
-    buttons: [],
     className: "",
     style: {},
     parentNode: undefined,
     draggedNode: undefined,
     canDrop: false,
     title: undefined,
-    subtitle: undefined,
 };
 
 export interface NodeRendererProps {
@@ -29,11 +27,9 @@ export interface NodeRendererProps {
     canDrag: boolean;
     scaffoldBlockPxWidth: number;
     toggleChildrenVisibility?(data: NodeData): void | undefined;
-    buttons?: JSX.Element[] | undefined;
     className?: string | undefined;
     style?: React.CSSProperties | undefined;
     title?: ((data: NodeData) => JSX.Element | JSX.Element) | undefined;
-    subtitle?: ((data: NodeData) => JSX.Element | JSX.Element) | undefined;
     icons?: JSX.Element[] | undefined;
     lowerSiblingCounts: number[];
     swapDepth?: number | undefined;
@@ -67,13 +63,11 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
         canDrag,
         node,
         title,
-        subtitle,
         draggedNode,
         path,
         treeIndex,
         isSearchMatch,
         isSearchFocus,
-        buttons,
         className,
         style,
         didDrop,
@@ -83,7 +77,6 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
         ...otherProps
     } = props;
     const nodeTitle = title || node.title;
-    const nodeSubtitle = subtitle || node.subtitle;
 
     let handle;
     if (canDrag) {
@@ -155,12 +148,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
 
                         <div className={classnames("rst__rowContents", !canDrag ? "rst__rowContentsDragDisabled" : "")}>
                             <div className="rst__rowLabel">
-                                <span
-                                    className={classnames(
-                                        "rst__rowTitle",
-                                        node.subtitle ? "rst__rowTitleWithSubtitle" : ""
-                                    )}
-                                >
+                                <span className="rst__rowTitle">
                                     {typeof nodeTitle === "function"
                                         ? nodeTitle({
                                               node,
@@ -169,26 +157,6 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = function (props) {
                                           })
                                         : nodeTitle}
                                 </span>
-
-                                {nodeSubtitle && (
-                                    <span className="rst__rowSubtitle">
-                                        {typeof nodeSubtitle === "function"
-                                            ? nodeSubtitle({
-                                                  node,
-                                                  path,
-                                                  treeIndex,
-                                              })
-                                            : nodeSubtitle}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div className="rst__rowToolbar">
-                                {buttons?.map((btn, index) => (
-                                    <div key={index} className="rst__toolbarButton">
-                                        {btn}
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>

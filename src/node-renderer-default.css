@@ -62,9 +62,7 @@
 
 .rst__rowContents,
 .rst__rowLabel,
-.rst__rowToolbar,
-.rst__moveHandle,
-.rst__toolbarButton {
+.rst__moveHandle {
   display: inline-block;
   vertical-align: middle;
 }
@@ -92,11 +90,6 @@
 .rst__rowLabel {
   flex: 0 1 auto;
   padding-right: 20px;
-}
-
-.rst__rowToolbar {
-  flex: 0 1 auto;
-  display: flex;
 }
 
 .rst__moveHandle,
@@ -227,17 +220,6 @@
 
 .rst__rowTitle {
   font-weight: bold;
-}
-
-.rst__rowTitleWithSubtitle {
-  font-size: 85%;
-  display: block;
-  height: 0.8rem;
-}
-
-.rst__rowSubtitle {
-  font-size: 70%;
-  line-height: 1;
 }
 
 .rst__collapseButton,

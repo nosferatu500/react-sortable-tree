@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import SortableTree, { addNodeUnderParent, removeNodeAtPath } from '../src'
+import SortableTree from '../src'
 // In your own app, you would need to use import styles once in the app
 // import 'react-sortable-tree/styles.css';
 
@@ -65,7 +65,6 @@ export default class App extends Component {
   }
 
   render() {
-    const getNodeKey = ({ treeIndex }) => treeIndex
     const getRandomName = () =>
       firstNames[Math.floor(Math.random() * firstNames.length)]
     return (
@@ -74,41 +73,6 @@ export default class App extends Component {
           <SortableTree
             treeData={this.state.treeData}
             onChange={(treeData) => this.setState({ treeData })}
-            generateNodeProps={({ node, path }) => ({
-              buttons: [
-                <button
-                  onClick={() =>
-                    this.setState((state) => ({
-                      treeData: addNodeUnderParent({
-                        treeData: state.treeData,
-                        parentKey: path[path.length - 1],
-                        expandParent: true,
-                        getNodeKey,
-                        newNode: {
-                          title: `${getRandomName()} ${
-                            node.title.split(' ')[0]
-                          }sson`,
-                        },
-                        addAsFirstChild: state.addAsFirstChild,
-                      }).treeData,
-                    }))
-                  }>
-                  Add Child
-                </button>,
-                <button
-                  onClick={() =>
-                    this.setState((state) => ({
-                      treeData: removeNodeAtPath({
-                        treeData: state.treeData,
-                        path,
-                        getNodeKey,
-                      }),
-                    }))
-                  }>
-                  Remove
-                </button>,
-              ],
-            })}
           />
         </div>
 

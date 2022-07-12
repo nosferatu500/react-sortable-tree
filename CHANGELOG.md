@@ -338,7 +338,7 @@ The property accepts pixel values.
 
 ### Features
 
-* **node-renderer:** Make title and subtitle insertable via props ([fff72c6](https://github.com/frontend-collective/react-sortable-tree/commit/fff72c6))
+* **node-renderer:** Make title insertable via props ([fff72c6](https://github.com/frontend-collective/react-sortable-tree/commit/fff72c6))
 
 <a name="1.0.0"></a>
 
