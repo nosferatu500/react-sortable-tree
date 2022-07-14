@@ -61,7 +61,7 @@ const getNodeDataAtTreeIndexOrNextIndex = ({
   }
 
   // Add one and continue for nodes with no children or hidden children
-  if (!node.children || (ignoreCollapsed && node.expanded !== true)) {
+  if (!node?.children || (ignoreCollapsed && node?.expanded !== true)) {
     return { nextIndex: currentIndex + 1 }
   }
 
