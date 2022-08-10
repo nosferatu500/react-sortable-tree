@@ -126,6 +126,8 @@ const canDrop = (dropTargetProps, monitor, canNodeHaveChildren, treeId, maxDepth
         return false;
     }
 
+    if (monitor.getItem().treeId !== treeId && dropTargetProps.disableDropFromOutside) return false;
+
     const rowAbove = dropTargetProps.getPrevRow();
     const abovePath = rowAbove ? rowAbove.path : [];
     const aboveNode = rowAbove ? rowAbove.node : {};

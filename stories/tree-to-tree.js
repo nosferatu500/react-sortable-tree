@@ -47,6 +47,7 @@ class App extends Component {
             border: 'solid black 1px',
           }}>
           <SortableTree
+            disableDropFromOutside
             treeData={this.state.treeData2}
             onChange={(treeData2) => this.setState({ treeData2 })}
             dndType={externalNodeType}

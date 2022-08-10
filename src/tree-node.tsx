@@ -64,6 +64,7 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
             canDrop,
             treeIndex,
             rowHeight,
+            disableDropFromOutside: _disableDropFromOutside,
             treeId: _treeId, // Delete from otherProps
             getPrevRow: _getPrevRow, // Delete from otherProps
             node: _node, // Delete from otherProps

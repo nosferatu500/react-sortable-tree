@@ -496,7 +496,10 @@ class ReactSortableTree extends Component {
         });
     }
 
-    renderRow(row, { listIndex, style, getPrevRow, matchKeys, swapFrom, swapDepth, swapLength }) {
+    renderRow(
+        row,
+        { listIndex, style, getPrevRow, matchKeys, swapFrom, swapDepth, swapLength, disableDropFromOutside }
+    ) {
         const { node, parentNode, path, lowerSiblingCounts, treeIndex } = row;
 
         const { canDrag, generateNodeProps, scaffoldBlockPxWidth, searchFocusOffset, rowHeight } = mergeTheme(
@@ -536,6 +539,7 @@ class ReactSortableTree extends Component {
                 getPrevRow={getPrevRow}
                 lowerSiblingCounts={lowerSiblingCounts}
                 swapFrom={swapFrom}
+                disableDropFromOutside={disableDropFromOutside}
                 swapLength={swapLength}
                 swapDepth={swapDepth}
                 {...sharedProps}
@@ -634,6 +638,7 @@ class ReactSortableTree extends Component {
                             swapFrom,
                             swapDepth: draggedDepth,
                             swapLength,
+                            disableDropFromOutside: this.props.disableDropFromOutside,
                         })
                     }
                 />
@@ -735,6 +740,8 @@ export type ReactSortableTreeProps = {
     // The width of the blocks containing the lines representing the structure of the tree.
     scaffoldBlockPxWidth?: number;
 
+    disableDropFromOutside?: boolean;
+
     // Maximum depth nodes can be inserted at. Defaults to infinite.
     maxDepth?: number;
 
@@ -809,7 +816,7 @@ export type ReactSortableTreeProps = {
 
     // When true, or a callback returning true, dropping nodes to react-dnd
     // drop targets outside of this tree will not remove them from this tree
-    shouldCopyOnOutsideDrop?: (params: ShouldCopyOnOutsideDropParams) => boolean;
+    shouldCopyOnOutsideDrop?: ((params: ShouldCopyOnOutsideDropParams) => boolean) | boolean;
 
     // Called after children nodes collapsed or expanded.
     onVisibilityToggle?: (params: OnVisibilityToggleParams) => void;
@@ -841,6 +848,7 @@ ReactSortableTree.defaultProps = {
     nodeContentRenderer: undefined,
     onMoveNode: () => {},
     onVisibilityToggle: () => {},
+    disableDropFromOutside: false,
     placeholderRenderer: undefined,
     scaffoldBlockPxWidth: undefined,
     searchFinishCallback: undefined,
