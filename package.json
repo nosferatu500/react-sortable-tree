@@ -3,6 +3,7 @@
   "version": "6.0.0-alpha.3",
   "description": "Drag-and-drop sortable component for nested data and hierarchies",
   "main": "./index.js",
+  "module": "./esm/index.js",
   "types": "./index.d.ts",
   "exports": {
     "./package.json": "./package.json",
