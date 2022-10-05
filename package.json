@@ -1,6 +1,6 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
-  "version": "6.0.0-alpha.3",
+  "version": "6.0.0-alpha.4",
   "description": "Drag-and-drop sortable component for nested data and hierarchies",
   "main": "./index.js",
   "module": "./esm/index.js",
