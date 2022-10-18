@@ -9,7 +9,7 @@ import withScrolling, {
 import isEqual from "lodash.isequal";
 import { DndContext, DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { Virtuoso } from "react-virtuoso";
+import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
 import NodeRendererDefault from "./node-renderer-default";
 import PlaceholderRendererDefault from "./placeholder-renderer-default";
 import "./react-sortable-tree.css";
@@ -169,7 +169,7 @@ class ReactSortableTree extends Component {
     constructor(props) {
         super(props);
 
-        this.listRef = React.createRef();
+        this.listRef = props.virtuosoRef || React.createRef();
 
         const { dndType, nodeContentRenderer, treeNodeRenderer, slideRegionSize } = mergeTheme(props);
 
@@ -730,6 +730,11 @@ export type ReactSortableTreeProps = {
 
     // Class name for the container wrapping the tree
     className?: string;
+
+    // Ref for Virtuoso component
+    // Use virtuosoRef when you want to use virtuoso handler
+    // (ex. scrollTo scrollToIndex)
+    virtuosoRef?: React.Ref<VirtuosoHandle>
 
     // Style applied to the inner, scrollable container (for padding, etc.)
     innerStyle?: any;
