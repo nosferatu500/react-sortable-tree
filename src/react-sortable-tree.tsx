@@ -734,7 +734,7 @@ export type ReactSortableTreeProps = {
     // Ref for Virtuoso component
     // Use virtuosoRef when you want to use virtuoso handler
     // (ex. scrollTo scrollToIndex)
-    virtuosoRef?: React.Ref<VirtuosoHandle>
+    virtuosoRef?: React.Ref<VirtuosoHandle>;
 
     // Style applied to the inner, scrollable container (for padding, etc.)
     innerStyle?: any;
