@@ -682,12 +682,12 @@ class ReactSortableTree extends Component {
     }
 
     // Seek to the focused search result if there is one specified
-    if (searchFocusTreeIndex !== undefined) {
-      this.listRef.current.scrollToIndex({
-        index: searchFocusTreeIndex,
-        align: 'center',
-      })
-    }
+    // if (searchFocusTreeIndex !== undefined) {
+    //   this.listRef.current.scrollToIndex({
+    //     index: searchFocusTreeIndex,
+    //     align: 'center',
+    //   })
+    // }
 
     let containerStyle = style
     let list
