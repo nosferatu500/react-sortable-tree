@@ -107,7 +107,7 @@ class ReactSortableTree extends Component {
     // Update the tree with data leaving all paths leading to matching nodes open
     if (expand) {
       newState.instanceProps.ignoreOneTreeUpdate = true // Prevents infinite loop
-      onChange(expandedTreeData)
+      onChange(expandedTreeData, { changeActionType: 'search' })
     }
 
     if (searchFinishCallback) {
@@ -168,7 +168,8 @@ class ReactSortableTree extends Component {
                         }
                       : oldNode,
                   getNodeKey: props.getNodeKey,
-                })
+                }),
+                { changeActionType: 'lazy-loaded' }
               ),
           })
         }
@@ -451,7 +452,7 @@ class ReactSortableTree extends Component {
         })
       }
 
-      this.props.onChange(treeData)
+      this.props.onChange(treeData, { changeActionType: 'move-external' })
 
       this.props.onMoveNode({
         treeData,
@@ -488,7 +489,7 @@ class ReactSortableTree extends Component {
       getNodeKey: this.props.getNodeKey,
     })
 
-    this.props.onChange(treeData)
+    this.props.onChange(treeData, { changeActionType: 'expand' })
 
     this.props.onVisibilityToggle({
       treeData,
@@ -519,7 +520,7 @@ class ReactSortableTree extends Component {
       getNodeKey: this.props.getNodeKey,
     })
 
-    this.props.onChange(treeData)
+    this.props.onChange(treeData, { changeActionType: 'move-internal' })
 
     this.props.onMoveNode({
       treeData,
@@ -768,6 +769,21 @@ type OnDragStateChangedParams = {
   draggedNode: any
 }
 
+// Available actions for the tree
+// move-internal: Move a node within the tree
+// move-external: Move a node from outside the tree
+// expand: Expand a node
+// collapse: Collapse a node
+// search: Search for nodes
+// lazy-loaded: Load lazy-loaded nodes
+type ChangeAction =
+  | 'move-iternal'
+  | 'move-external'
+  | 'expand'
+  | 'collapse'
+  | 'search'
+  | 'lazy-loaded'
+
 export type ReactSortableTreeProps = {
   dragDropManager?: {
     getMonitor: () => unknown
@@ -860,7 +876,7 @@ export type ReactSortableTreeProps = {
   // Called whenever tree data changed.
   // Just like with React input elements, you have to update your
   // own component's data to see the changes reflected.
-  onChange: (treeData) => void
+  onChange: (treeData, event: { changeActionType: ChangeAction }) => void
 
   // Called after node move operation.
   onMoveNode?: (params: OnMoveNodeParams) => void
