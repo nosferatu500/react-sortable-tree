@@ -10,7 +10,7 @@ import {
   TreeItem,
   TreeNode,
   TreePath,
-} from '..'
+} from '../types'
 
 export type WalkAndMapFunctionParameters = FullTree & {
   getNodeKey: GetNodeKeyFunction

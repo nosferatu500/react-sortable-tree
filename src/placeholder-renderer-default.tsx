@@ -1,7 +1,7 @@
 import React from 'react'
+import { TreeItem } from './types'
 import { classnames } from './utils/classnames'
 import './placeholder-renderer-default.css'
-import { TreeItem } from '.'
 
 export interface PlaceholderRendererProps {
   isOver: boolean

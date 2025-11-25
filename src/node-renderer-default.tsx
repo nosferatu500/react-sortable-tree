@@ -1,9 +1,9 @@
 import React from 'react'
 import { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
+import { NodeData, TreeItem } from './types'
 import { classnames } from './utils/classnames'
 import { isDescendant } from './utils/tree-data-utils'
 import './node-renderer-default.css'
-import { NodeData, TreeItem } from '.'
 
 const defaultProps = {
   isSearchMatch: false,

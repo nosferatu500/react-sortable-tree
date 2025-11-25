@@ -21,7 +21,7 @@
     "lib"
   ],
   "engines": {
-    "node": ">=20.9"
+    "node": ">=24.11"
   },
   "prettier": {
     "semi": false,
@@ -55,12 +55,12 @@
     "@rollup/plugin-commonjs": "^26.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
-    "@storybook/addon-actions": "^8.2.9",
-    "@storybook/addon-essentials": "^8.2.9",
-    "@storybook/addon-links": "^8.2.9",
+    "@storybook/addon-actions": "^8.6.14",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/addon-links": "^8.6.14",
     "@storybook/addon-webpack5-compiler-swc": "^1.0.5",
-    "@storybook/react": "^8.2.9",
-    "@storybook/react-webpack5": "^8.2.9",
+    "@storybook/react": "^8.6.14",
+    "@storybook/react-webpack5": "^8.6.14",
     "@types/lodash.isequal": "^4.5.8",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -89,19 +89,19 @@
     "rollup": "^4.21.0",
     "rollup-plugin-dts": "^6.1.1",
     "rollup-plugin-postcss": "^4.0.2",
-    "storybook": "^8.2.9",
-    "typescript": "^5.5.4"
+    "storybook": "^8.6.14",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "react": "^18.2.0",
+    "react": "^18.3.1",
     "react-dnd": "14.0.4",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.3.1"
   },
   "dependencies": {
     "lodash.isequal": "^4.5.0",
     "react-dnd": "14.0.4",
     "react-dnd-html5-backend": "^14.1.0",
-    "virtua": "^0.33.7"
+    "virtua": "^0.38.5"
   },
   "browserslist": {
     "production": [

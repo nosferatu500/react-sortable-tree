@@ -1,6 +1,6 @@
 import React, { Children, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
-import { TreeItem } from '.'
+import { TreeItem } from './types'
 
 const defaultProps = {
   canDrop: false,

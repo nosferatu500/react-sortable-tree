@@ -1,12 +1,8 @@
 import React, { Children, Component, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
+import { TreeItem, TreeNode, TreePath } from './types'
 import { classnames } from './utils/classnames'
 import './tree-node.css'
-import { TreeItem, TreePath } from '.'
-
-export interface TreeNode {
-  node: TreeItem
-}
 
 export interface FlatDataItem extends TreeNode, TreePath {
   lowerSiblingCounts: number[]
@@ -159,13 +155,13 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
         const style =
           rowDirection === 'rtl'
             ? {
-                width: scaffoldBlockPxWidth,
-                right: scaffoldBlockPxWidth * i,
-              }
+              width: scaffoldBlockPxWidth,
+              right: scaffoldBlockPxWidth * i,
+            }
             : {
-                width: scaffoldBlockPxWidth,
-                left: scaffoldBlockPxWidth * i,
-              }
+              width: scaffoldBlockPxWidth,
+              left: scaffoldBlockPxWidth * i,
+            }
 
         scaffold.push(
           <div
