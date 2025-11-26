@@ -29,6 +29,7 @@ import {
   toggleExpandedForAll,
   walk,
 } from './utils/tree-data-utils'
+import './react-sortable-tree.css'
 
 let treeIdCounter = 1
 
@@ -93,9 +94,9 @@ class ReactSortableTree extends Component {
       getNodeKey,
       treeData: onlyExpandSearchedNodes
         ? toggleExpandedForAll({
-            treeData: instanceProps.treeData,
-            expanded: false,
-          })
+          treeData: instanceProps.treeData,
+          expanded: false,
+        })
         : instanceProps.treeData,
       searchQuery,
       searchMethod: searchMethod || defaultSearchMethod,
@@ -163,9 +164,9 @@ class ReactSortableTree extends Component {
                     //  for in the first place
                     oldNode === node
                       ? {
-                          ...oldNode,
-                          children: childrenArray,
-                        }
+                        ...oldNode,
+                        children: childrenArray,
+                      }
                       : oldNode,
                   getNodeKey: props.getNodeKey,
                 })
@@ -682,7 +683,6 @@ class ReactSortableTree extends Component {
         <VList
           id="vlist"
           ref={this.listRef}
-          dragDropManager={dragDropManager}
           style={innerStyle}
           count={rows.length}>
           {(index) => {
@@ -702,6 +702,7 @@ class ReactSortableTree extends Component {
 
     return (
       <div
+        dir={rowDirection === 'rtl' ? 'rtl' : 'ltr'}
         className={classnames('rst__tree', className, rowDirectionClass)}
         style={containerStyle}>
         {list}
@@ -879,8 +880,8 @@ export type ReactSortableTreeProps = {
   // When true, or a callback returning true, dropping nodes to react-dnd
   // drop targets outside of this tree will not remove them from this tree
   shouldCopyOnOutsideDrop?:
-    | ((params: ShouldCopyOnOutsideDropParams) => boolean)
-    | boolean
+  | ((params: ShouldCopyOnOutsideDropParams) => boolean)
+  | boolean
 
   // Called after children nodes collapsed or expanded.
   onVisibilityToggle?: (params: OnVisibilityToggleParams) => void
@@ -913,8 +914,8 @@ ReactSortableTree.defaultProps = {
   maxDepth: undefined,
   treeNodeRenderer: undefined,
   nodeContentRenderer: undefined,
-  onMoveNode: () => {},
-  onVisibilityToggle: () => {},
+  onMoveNode: () => { },
+  onVisibilityToggle: () => { },
   placeholderRenderer: undefined,
   scaffoldBlockPxWidth: undefined,
   searchFinishCallback: undefined,
@@ -925,7 +926,7 @@ ReactSortableTree.defaultProps = {
   slideRegionSize: undefined,
   style: {},
   theme: {},
-  onDragStateChanged: () => {},
+  onDragStateChanged: () => { },
   onlyExpandSearchedNodes: false,
   rowDirection: 'ltr',
   debugMode: false,

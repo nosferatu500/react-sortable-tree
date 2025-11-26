@@ -3,20 +3,23 @@
   height: 68px;
   max-width: 300px;
   padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
 .rst__placeholder,
-.rst__placeholder > * {
+.rst__placeholder>* {
   box-sizing: border-box;
 }
+
 .rst__placeholder::before {
   border: 3px dashed #d9d9d9;
   content: '';
   position: absolute;
-  top: 5px;
-  right: 5px;
-  bottom: 5px;
-  left: 5px;
+  inset: 5px;
   z-index: -1;
+  border-radius: 4px;
 }
 
 /**
@@ -28,19 +31,22 @@
   box-shadow: none !important;
   outline: none !important;
 }
+
 .rst__placeholderLandingPad *,
 .rst__placeholderCancelPad * {
   opacity: 0 !important;
 }
+
 .rst__placeholderLandingPad::before,
 .rst__placeholderCancelPad::before {
-  background-color: lightblue;
+  background-color: var(--rst-bg-landing);
   border-color: white;
+  border-style: solid;
 }
 
 /**
  * Alternate appearance of the landing pad when the dragged location is invalid
  */
 .rst__placeholderCancelPad::before {
-  background-color: #e6a8ad;
+  background-color: var(--rst-bg-cancel);
 }
