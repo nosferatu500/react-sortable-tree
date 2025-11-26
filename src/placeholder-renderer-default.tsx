@@ -6,20 +6,14 @@ import './placeholder-renderer-default.css'
 export interface PlaceholderRendererProps {
   isOver: boolean
   canDrop: boolean
-  draggedNode: TreeItem
+  draggedNode?: TreeItem
 }
 
-const defaultProps = {
-  isOver: false,
-  canDrop: false,
-}
-
-const PlaceholderRendererDefault: React.FC<PlaceholderRendererProps> = (
-  props
-) => {
-  props = { ...defaultProps, ...props }
-  const { canDrop, isOver } = props
-
+const PlaceholderRendererDefault: React.FC<PlaceholderRendererProps> = ({
+  isOver = false,
+  canDrop = false,
+  draggedNode: _draggedNode,
+}) => {
   return (
     <div
       className={classnames(

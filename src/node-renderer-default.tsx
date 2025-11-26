@@ -5,22 +5,6 @@ import { classnames } from './utils/classnames'
 import { isDescendant } from './utils/tree-data-utils'
 import './node-renderer-default.css'
 
-const defaultProps = {
-  isSearchMatch: false,
-  isSearchFocus: false,
-  canDrag: false,
-  toggleChildrenVisibility: undefined,
-  buttons: [],
-  className: '',
-  style: {},
-  parentNode: undefined,
-  draggedNode: undefined,
-  canDrop: false,
-  title: undefined,
-  subtitle: undefined,
-  rowDirection: 'ltr',
-}
-
 export interface NodeRendererProps {
   node: TreeItem
   path: number[]
@@ -56,35 +40,33 @@ export interface NodeRendererProps {
   canDrop: boolean | undefined
 }
 
-const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
-  props = { ...defaultProps, ...props }
+const NodeRendererDefault: React.FC<NodeRendererProps> = ({
+  isSearchMatch = false,
+  isSearchFocus = false,
+  canDrag = false,
+  toggleChildrenVisibility = undefined,
+  buttons = [],
+  className = '',
+  style = {},
+  parentNode = undefined,
+  draggedNode = undefined,
+  canDrop = false,
+  title = undefined,
+  subtitle = undefined,
+  rowDirection = 'ltr',
 
-  const {
-    scaffoldBlockPxWidth,
-    toggleChildrenVisibility,
-    connectDragPreview,
-    connectDragSource,
-    isDragging,
-    canDrop,
-    canDrag,
-    node,
-    title,
-    subtitle,
-    draggedNode,
-    path,
-    treeIndex,
-    isSearchMatch,
-    isSearchFocus,
-    buttons,
-    className,
-    style,
-    didDrop,
-    treeId: _treeId,
-    isOver: _isOver, // Not needed, but preserved for other renderers
-    parentNode: _parentNode, // Needed for dndManager
-    rowDirection,
-    ...otherProps
-  } = props
+  scaffoldBlockPxWidth,
+  connectDragPreview,
+  connectDragSource,
+  isDragging,
+  node,
+  path,
+  treeIndex,
+  didDrop,
+  treeId: _treeId,
+  isOver: _isOver,
+  ...otherProps
+}) => {
   const nodeTitle = title || node.title
   const nodeSubtitle = subtitle || node.subtitle
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
@@ -155,7 +137,6 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
         )}
 
       <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
-        {/* Set the row preview to be used during drag and drop */}
         <div
           ref={connectDragPreview}
           className={classnames(
