@@ -1,5 +1,5 @@
 import React, { Component, useState } from 'react'
-import { DndProvider, DragSource } from 'react-dnd'
+import { DndProvider, useDrag } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
 
@@ -9,46 +9,37 @@ import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
 // -------------------------
 // This type must be assigned to the tree via the `dndType` prop as well
 const externalNodeType = 'yourNodeType'
-const externalNodeSpec = {
-  // This needs to return an object with a property `node` in it.
-  // Object rest spread is recommended to avoid side effects of
-  // referencing the same object in different trees.
-  beginDrag: (componentProps: any) => ({ node: { ...componentProps.node } }),
-}
-const externalNodeCollect = (connect: any /* , monitor */) => ({
-  connectDragSource: connect.dragSource(),
-  // Add props via react-dnd APIs to enable more visual
-  // customization of your component
-  // isDragging: monitor.isDragging(),
-  // didDrop: monitor.didDrop(),
-})
-class externalNodeBaseComponent extends Component {
-  render() {
-    const { connectDragSource, node }: any = this.props
 
-    return connectDragSource(
-      <div
-        style={{
-          display: 'inline-block',
-          padding: '3px 5px',
-          background: 'blue',
-          color: 'white',
-        }}>
-        {node.title}
-      </div>,
-      { dropEffect: 'copy' }
-    )
-  }
-}
+const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: externalNodeType,
+    item: { node: { ...node } },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }), [node])
 
-const YourExternalNodeComponent = DragSource(
-  externalNodeType,
-  externalNodeSpec,
-  externalNodeCollect
-)(externalNodeBaseComponent)
+  return (
+    <div
+      ref={drag}
+      style={{
+        display: 'inline-block',
+        padding: '3px 5px',
+        background: 'blue',
+        color: 'white',
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'move',
+      }}>
+      {node.title}
+    </div>
+  )
+}
 
 const ExternalNode: React.FC = () => {
-  const [treeData, setTreeData] = useState([{ title: 'Mama Rabbit' }, { title: 'Papa Rabbit' }]);
+  const [treeData, setTreeData] = useState([
+    { title: 'Mama Rabbit' }, 
+    { title: 'Papa Rabbit' }
+  ]);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -60,8 +51,8 @@ const ExternalNode: React.FC = () => {
             dndType={externalNodeType}
           />
         </div>
-        <YourExternalNodeComponent node={{ title: 'Baby Rabbit' }} />← drag
-        this
+        <br />
+        <YourExternalNodeComponent node={{ title: 'Baby Rabbit' }} /> ← drag this
       </div>
     </DndProvider>
   )

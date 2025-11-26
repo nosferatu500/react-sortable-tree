@@ -897,8 +897,6 @@ export type ReactSortableTreeProps = {
   // rtl support
   rowDirection?: string
 
-  debugMode?: boolean
-
   overscan?: number | { main: number; reverse: number }
 }
 
@@ -929,7 +927,6 @@ ReactSortableTree.defaultProps = {
   onDragStateChanged: () => { },
   onlyExpandSearchedNodes: false,
   rowDirection: 'ltr',
-  debugMode: false,
   overscan: 0,
   virtuaRef: undefined,
 }
@@ -950,7 +947,7 @@ export const SortableTreeWithoutDndContext = (
 
 export const SortableTree = (props: ReactSortableTreeProps) => {
   return (
-    <DndProvider debugMode={props.debugMode} backend={HTML5Backend}>
+    <DndProvider backend={HTML5Backend}>
       <SortableTreeWithoutDndContext {...props} />
     </DndProvider>
   )

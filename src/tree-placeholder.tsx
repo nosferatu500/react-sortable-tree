@@ -22,8 +22,8 @@ const TreePlaceholder = (props: TreePlaceholderProps) => {
   props = { ...defaultProps, ...props }
   const { children, connectDropTarget, treeId, drop, ...otherProps } = props
 
-  return connectDropTarget(
-    <div>
+  return (
+    <div ref={connectDropTarget}>
       {Children.map(children, (child) =>
         cloneElement(child, {
           ...otherProps,

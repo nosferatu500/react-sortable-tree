@@ -107,9 +107,10 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
           </div>
         </div>
       ) : (
-        connectDragSource(<div className="rst__moveHandle" />, {
-          dropEffect: 'copy',
-        })
+        <div
+          ref={connectDragSource}
+          className="rst__moveHandle"
+        />
       )
   }
 
@@ -158,71 +159,70 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
 
       <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
         {/* Set the row preview to be used during drag and drop */}
-        {connectDragPreview(
+        <div
+          ref={connectDragPreview}
+          className={classnames(
+            'rst__row',
+            isLandingPadActive ? 'rst__rowLandingPad' : '',
+            isLandingPadActive && !canDrop ? 'rst__rowCancelPad' : '',
+            isSearchMatch ? 'rst__rowSearchMatch' : '',
+            isSearchFocus ? 'rst__rowSearchFocus' : '',
+            rowDirectionClass ?? '',
+            className ?? ''
+          )}
+          style={{
+            opacity: isDraggedDescendant ? 0.5 : 1,
+            ...style,
+          }}>
+          {handle}
+
           <div
             className={classnames(
-              'rst__row',
-              isLandingPadActive ? 'rst__rowLandingPad' : '',
-              isLandingPadActive && !canDrop ? 'rst__rowCancelPad' : '',
-              isSearchMatch ? 'rst__rowSearchMatch' : '',
-              isSearchFocus ? 'rst__rowSearchFocus' : '',
-              rowDirectionClass ?? '',
-              className ?? ''
-            )}
-            style={{
-              opacity: isDraggedDescendant ? 0.5 : 1,
-              ...style,
-            }}>
-            {handle}
-
+              'rst__rowContents',
+              canDrag ? '' : 'rst__rowContentsDragDisabled',
+              rowDirectionClass ?? ''
+            )}>
             <div
               className={classnames(
-                'rst__rowContents',
-                canDrag ? '' : 'rst__rowContentsDragDisabled',
+                'rst__rowLabel',
                 rowDirectionClass ?? ''
               )}>
-              <div
+              <span
                 className={classnames(
-                  'rst__rowLabel',
-                  rowDirectionClass ?? ''
+                  'rst__rowTitle',
+                  node.subtitle ? 'rst__rowTitleWithSubtitle' : ''
                 )}>
-                <span
-                  className={classnames(
-                    'rst__rowTitle',
-                    node.subtitle ? 'rst__rowTitleWithSubtitle' : ''
-                  )}>
-                  {typeof nodeTitle === 'function'
-                    ? nodeTitle({
-                        node,
-                        path,
-                        treeIndex,
-                      })
-                    : nodeTitle}
+                {typeof nodeTitle === 'function'
+                  ? nodeTitle({
+                    node,
+                    path,
+                    treeIndex,
+                  })
+                  : nodeTitle}
+              </span>
+
+              {nodeSubtitle && (
+                <span className="rst__rowSubtitle">
+                  {typeof nodeSubtitle === 'function'
+                    ? nodeSubtitle({
+                      node,
+                      path,
+                      treeIndex,
+                    })
+                    : nodeSubtitle}
                 </span>
+              )}
+            </div>
 
-                {nodeSubtitle && (
-                  <span className="rst__rowSubtitle">
-                    {typeof nodeSubtitle === 'function'
-                      ? nodeSubtitle({
-                          node,
-                          path,
-                          treeIndex,
-                        })
-                      : nodeSubtitle}
-                  </span>
-                )}
-              </div>
-
-              <div className="rst__rowToolbar">
-                {buttons?.map((btn, index) => (
-                  <div key={index} className="rst__toolbarButton">
-                    {btn}
-                  </div>
-                ))}
-              </div>
+            <div className="rst__rowToolbar">
+              {buttons?.map((btn, index) => (
+                <div key={index} className="rst__toolbarButton">
+                  {btn}
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

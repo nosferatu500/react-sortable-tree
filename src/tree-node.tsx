@@ -186,12 +186,20 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
     if (typeof rowHeight === 'function') {
       calculatedRowHeight = rowHeight(treeIndex, _node, _path)
     }
-    return connectDropTarget(
+    return (
       <div
         {...otherProps}
+        ref={(el) => {
+            if (typeof connectDropTarget === 'function') {
+                connectDropTarget(el);
+            } else if (connectDropTarget) {
+                connectDropTarget.current = el;
+            }
+            this.node = el;
+        }}
         style={{ height: `${calculatedRowHeight}px` }}
         className={classnames('rst__node', rowDirectionClass ?? '')}
-        ref={(node) => (this.node = node)}>
+      >
         {scaffold}
 
         <div className="rst__nodeContent" style={style}>
