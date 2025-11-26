@@ -14,7 +14,7 @@ import {
 export type WalkAndMapFunctionParameters = FullTree & {
   getNodeKey: GetNodeKeyFunction
   callback: Function
-  ignoreCollapsed?: boolean | undefined
+  ignoreCollapsed: boolean | undefined
 }
 
 export interface FlatDataItem extends TreeNode, TreePath {
@@ -93,7 +93,7 @@ const getNodeDataAtTreeIndexOrNextIndex = ({
 export const getDescendantCount = ({
   node,
   ignoreCollapsed = true,
-}: TreeNode & { ignoreCollapsed?: boolean | undefined }): number => {
+}: TreeNode & { ignoreCollapsed: boolean | undefined }): number => {
   return (
     getNodeDataAtTreeIndexOrNextIndex({
       getNodeKey: () => {},
@@ -342,7 +342,7 @@ export const toggleExpandedForAll = ({
   treeData,
   expanded = true,
 }: FullTree & {
-  expanded?: boolean | undefined
+  expanded: boolean | undefined
 }): TreeItem[] => {
   return map({
     treeData,
@@ -362,7 +362,7 @@ export const changeNodeAtPath = ({
   TreePath & {
     newNode: Function | any
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean | undefined
+    ignoreCollapsed: boolean | undefined
   }): TreeItem[] => {
   if (!treeData || treeData.length === 0) return []
 
@@ -427,7 +427,7 @@ export const removeNodeAtPath = ({
 }: FullTree &
   TreePath & {
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean | undefined
+    ignoreCollapsed: boolean | undefined
   }): TreeItem[] => {
   return changeNodeAtPath({
     treeData,
@@ -446,7 +446,7 @@ export const removeNode = ({
 }: FullTree &
   TreePath & {
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean | undefined
+    ignoreCollapsed: boolean | undefined
   }): (FullTree & TreeNode & TreeIndex) | undefined => {
   let removedNode
   let removedTreeIndex
@@ -479,7 +479,7 @@ export const getNodeAtPath = ({
 }: FullTree &
   TreePath & {
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean | undefined
+    ignoreCollapsed: boolean | undefined
   }): (TreeNode & TreeIndex) | null => {
   let foundNodeInfo
 
@@ -511,11 +511,11 @@ export const addNodeUnderParent = ({
   addAsFirstChild = false,
 }: FullTree & {
   newNode: TreeItem
-  parentKey?: number | string | undefined | null
+  parentKey: number | string | undefined | null
   getNodeKey: GetNodeKeyFunction
-  ignoreCollapsed?: boolean | undefined
-  expandParent?: boolean | undefined
-  addAsFirstChild?: boolean | undefined
+  ignoreCollapsed: boolean | undefined
+  expandParent: boolean | undefined
+  addAsFirstChild: boolean | undefined
 }): FullTree & TreeIndex => {
   if (parentKey === null || parentKey === undefined) {
     const newTreeData = addAsFirstChild
@@ -797,8 +797,8 @@ export const insertNode = ({
   depth: number
   newNode: TreeItem
   minimumTreeIndex: number
-  ignoreCollapsed?: boolean | undefined
-  expandParent?: boolean | undefined
+  ignoreCollapsed: boolean | undefined
+  expandParent: boolean | undefined
   getNodeKey: GetNodeKeyFunction
 }): FullTree & TreeIndex & TreePath & { parentNode: TreeItem | null } => {
   if (!treeData && targetDepth === 0) {
@@ -846,7 +846,7 @@ export const getFlatDataFromTree = ({
   ignoreCollapsed = true,
 }: FullTree & {
   getNodeKey: GetNodeKeyFunction
-  ignoreCollapsed?: boolean | undefined
+  ignoreCollapsed: boolean | undefined
 }): FlatDataItem[] => {
   if (!treeData || treeData.length === 0) {
     return []
@@ -945,11 +945,11 @@ export const find = ({
   expandFocusMatchPaths = true,
 }: FullTree & {
   getNodeKey: GetNodeKeyFunction
-  searchQuery?: string | number | undefined
+  searchQuery: string | number | undefined
   searchMethod: (data: SearchData) => boolean
-  searchFocusOffset?: number | undefined
-  expandAllMatchPaths?: boolean | undefined
-  expandFocusMatchPaths?: boolean | undefined
+  searchFocusOffset: number | undefined
+  expandAllMatchPaths: boolean | undefined
+  expandFocusMatchPaths: boolean | undefined
 }): { matches: NodeData[] } & FullTree => {
   let matchCount = 0
   const trav = ({ isPseudoRoot = false, node, currentIndex, path = [] }) => {

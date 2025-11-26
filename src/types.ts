@@ -6,7 +6,7 @@ export interface TreeItem {
   subtitle: ReactNode | undefined
   expanded: boolean | undefined
   children: TreeItem[] | GetTreeItemChildrenFn | undefined
-  [x: string]: any
+  [x: string]: unknown
 }
 
 export interface TreeNode {
@@ -42,3 +42,12 @@ export interface GetTreeItemChildren {
 export type GetTreeItemChildrenFn = (data: GetTreeItemChildren) => void
 
 export type GetNodeKeyFunction = (data: TreeIndex & TreeNode) => string | number
+
+export interface TreeItemDropResult {
+  node: TreeItem
+  path: number[]
+  treeIndex: number
+  treeId: string
+  minimumTreeIndex?: number
+  depth?: number
+}

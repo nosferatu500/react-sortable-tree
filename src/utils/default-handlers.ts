@@ -64,7 +64,8 @@ export const defaultSearchMethod = ({
   searchQuery,
 }: SearchData): boolean => {
   return (
-    stringSearch('title', searchQuery, node, path, treeIndex) ||
-    stringSearch('subtitle', searchQuery, node, path, treeIndex)
+    (stringSearch('title', searchQuery, node, path, treeIndex) ||
+      stringSearch('subtitle', searchQuery, node, path, treeIndex)) ??
+    false
   )
 }

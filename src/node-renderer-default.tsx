@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { JSX } from 'react'
 import { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
 import { NodeData, TreeItem } from './types'
 import { classnames } from './utils/classnames'
@@ -30,30 +30,30 @@ export interface NodeRendererProps {
   canDrag: boolean
   scaffoldBlockPxWidth: number
   toggleChildrenVisibility?(data: NodeData): void | undefined
-  buttons?: JSX.Element[] | undefined
-  className?: string | undefined
-  style?: React.CSSProperties | undefined
-  title?: ((data: NodeData) => JSX.Element | JSX.Element) | undefined
-  subtitle?: ((data: NodeData) => JSX.Element | JSX.Element) | undefined
-  icons?: JSX.Element[] | undefined
+  buttons: JSX.Element[] | undefined
+  className: string | undefined
+  style: React.CSSProperties | undefined
+  title: ((data: NodeData) => JSX.Element) | undefined
+  subtitle: ((data: NodeData) => JSX.Element) | undefined
+  icons: JSX.Element[] | undefined
   lowerSiblingCounts: number[]
-  swapDepth?: number | undefined
-  swapFrom?: number | undefined
-  swapLength?: number | undefined
+  swapDepth: number | undefined
+  swapFrom: number | undefined
+  swapLength: number | undefined
   listIndex: number
   treeId: string
-  rowDirection?: 'ltr' | 'rtl' | string | undefined
+  rowDirection: 'ltr' | 'rtl' | string | undefined
 
   connectDragPreview: ConnectDragPreview
   connectDragSource: ConnectDragSource
-  parentNode?: TreeItem | undefined
+  parentNode: TreeItem | undefined
   startDrag: ({ path }: { path: number[] }) => void
   endDrag: (dropResult: unknown) => void
   isDragging: boolean
   didDrop: boolean
-  draggedNode?: TreeItem | undefined
+  draggedNode: TreeItem | undefined
   isOver: boolean
-  canDrop?: boolean | undefined
+  canDrop: boolean | undefined
 }
 
 const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {

@@ -755,7 +755,7 @@ export type ReactSortableTreeProps = {
   treeData: any[]
 
   // Style applied to the container wrapping the tree (style defaults to {height: '100%'})
-  style?: any
+  style?: React.CSSProperties
 
   // Class name for the container wrapping the tree
   className?: string
@@ -766,7 +766,7 @@ export type ReactSortableTreeProps = {
   virtuaRef?: React.Ref<VListHandle>
 
   // Style applied to the inner, scrollable container (for padding, etc.)
-  innerStyle?: any
+  innerStyle?: React.CSSProperties
 
   // Size in px of the region near the edges that initiates scrolling on dragover
   slideRegionSize?: number
@@ -828,7 +828,7 @@ export type ReactSortableTreeProps = {
   // Determine the unique key used to identify each node and
   // generate the `path` array passed in callbacks.
   // By default, returns the index in the tree (omitting hidden nodes).
-  getNodeKey?: (node) => string
+  getNodeKey?: (node: TreeNode) => string
 
   // Called whenever tree data changed.
   // Just like with React input elements, you have to update your
@@ -845,7 +845,7 @@ export type ReactSortableTreeProps = {
   canDrop?: (params: CanDropParams) => boolean
 
   // Determine whether a node can have children
-  canNodeHaveChildren?: (node) => boolean
+  canNodeHaveChildren?: (node: TreeNode) => boolean
 
   // When true, or a callback returning true, dropping nodes to react-dnd
   // drop targets outside of this tree will not remove them from this tree

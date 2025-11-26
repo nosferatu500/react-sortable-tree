@@ -1,6 +1,6 @@
-import React, { Children, cloneElement } from 'react'
+import React, { Children, cloneElement, ReactNode } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
-import { TreeItem } from './types'
+import { TreeItem, TreeItemDropResult } from './types'
 
 const defaultProps = {
   canDrop: false,
@@ -8,14 +8,14 @@ const defaultProps = {
 }
 
 type TreePlaceholderProps = {
-  children: any
+  children: ReactNode
   // Drop target
   connectDropTarget: ConnectDropTarget
   isOver: boolean
   canDrop: boolean
   draggedNode: TreeItem
   treeId: string
-  drop: any
+  drop: (dropResult: TreeItemDropResult) => void
 }
 
 const TreePlaceholder = (props: TreePlaceholderProps) => {

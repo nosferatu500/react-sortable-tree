@@ -1,4 +1,4 @@
-import React, { Children, Component, JSX, cloneElement } from 'react'
+import React, { Children, Component, JSX, ReactNode, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
 import { TreeItem, TreeNode, TreePath } from './types'
 import { classnames } from './utils/classnames'
@@ -18,7 +18,9 @@ export interface TreeRendererProps {
   scaffoldBlockPxWidth: number
   lowerSiblingCounts: number[]
   rowDirection: 'ltr' | 'rtl' | string | undefined
-  rowHeight: number | ((treeIndex: number, node: any, path: any[]) => number)
+  rowHeight:
+    | number
+    | ((treeIndex: number, node: TreeItem, path: number[]) => number)
 
   listIndex: number
   children: JSX.Element[]
@@ -74,7 +76,7 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
 
     // Construct the scaffold representing the structure of the tree
     const scaffoldBlockCount = lowerSiblingCounts.length
-    const scaffold: any[] = []
+    const scaffold: ReactNode[] = []
     for (const [i, lowerSiblingCount] of lowerSiblingCounts.entries()) {
       let lineClass = ''
       if (lowerSiblingCount > 0) {
