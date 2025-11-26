@@ -684,9 +684,8 @@ class ReactSortableTree extends Component {
           id="vlist"
           ref={this.listRef}
           style={innerStyle}
-          count={rows.length}>
-          {(index) => {
-            const item = rows[index]
+          data={rows}>
+          {(item, index) => {
             return this.renderRow(item, {
               listIndex: index,
               getPrevRow: () => rows[index - 1] || undefined,

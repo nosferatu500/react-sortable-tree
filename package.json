@@ -62,8 +62,8 @@
     "@storybook/addon-webpack5-compiler-swc": "^4.0.2",
     "@storybook/react-webpack5": "^10.0.8",
     "@types/lodash.isequal": "^4.5.8",
-    "@types/react": "^18.3.27",
-    "@types/react-dom": "^18.3.7",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
     "eslint": "^9.39.1",
@@ -82,9 +82,9 @@
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
-    "react": "^18.3.1",
+    "react": "^19.2.0",
     "react-dnd-touch-backend": "^16.0.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.0",
     "rollup": "^4.53.3",
     "rollup-plugin-dts": "^6.2.3",
     "rollup-plugin-postcss": "^4.0.2",
@@ -93,15 +93,15 @@
     "typescript-eslint": "^8.48.0"
   },
   "peerDependencies": {
-    "react": "^18.3.1",
+    "react": "^19.2.0",
     "react-dnd": "^16.0.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^19.2.0"
   },
   "dependencies": {
     "lodash.isequal": "^4.5.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
-    "virtua": "^0.38.5"
+    "virtua": "^0.47.1"
   },
   "browserslist": {
     "production": [
