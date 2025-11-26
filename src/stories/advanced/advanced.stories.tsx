@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-webpack5";
 import BarebonesExampleNoContext from './barebones-no-context'
 import ChildlessNodes from './childless-nodes'
 import DragOutToRemoveExample from './drag-out-to-remove'

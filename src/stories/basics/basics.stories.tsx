@@ -1,5 +1,5 @@
 import React from 'react'
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-webpack5";
 import AddRemoveExample from './add-remove'
 import BarebonesExample from './barebones'
 import CallbacksExample from './callbacks'

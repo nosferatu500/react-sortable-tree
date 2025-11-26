@@ -3,10 +3,9 @@ module.exports = {
 
   "addons": [
     "@storybook/addon-links",
-    "@storybook/addon-essentials",
-    "@storybook/addon-actions",
     "@storybook/addon-webpack5-compiler-swc",
-    "@chromatic-com/storybook"
+    "@chromatic-com/storybook",
+    "@storybook/addon-docs"
   ],
 
   framework: {
