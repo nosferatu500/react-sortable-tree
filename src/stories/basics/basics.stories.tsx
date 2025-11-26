@@ -7,7 +7,6 @@ import CanDropExample from './can-drop'
 import ModifyNodesExample from './modify-nodes'
 import RowDirectionExample from './rtl-support'
 import SearchExample from './search'
-import ThemesExample from './themes'
 import TreeDataIOExample from './tree-data-io'
 import DarkModeExample from './dark-mode'
 
@@ -42,10 +41,6 @@ export const PreventDrop: Story = {
 
 export const Search: Story = {
   render: () => <SearchExample />,
-};
-
-export const Themes: Story = {
-  render: () => <ThemesExample />,
 };
 
 export const Callbacks: Story = {
