@@ -9,6 +9,7 @@ import RowDirectionExample from './rtl-support'
 import SearchExample from './search'
 import ThemesExample from './themes'
 import TreeDataIOExample from './tree-data-io'
+import DarkModeExample from './dark-mode'
 
 const meta: Meta<typeof BarebonesExample> = {
   title: "Basics",
@@ -53,4 +54,8 @@ export const Callbacks: Story = {
 
 export const RowDirectionSupport: Story = {
   render: () => <RowDirectionExample />,
+};
+
+export const DarkModeTheme: Story = {
+  render: () => <DarkModeExample />,
 };
