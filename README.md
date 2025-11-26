@@ -1,6 +1,6 @@
 
 
-# Note: Check Issues for more info
+# Note: v5 Soon....
 
 <div align="center">
   <img src="https://cloud.githubusercontent.com/assets/4413963/18860410/26f64de8-84b8-11e6-9284-350308eed30a.png"/>
@@ -43,7 +43,8 @@ npm install @nosferatu500/react-sortable-tree --save
 yarn add @nosferatu500/react-sortable-tree
 ```
 
-ES6 and CommonJS builds are available with each distribution.
+ES6 build only.
+
 For example:
 
 ```js
@@ -55,13 +56,6 @@ import SortableTree from '@nosferatu500/react-sortable-tree';
 
 // Or you can import the tree without the dnd context as a named export. eg
 import { SortableTreeWithoutDndContext as SortableTree } from '@nosferatu500/react-sortable-tree';
-
-// Importing from cjs (default)
-import SortableTree from '@nosferatu500/react-sortable-tree/dist/index.cjs.js';
-import SortableTree from '@nosferatu500/react-sortable-tree';
-
-// Importing from esm
-import SortableTree from '@nosferatu500/react-sortable-tree/dist/index.esm.js';
 ```
 
 ## Usage
@@ -127,8 +121,6 @@ export default class Tree extends Component {
 | scaffoldBlockPxWidth           |     number     | The width of the blocks containing the lines representing the structure of the tree. Defaults to `44`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | nodeContentRenderer            |      any       | Override the default component ([`NodeRendererDefault`](./src/node-renderer-default.tsx)) for rendering nodes (but keep the scaffolding generator). This is a last resort for customization - most custom styling should be able to be solved with `generateNodeProps`, a `theme` or CSS rules. If you must use it, is best to copy the component in `node-renderer-default.tsx` to use as a base, and customize as needed.                                                                                                                                                     |
 | placeholderRenderer            |      any       | Override the default placeholder component ([`PlaceholderRendererDefault`](./src/placeholder-renderer-default.tsx)) which is displayed when the tree is empty. This is an advanced option, and in most cases should probably be solved with a `theme` or custom CSS instead.                                                                                                                                                                                                                                                                                                   |
-| virtuosoProps | object | Properties to set directly on the underlying [Virtuoso](https://virtuoso.dev/virtuoso-api-reference/) component.
-| virtuosoRef | ref | A [Ref](https://react.dev/learn/manipulating-the-dom-with-refs) via which to access the underlying [Virtuoso](https://virtuoso.dev/virtuoso-api-reference/) component's methods.
 
 ## Data Helper Functions
 
@@ -154,19 +146,6 @@ Check out the helper functions exported from [`tree-data-utils.ts`](./src/utils/
 - **`isDescendant`**: Check if a node is a descendant of another node.
 - **`getDepth`**: Get the longest path in the tree.
 
-## Themes
-
-Using the `theme` prop along with an imported theme module, you can easily override the default appearance with another standard one.
-
-### Featured themes
-
-|                       ![File Explorer Theme](https://user-images.githubusercontent.com/4413963/32144502-1df1ae08-bcfd-11e7-8f63-8b836dace1a4.png)                        |           <img alt="Full Node Drag Theme" src="https://user-images.githubusercontent.com/4413963/33521792-61dc2c50-d81f-11e7-8ab1-359661a11ca4.png" width="300">           |  <img alt="MINIMAL THEME" src="https://github.com/lifejuggler/react-sortable-tree-theme-minimal/blob/master/example-resource/main.png" width="300">  |
-| :----------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------: |
-|                                                                            **File Explorer**                                                                             |                                                                             **Full Node Drag**                                                                             |                                                   **Minimalistic theme inspired from MATERIAL UI**                                                   |
-|                                                                 @nosferatu500/theme-file-explorer                                                                  |                                                                  react-sortable-tree-theme-full-node-drag                                                                  |                                                          react-sortable-tree-theme-minimal                                                           |
-| [Github](https://github.com/nosferatu500/theme-file-explorer) \| [NPM](https://www.npmjs.com/package/@nosferatu500/theme-file-explorer) | [Github](https://github.com/frontend-collective/react-sortable-tree-theme-full-node-drag) \| [NPM](https://www.npmjs.com/package/react-sortable-tree-theme-full-node-drag) | [Github](https://github.com/lifejuggler/react-sortable-tree-theme-minimal) \| [NPM](https://www.npmjs.com/package/react-sortable-tree-theme-minimal) |
-
-**Help Wanted** - As the themes feature has just been enabled, there are very few (only _two_ at the time of this writing) theme modules available. If you've customized the appearance of your tree to be especially cool or easy to use, I would be happy to feature it in this readme with a link to the Github repo and NPM page if you convert it to a theme. You can use my [file explorer theme repo](https://github.com/nosferatu500/theme-file-explorer) as a template to plug in your own stuff.
 
 ## Browser Compatibility
 
@@ -175,15 +154,9 @@ Using the `theme` prop along with an imported theme module, you can easily overr
 | Chrome  | Yes    |
 | Firefox | Yes    |
 | Safari  | Yes    |
-| IE 11   | Yes    |
+| Edge    | Yes    |
 
 ## Troubleshooting
-
-### If it throws "TypeError: fn is not a function" errors in production
-
-This issue may be related to an ongoing incompatibility between UglifyJS and Webpack's behavior. See an explanation at [create-react-app#2376](https://github.com/facebookincubator/create-react-app/issues/2376).
-
-The simplest way to mitigate this issue is by adding `comparisons: false` to your Uglify config as seen here: https://github.com/facebookincubator/create-react-app/pull/2379/files
 
 ### If it doesn't work with other components that use react-dnd
 
@@ -206,22 +179,19 @@ After cloning the repository and running `yarn install` inside, you can use the 
 ```sh
 # Starts a webpack dev server that hosts a demo page with the component.
 # It uses react-hot-loader so changes are reflected on save.
-yarn start
+npm start
 
 # Start the storybook, which has several different examples to play with.
 # Also hot-reloaded.
-yarn run storybook
-
-# Runs the library tests
-yarn test
+npm run storybook
 
 # Lints the code with eslint
-yarn run lint
+npm run lint
 
 # Lints and builds the code, placing the result in the dist directory.
 # This build is necessary to reflect changes if you're
 #  `npm link`-ed to this repository from another local project.
-yarn run build
+npm run build
 ```
 
 Pull requests are welcome!
