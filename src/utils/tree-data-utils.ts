@@ -518,78 +518,96 @@ export const addNodeUnderParent = ({
   addAsFirstChild?: boolean | undefined
 }): FullTree & TreeIndex => {
   if (parentKey === null || parentKey === undefined) {
-    return addAsFirstChild
-      ? {
-          treeData: [newNode, ...(treeData || [])],
-          treeIndex: 0,
-        }
-      : {
-          treeData: [...(treeData || []), newNode],
-          treeIndex: (treeData || []).length,
-        }
+    const newTreeData = addAsFirstChild
+      ? [newNode, ...(treeData || [])]
+      : [...(treeData || []), newNode]
+    return {
+      treeData: newTreeData,
+      treeIndex: addAsFirstChild ? 0 : (treeData || []).length,
+    }
   }
 
-  let insertedTreeIndex
-  let hasBeenAdded = false
-  const changedTreeData = map({
-    treeData,
-    getNodeKey,
-    ignoreCollapsed,
-    callback: ({ node, treeIndex, path }: GetTreeItemChildren) => {
-      const key = path ? path.at(-1) : undefined
-      // Return nodes that are not the parent as-is
-      if (hasBeenAdded || key !== parentKey) {
-        return node
-      }
-      hasBeenAdded = true
+  let insertedTreeIndex = -1
+  let found = false
 
-      const parentNode = {
-        ...node,
-      }
+  const nextTreeData = produce(treeData, (draft) => {
+    // Helper to find parent and insert
+    const findAndInsert = (
+      nodes: TreeItem[],
+      currentTreeIndex: number
+    ): number => {
+      let indexCounter = currentTreeIndex
 
-      if (expandParent) {
-        parentNode.expanded = true
-      }
+      for (const node of nodes) {
+        // Calculate key
+        const key = getNodeKey({ node, treeIndex: indexCounter })
 
-      // If no children exist yet, just add the single newNode
-      if (!parentNode.children) {
-        insertedTreeIndex = treeIndex + 1
-        return {
-          ...parentNode,
-          children: [newNode],
+        if (key === parentKey) {
+          found = true
+          if (expandParent) {
+            node.expanded = true
+          }
+
+          if (!node.children) {
+            node.children = [newNode]
+            insertedTreeIndex = indexCounter + 1
+            return -1 // Stop traversal, we found it
+          }
+
+          if (typeof node.children === 'function') {
+            throw new TypeError('Cannot add to children defined by a function')
+          }
+
+          // Calculate where the new node lands in the index
+          let childIndexOffset = indexCounter + 1
+          if (!addAsFirstChild) {
+            for (const child of node.children) {
+              childIndexOffset +=
+                1 + getDescendantCount({ node: child, ignoreCollapsed })
+            }
+          }
+          insertedTreeIndex = childIndexOffset
+
+          if (addAsFirstChild) {
+            node.children.unshift(newNode)
+          } else {
+            node.children.push(newNode)
+          }
+          return -1 // Stop traversal
         }
+
+        // Standard traversal increment
+        // If not found, add self (1) + descendants
+        const descendants = getDescendantCount({ node, ignoreCollapsed })
+        const nextIndex = indexCounter + 1 + descendants
+
+        // If the node has children, we might need to look inside them
+        if (
+          node.children &&
+          typeof node.children !== 'function' &&
+          (node.expanded || !ignoreCollapsed)
+        ) {
+          // If we are strictly counting indices, we can skip traversing children
+          // if we know the key isn't in there?
+          // No, getNodeKey depends on treeIndex, so we must traverse to calculate index accurately.
+          const result = findAndInsert(node.children, indexCounter + 1)
+          if (result === -1) return -1
+        }
+
+        indexCounter = nextIndex
       }
+      return indexCounter
+    }
 
-      if (typeof parentNode.children === 'function') {
-        throw new TypeError('Cannot add to children defined by a function')
-      }
-
-      let nextTreeIndex = treeIndex + 1
-      for (let i = 0; i < parentNode.children.length; i += 1) {
-        nextTreeIndex +=
-          1 +
-          getDescendantCount({ node: parentNode.children[i], ignoreCollapsed })
-      }
-
-      insertedTreeIndex = nextTreeIndex
-
-      const children = addAsFirstChild
-        ? [newNode, ...parentNode.children]
-        : [...parentNode.children, newNode]
-
-      return {
-        ...parentNode,
-        children,
-      }
-    },
+    findAndInsert(draft, 0)
   })
 
-  if (!hasBeenAdded) {
+  if (!found) {
     throw new Error('No node found with the given key.')
   }
 
   return {
-    treeData: changedTreeData,
+    treeData: nextTreeData,
     treeIndex: insertedTreeIndex,
   }
 }

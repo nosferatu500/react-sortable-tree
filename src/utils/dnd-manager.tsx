@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
 import { useDrag, useDrop } from 'react-dnd'
+import { TreeItem } from '../types'
 import { getDepth } from './tree-data-utils'
 
 function useCombinedRefs(...refs) {

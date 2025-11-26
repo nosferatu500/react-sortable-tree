@@ -1,4 +1,4 @@
-import React, { Children, Component, cloneElement } from 'react'
+import React, { Children, Component, JSX, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
 import { TreeItem, TreeNode, TreePath } from './types'
 import { classnames } from './utils/classnames'
@@ -12,23 +12,23 @@ export interface FlatDataItem extends TreeNode, TreePath {
 export interface TreeRendererProps {
   treeIndex: number
   treeId: string
-  swapFrom?: number | undefined
-  swapDepth?: number | undefined
-  swapLength?: number | undefined
+  swapFrom: number | undefined
+  swapDepth: number | undefined
+  swapLength: number | undefined
   scaffoldBlockPxWidth: number
   lowerSiblingCounts: number[]
-  rowDirection?: 'ltr' | 'rtl' | string | undefined
+  rowDirection: 'ltr' | 'rtl' | string | undefined
   rowHeight: number | ((treeIndex: number, node: any, path: any[]) => number)
 
   listIndex: number
   children: JSX.Element[]
-  style?: React.CSSProperties | undefined
+  style: React.CSSProperties | undefined
 
   // Drop target
   connectDropTarget: ConnectDropTarget
   isOver: boolean
-  canDrop?: boolean | undefined
-  draggedNode?: TreeItem | undefined
+  canDrop: boolean | undefined
+  draggedNode: TreeItem | undefined
 
   // used in dndManager
   getPrevRow: () => FlatDataItem | undefined

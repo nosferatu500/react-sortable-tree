@@ -234,7 +234,6 @@ class ReactSortableTree extends Component {
     this.dragHover = this.dragHover.bind(this)
     this.endDrag = this.endDrag.bind(this)
     this.drop = this.drop.bind(this)
-    this.handleDndMonitorChange = this.handleDndMonitorChange.bind(this)
   }
 
   componentDidMount() {
@@ -247,13 +246,6 @@ class ReactSortableTree extends Component {
       false
     )
     this.setState(stateUpdate)
-
-    // Hook into react-dnd state changes to detect when the drag ends
-    // TODO: This is very brittle, so it needs to be replaced if react-dnd
-    // offers a more official way to detect when a drag ends
-    this.clearMonitorSubscription = this.props.dragDropManager
-      .getMonitor()
-      .subscribeToStateChange(this.handleDndMonitorChange)
   }
 
   static getDerivedStateFromProps(nextProps, prevState) {
@@ -316,22 +308,6 @@ class ReactSortableTree extends Component {
       this.props.onDragStateChanged({
         isDragging: this.state.dragging,
         draggedNode: this.state.draggedNode,
-      })
-    }
-  }
-
-  componentWillUnmount() {
-    this.clearMonitorSubscription()
-  }
-
-  handleDndMonitorChange() {
-    const monitor = this.props.dragDropManager.getMonitor()
-    // If the drag ends and the tree is still in a mid-drag state,
-    // it means that the drag was canceled or the dragSource dropped
-    // elsewhere, and we should reset the state of this tree
-    if (!monitor.isDragging() && this.state.draggingTreeData) {
-      setTimeout(() => {
-        this.endDrag()
       })
     }
   }
