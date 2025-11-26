@@ -49,7 +49,7 @@ export const wrapSource = (Component, startDrag, endDrag, dndType) => {
         connectDragSource={drag}
         connectDragPreview={preview}
         isDragging={isDragging}
-        didDrop={false} 
+        didDrop={false}
       />
     )
   }
@@ -168,13 +168,13 @@ const canDrop = (
   // but canDrop logic usually relies on path structure mostly.
   // For strict depth checking in canDrop, we might need the ref, but typically
   // getTargetDepth is vital for 'hover' visual feedback.
-  
+
   // For simplicity in migration: we reuse the logic but might skip exact pixel-depth check
   // inside canDrop if componentRef isn't available, or pass it if possible.
   // However, `canDrop` is often called before `hover`.
-  
+
   // Let's assume standard logic:
-  const targetDepth = dropTargetProps.path.length - 1; // Simplified fallback
+  const targetDepth = dropTargetProps.path.length - 1 // Simplified fallback
 
   if (
     targetDepth >= abovePath.length &&
@@ -244,13 +244,12 @@ export const wrapTarget = (
           )
           const draggedNode = monitor.getItem().node
           const needsRedraw =
-            props.node !== draggedNode ||
-            targetDepth !== props.path.length - 1
+            props.node !== draggedNode || targetDepth !== props.path.length - 1
 
           if (!needsRedraw) {
             return
           }
-          
+
           dragHover({
             node: draggedNode,
             path: item.path,

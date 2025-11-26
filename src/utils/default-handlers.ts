@@ -1,31 +1,39 @@
+import { ReactElement, ReactNode } from 'react'
 import { SearchData, TreeIndex, TreeItem } from '../types'
 
 export const defaultGetNodeKey = ({ treeIndex }: TreeIndex) => treeIndex
 
 // Cheap hack to get the text of a react object
-const getReactElementText = (parent: any) => {
+const getReactElementText = (parent: ReactNode): string => {
   if (typeof parent === 'string') {
     return parent
   }
+  if (typeof parent === 'number') {
+    return String(parent)
+  }
+
+  const parentEle = parent as ReactElement
 
   if (
-    parent === undefined ||
-    typeof parent !== 'object' ||
-    !parent.props ||
-    !parent.props.children ||
-    (typeof parent.props.children !== 'string' &&
-      typeof parent.props.children !== 'object')
+    !parentEle ||
+    typeof parentEle !== 'object' ||
+    !parentEle.props ||
+    !parentEle.props.children
   ) {
     return ''
   }
 
-  if (typeof parent.props.children === 'string') {
-    return parent.props.children
+  if (typeof parentEle.props.children === 'string') {
+    return parentEle.props.children
   }
 
-  return parent.props.children
-    .map((child: any) => getReactElementText(child))
-    .join('')
+  if (Array.isArray(parentEle.props.children)) {
+    return parentEle.props.children
+      .map((child) => getReactElementText(child))
+      .join('')
+  }
+
+  return getReactElementText(parentEle.props.children)
 }
 
 // Search for a query string inside a node property

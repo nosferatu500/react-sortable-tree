@@ -155,13 +155,13 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
         const style =
           rowDirection === 'rtl'
             ? {
-              width: scaffoldBlockPxWidth,
-              right: scaffoldBlockPxWidth * i,
-            }
+                width: scaffoldBlockPxWidth,
+                right: scaffoldBlockPxWidth * i,
+              }
             : {
-              width: scaffoldBlockPxWidth,
-              left: scaffoldBlockPxWidth * i,
-            }
+                width: scaffoldBlockPxWidth,
+                left: scaffoldBlockPxWidth * i,
+              }
 
         scaffold.push(
           <div
@@ -190,16 +190,17 @@ class TreeNodeComponent extends Component<TreeRendererProps> {
       <div
         {...otherProps}
         ref={(el) => {
+          if (connectDropTarget) {
             if (typeof connectDropTarget === 'function') {
-                connectDropTarget(el);
-            } else if (connectDropTarget) {
-                connectDropTarget.current = el;
+              connectDropTarget(el)
+            } else {
+              ;(connectDropTarget as React.RefObject<any>).current = el
             }
-            this.node = el;
+          }
+          this.node = el
         }}
         style={{ height: `${calculatedRowHeight}px` }}
-        className={classnames('rst__node', rowDirectionClass ?? '')}
-      >
+        className={classnames('rst__node', rowDirectionClass ?? '')}>
         {scaffold}
 
         <div className="rst__nodeContent" style={style}>

@@ -1,7 +1,4 @@
-// @ts-nocheck
-
 import React, { Component } from 'react'
-import isEqual from 'lodash.isequal'
 import { DndContext, DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { VList, VListHandle } from 'virtua'
@@ -94,9 +91,9 @@ class ReactSortableTree extends Component {
       getNodeKey,
       treeData: onlyExpandSearchedNodes
         ? toggleExpandedForAll({
-          treeData: instanceProps.treeData,
-          expanded: false,
-        })
+            treeData: instanceProps.treeData,
+            expanded: false,
+          })
         : instanceProps.treeData,
       searchQuery,
       searchMethod: searchMethod || defaultSearchMethod,
@@ -164,9 +161,9 @@ class ReactSortableTree extends Component {
                     //  for in the first place
                     oldNode === node
                       ? {
-                        ...oldNode,
-                        children: childrenArray,
-                      }
+                          ...oldNode,
+                          children: childrenArray,
+                        }
                       : oldNode,
                   getNodeKey: props.getNodeKey,
                 })
@@ -264,7 +261,9 @@ class ReactSortableTree extends Component {
     const newState = {}
     const newInstanceProps = { ...instanceProps }
 
-    const isTreeDataEqual = isEqual(instanceProps.treeData, nextProps.treeData)
+    // If the user mutated the tree without changing the reference,
+    // they should be using immutable patterns (or immer).
+    const isTreeDataEqual = instanceProps.treeData === nextProps.treeData
 
     // make sure we have the most recent version of treeData
     newInstanceProps.treeData = nextProps.treeData
@@ -286,7 +285,7 @@ class ReactSortableTree extends Component {
       newState.draggedMinimumTreeIndex = undefined
       newState.draggedDepth = undefined
       newState.dragging = false
-    } else if (!isEqual(instanceProps.searchQuery, nextProps.searchQuery)) {
+    } else if (instanceProps.searchQuery !== nextProps.searchQuery) {
       Object.assign(
         newState,
         ReactSortableTree.search(nextProps, prevState, true, true, false)
@@ -680,11 +679,7 @@ class ReactSortableTree extends Component {
       containerStyle = { height: '100%', ...containerStyle }
 
       list = (
-        <VList
-          id="vlist"
-          ref={this.listRef}
-          style={innerStyle}
-          data={rows}>
+        <VList id="vlist" ref={this.listRef} style={innerStyle} data={rows}>
           {(item, index) => {
             return this.renderRow(item, {
               listIndex: index,
@@ -879,8 +874,8 @@ export type ReactSortableTreeProps = {
   // When true, or a callback returning true, dropping nodes to react-dnd
   // drop targets outside of this tree will not remove them from this tree
   shouldCopyOnOutsideDrop?:
-  | ((params: ShouldCopyOnOutsideDropParams) => boolean)
-  | boolean
+    | ((params: ShouldCopyOnOutsideDropParams) => boolean)
+    | boolean
 
   // Called after children nodes collapsed or expanded.
   onVisibilityToggle?: (params: OnVisibilityToggleParams) => void
@@ -911,8 +906,8 @@ ReactSortableTree.defaultProps = {
   maxDepth: undefined,
   treeNodeRenderer: undefined,
   nodeContentRenderer: undefined,
-  onMoveNode: () => { },
-  onVisibilityToggle: () => { },
+  onMoveNode: () => {},
+  onVisibilityToggle: () => {},
   placeholderRenderer: undefined,
   scaffoldBlockPxWidth: undefined,
   searchFinishCallback: undefined,
@@ -923,7 +918,7 @@ ReactSortableTree.defaultProps = {
   slideRegionSize: undefined,
   style: {},
   theme: {},
-  onDragStateChanged: () => { },
+  onDragStateChanged: () => {},
   onlyExpandSearchedNodes: false,
   rowDirection: 'ltr',
   overscan: 0,

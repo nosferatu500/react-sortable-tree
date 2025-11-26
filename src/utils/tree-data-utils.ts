@@ -1,5 +1,4 @@
-// @ts-nocheck
-
+import { original, produce } from 'immer'
 import {
   FullTree,
   GetNodeKeyFunction,
@@ -365,84 +364,59 @@ export const changeNodeAtPath = ({
     getNodeKey: GetNodeKeyFunction
     ignoreCollapsed?: boolean | undefined
   }): TreeItem[] => {
-  const RESULT_MISS = 'RESULT_MISS'
-  const traverse = ({
-    isPseudoRoot = false,
-    node,
-    currentTreeIndex,
-    pathIndex,
-  }) => {
-    if (
-      !isPseudoRoot &&
-      getNodeKey({ node, treeIndex: currentTreeIndex }) !== path[pathIndex]
-    ) {
-      return RESULT_MISS
-    }
+  if (!treeData || treeData.length === 0) return []
 
-    if (pathIndex >= path.length - 1) {
-      // If this is the final location in the path, return its changed form
-      return typeof newNode === 'function'
-        ? newNode({ node, treeIndex: currentTreeIndex })
-        : newNode
-    }
-    if (!node.children) {
-      // If this node is part of the path, but has no children, return the unchanged node
-      throw new Error('Path referenced children of node with no children.')
-    }
+  return produce(treeData, (draft) => {
+    let currentNode = { children: draft } as any // Pseudo-root
+    let currentTreeIndex = -1
 
-    let nextTreeIndex = currentTreeIndex + 1
-    for (let i = 0; i < node.children.length; i += 1) {
-      const result = traverse({
-        node: node.children[i],
-        currentTreeIndex: nextTreeIndex,
-        pathIndex: pathIndex + 1,
-      })
+    for (const [i, key] of path.entries()) {
+      const isLast = i === path.length - 1
 
-      // If the result went down the correct path
-      if (result !== RESULT_MISS) {
-        if (result) {
-          // If the result was truthy (in this case, an object),
-          //  pass it to the next level of recursion up
-          return {
-            ...node,
-            children: [
-              ...node.children.slice(0, i),
-              result,
-              ...node.children.slice(i + 1),
-            ],
-          }
-        }
-        // If the result was falsy (returned from the newNode function), then
-        //  delete the node from the array.
-        return {
-          ...node,
-          children: [
-            ...node.children.slice(0, i),
-            ...node.children.slice(i + 1),
-          ],
-        }
+      if (!currentNode.children) {
+        throw new Error('Path referenced children of node with no children.')
       }
 
-      nextTreeIndex +=
-        1 + getDescendantCount({ node: node.children[i], ignoreCollapsed })
+      // Find the child matching the key
+      let foundIndex = -1
+      for (let j = 0; j < currentNode.children.length; j++) {
+        const child = currentNode.children[j]
+        const childIndex = currentTreeIndex + 1
+
+        // We need to calculate indices to match keys, but we don't need
+        // to modify the index logic significantly for Immer, just navigation
+        if (getNodeKey({ node: child, treeIndex: childIndex }) === key) {
+          foundIndex = j
+          currentTreeIndex = childIndex
+          break
+        }
+
+        // Increment index by skipping descendants
+        currentTreeIndex +=
+          1 + getDescendantCount({ node: child, ignoreCollapsed })
+      }
+
+      if (foundIndex === -1) {
+        throw new Error('No node found at the given path.')
+      }
+
+      if (isLast) {
+        const targetNode = currentNode.children[foundIndex]
+        const result =
+          typeof newNode === 'function'
+            ? newNode({ node: targetNode, treeIndex: currentTreeIndex })
+            : newNode
+
+        if (result === undefined || result === null) {
+          currentNode.children.splice(foundIndex, 1)
+        } else {
+          currentNode.children[foundIndex] = result
+        }
+      } else {
+        currentNode = currentNode.children[foundIndex]
+      }
     }
-
-    return RESULT_MISS
-  }
-
-  // Use a pseudo-root node in the beginning traversal
-  const result = traverse({
-    node: { children: treeData },
-    currentTreeIndex: -1,
-    pathIndex: -1,
-    isPseudoRoot: true,
   })
-
-  if (result === RESULT_MISS) {
-    throw new Error('No node found at the given path.')
-  }
-
-  return result.children
 }
 
 export const removeNodeAtPath = ({
@@ -482,8 +456,8 @@ export const removeNode = ({
     getNodeKey,
     ignoreCollapsed,
     newNode: ({ node, treeIndex }) => {
-      // Store the target node and delete it from the tree
-      removedNode = node
+      removedNode = original(node) || node
+
       removedTreeIndex = treeIndex
 
       return undefined
@@ -516,7 +490,7 @@ export const getNodeAtPath = ({
       getNodeKey,
       ignoreCollapsed,
       newNode: ({ node, treeIndex }: GetTreeItemChildren) => {
-        foundNodeInfo = { node, treeIndex }
+        foundNodeInfo = { node: original(node) || node, treeIndex }
         return node
       },
     })

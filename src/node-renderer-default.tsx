@@ -107,10 +107,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
           </div>
         </div>
       ) : (
-        <div
-          ref={connectDragSource}
-          className="rst__moveHandle"
-        />
+        <div ref={connectDragSource} className="rst__moveHandle" />
       )
   }
 
@@ -183,10 +180,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
               rowDirectionClass ?? ''
             )}>
             <div
-              className={classnames(
-                'rst__rowLabel',
-                rowDirectionClass ?? ''
-              )}>
+              className={classnames('rst__rowLabel', rowDirectionClass ?? '')}>
               <span
                 className={classnames(
                   'rst__rowTitle',
@@ -194,10 +188,10 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
                 )}>
                 {typeof nodeTitle === 'function'
                   ? nodeTitle({
-                    node,
-                    path,
-                    treeIndex,
-                  })
+                      node,
+                      path,
+                      treeIndex,
+                    })
                   : nodeTitle}
               </span>
 
@@ -205,10 +199,10 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = (props) => {
                 <span className="rst__rowSubtitle">
                   {typeof nodeSubtitle === 'function'
                     ? nodeSubtitle({
-                      node,
-                      path,
-                      treeIndex,
-                    })
+                        node,
+                        path,
+                        treeIndex,
+                      })
                     : nodeSubtitle}
                 </span>
               )}
