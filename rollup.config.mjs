@@ -17,7 +17,11 @@ export default [{
       sourcemap: true
     }
   ],
-  external: [/node_modules/],
+  external: (id) => {
+    if (id.includes('style-inject')) return false;
+    
+    return /node_modules/.test(id);
+  },
   plugins: [
     resolve(),
     commonjs(),

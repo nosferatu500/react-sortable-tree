@@ -1,4 +1,3 @@
-// types.ts
 import { ReactNode } from 'react'
 
 export interface TreeItem {
