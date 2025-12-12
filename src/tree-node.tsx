@@ -1,4 +1,4 @@
-import React, { Children, Component, JSX, ReactNode, cloneElement } from 'react'
+import React, { Children, JSX, ReactNode, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
 import { TreeItem, TreeNode, TreePath } from './types'
 import { classnames } from './utils/classnames'
@@ -38,185 +38,164 @@ export interface TreeRendererProps {
   path: number[]
 }
 
-const defaultProps = {
-  swapFrom: undefined,
-  swapDepth: undefined,
-  swapLength: undefined,
-  canDrop: false,
-  draggedNode: undefined,
-  rowDirection: 'ltr',
-}
+const TreeNodeComponent: React.FC<TreeRendererProps> = ({
+  children,
+  listIndex,
+  swapFrom = undefined,
+  swapLength = undefined,
+  swapDepth = undefined,
+  scaffoldBlockPxWidth,
+  lowerSiblingCounts,
+  connectDropTarget,
+  isOver,
+  draggedNode = undefined,
+  canDrop = false,
+  treeIndex,
+  rowHeight,
+  rowDirection = 'ltr',
+  // Extract props not used in DOM or needed by children directly
+  treeId: _treeId,
+  getPrevRow: _getPrevRow,
+  node,
+  path,
+  ...otherProps
+}) => {
+  const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
-class TreeNodeComponent extends Component<TreeRendererProps> {
-  render() {
-    const props = { ...defaultProps, ...this.props }
-    const {
-      children,
-      listIndex,
-      swapFrom,
-      swapLength,
-      swapDepth,
-      scaffoldBlockPxWidth,
-      lowerSiblingCounts,
-      connectDropTarget,
-      isOver,
-      draggedNode,
-      canDrop,
-      treeIndex,
-      rowHeight,
-      treeId: _treeId, // Delete from otherProps
-      getPrevRow: _getPrevRow, // Delete from otherProps
-      node: _node, // Delete from otherProps
-      path: _path, // Delete from otherProps
-      rowDirection,
-      ...otherProps
-    } = props
+  // Construct the scaffold representing the structure of the tree
+  const scaffoldBlockCount = lowerSiblingCounts.length
+  const scaffold: ReactNode[] = []
 
-    const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
-
-    // Construct the scaffold representing the structure of the tree
-    const scaffoldBlockCount = lowerSiblingCounts.length
-    const scaffold: ReactNode[] = []
-    for (const [i, lowerSiblingCount] of lowerSiblingCounts.entries()) {
-      let lineClass = ''
-      if (lowerSiblingCount > 0) {
-        // At this level in the tree, the nodes had sibling nodes further down
-
-        if (listIndex === 0) {
-          // Top-left corner of the tree
-          // +-----+
-          // |     |
-          // |  +--+
-          // |  |  |
-          // +--+--+
-          lineClass = 'rst__lineHalfHorizontalRight rst__lineHalfVerticalBottom'
-        } else if (i === scaffoldBlockCount - 1) {
-          // Last scaffold block in the row, right before the row content
-          // +--+--+
-          // |  |  |
-          // |  +--+
-          // |  |  |
-          // +--+--+
-          lineClass = 'rst__lineHalfHorizontalRight rst__lineFullVertical'
-        } else {
-          // Simply connecting the line extending down to the next sibling on this level
-          // +--+--+
-          // |  |  |
-          // |  |  |
-          // |  |  |
-          // +--+--+
-          lineClass = 'rst__lineFullVertical'
-        }
-      } else if (listIndex === 0) {
-        // Top-left corner of the tree, but has no siblings
+  for (const [i, lowerSiblingCount] of lowerSiblingCounts.entries()) {
+    let lineClass = ''
+    if (lowerSiblingCount > 0) {
+      // At this level in the tree, the nodes had sibling nodes further down
+      if (listIndex === 0) {
+        // Top-left corner of the tree
         // +-----+
         // |     |
         // |  +--+
-        // |     |
-        // +-----+
-        lineClass = 'rst__lineHalfHorizontalRight'
+        // |  |  |
+        // +--+--+
+        lineClass = 'rst__lineHalfHorizontalRight rst__lineHalfVerticalBottom'
       } else if (i === scaffoldBlockCount - 1) {
-        // The last or only node in this level of the tree
+        // Last scaffold block in the row, right before the row content
         // +--+--+
         // |  |  |
         // |  +--+
-        // |     |
-        // +-----+
-        lineClass = 'rst__lineHalfVerticalTop rst__lineHalfHorizontalRight'
+        // |  |  |
+        // +--+--+
+        lineClass = 'rst__lineHalfHorizontalRight rst__lineFullVertical'
+      } else {
+        // Simply connecting the line extending down to the next sibling on this level
+        // +--+--+
+        // |  |  |
+        // |  |  |
+        // |  |  |
+        // +--+--+
+        lineClass = 'rst__lineFullVertical'
       }
+    } else if (listIndex === 0) {
+      // Top-left corner of the tree, but has no siblings
+      // +-----+
+      // |     |
+      // |  +--+
+      // |     |
+      // +-----+
+      lineClass = 'rst__lineHalfHorizontalRight'
+    } else if (i === scaffoldBlockCount - 1) {
+      // The last or only node in this level of the tree
+      // +--+--+
+      // |  |  |
+      // |  +--+
+      // |     |
+      // +-----+
+      lineClass = 'rst__lineHalfVerticalTop rst__lineHalfHorizontalRight'
+    }
+
+    scaffold.push(
+      <div
+        key={`pre_${1 + i}`}
+        style={{ width: scaffoldBlockPxWidth }}
+        className={classnames(
+          'rst__lineBlock',
+          lineClass,
+          rowDirectionClass ?? ''
+        )}
+      />
+    )
+
+    if (treeIndex !== listIndex && i === swapDepth) {
+      // This row has been shifted, and is at the depth of
+      // the line pointing to the new destination
+      let highlightLineClass = ''
+
+      if (listIndex === swapFrom! + swapLength! - 1) {
+        // This block is on the bottom (target) line
+        // This block points at the target block (where the row will go when released)
+        highlightLineClass = 'rst__highlightBottomLeftCorner'
+      } else if (treeIndex === swapFrom) {
+        // This block is on the top (source) line
+        highlightLineClass = 'rst__highlightTopLeftCorner'
+      } else {
+        // This block is between the bottom and top
+        highlightLineClass = 'rst__highlightLineVertical'
+      }
+
+      const style =
+        rowDirection === 'rtl'
+          ? {
+              width: scaffoldBlockPxWidth,
+              right: scaffoldBlockPxWidth * i,
+            }
+          : {
+              width: scaffoldBlockPxWidth,
+              left: scaffoldBlockPxWidth * i,
+            }
 
       scaffold.push(
         <div
-          key={`pre_${1 + i}`}
-          style={{ width: scaffoldBlockPxWidth }}
+          key={i}
+          style={style}
           className={classnames(
-            'rst__lineBlock',
-            lineClass,
+            'rst__absoluteLineBlock',
+            highlightLineClass,
             rowDirectionClass ?? ''
           )}
         />
       )
-
-      if (treeIndex !== listIndex && i === swapDepth) {
-        // This row has been shifted, and is at the depth of
-        // the line pointing to the new destination
-        let highlightLineClass = ''
-
-        if (listIndex === swapFrom! + swapLength! - 1) {
-          // This block is on the bottom (target) line
-          // This block points at the target block (where the row will go when released)
-          highlightLineClass = 'rst__highlightBottomLeftCorner'
-        } else if (treeIndex === swapFrom) {
-          // This block is on the top (source) line
-          highlightLineClass = 'rst__highlightTopLeftCorner'
-        } else {
-          // This block is between the bottom and top
-          highlightLineClass = 'rst__highlightLineVertical'
-        }
-
-        const style =
-          rowDirection === 'rtl'
-            ? {
-                width: scaffoldBlockPxWidth,
-                right: scaffoldBlockPxWidth * i,
-              }
-            : {
-                width: scaffoldBlockPxWidth,
-                left: scaffoldBlockPxWidth * i,
-              }
-
-        scaffold.push(
-          <div
-            key={i}
-            style={style}
-            className={classnames(
-              'rst__absoluteLineBlock',
-              highlightLineClass,
-              rowDirectionClass ?? ''
-            )}
-          />
-        )
-      }
     }
-
-    const style =
-      rowDirection === 'rtl'
-        ? { right: scaffoldBlockPxWidth * scaffoldBlockCount }
-        : { left: scaffoldBlockPxWidth * scaffoldBlockCount }
-
-    let calculatedRowHeight = rowHeight
-    if (typeof rowHeight === 'function') {
-      calculatedRowHeight = rowHeight(treeIndex, _node, _path)
-    }
-    return (
-      <div
-        {...otherProps}
-        ref={(el) => {
-          if (connectDropTarget) {
-            if (typeof connectDropTarget === 'function') {
-              connectDropTarget(el)
-            } else {
-              ;(connectDropTarget as React.RefObject<any>).current = el
-            }
-          }
-          this.node = el
-        }}
-        style={{ height: `${calculatedRowHeight}px` }}
-        className={classnames('rst__node', rowDirectionClass ?? '')}>
-        {scaffold}
-
-        <div className="rst__nodeContent" style={style}>
-          {Children.map(children, (child: any) =>
-            cloneElement(child, {
-              isOver,
-              canDrop,
-              draggedNode,
-            })
-          )}
-        </div>
-      </div>
-    )
   }
+
+  const contentStyle =
+    rowDirection === 'rtl'
+      ? { right: scaffoldBlockPxWidth * scaffoldBlockCount }
+      : { left: scaffoldBlockPxWidth * scaffoldBlockCount }
+
+  let calculatedRowHeight = rowHeight
+  if (typeof rowHeight === 'function') {
+    calculatedRowHeight = rowHeight(treeIndex, node, path)
+  }
+
+  return (
+    <div
+      {...otherProps}
+      ref={connectDropTarget}
+      style={{ height: `${calculatedRowHeight}px` }}
+      className={classnames('rst__node', rowDirectionClass ?? '')}>
+      {scaffold}
+
+      <div className="rst__nodeContent" style={contentStyle}>
+        {Children.map(children, (child: any) =>
+          cloneElement(child, {
+            isOver,
+            canDrop,
+            draggedNode,
+          })
+        )}
+      </div>
+    </div>
+  )
 }
 
-export default TreeNodeComponent
+export default React.memo(TreeNodeComponent)
