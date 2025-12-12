@@ -21,7 +21,7 @@ export interface TreeIndex {
 }
 
 export interface FullTree {
-  treeData?: TreeItem[]
+  treeData: TreeItem[]
 }
 
 export interface NodeData extends TreeNode, TreePath, TreeIndex {}
