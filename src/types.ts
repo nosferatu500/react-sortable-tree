@@ -1,10 +1,10 @@
 import { ReactNode } from 'react'
 
 export interface TreeItem {
-  title: ReactNode | undefined
-  subtitle: ReactNode | undefined
-  expanded: boolean | undefined
-  children: TreeItem[] | GetTreeItemChildrenFn | undefined
+  title?: ReactNode
+  subtitle?: ReactNode
+  expanded?: boolean
+  children?: TreeItem[] | GetTreeItemChildrenFn
   [x: string]: unknown
 }
 
@@ -21,7 +21,7 @@ export interface TreeIndex {
 }
 
 export interface FullTree {
-  treeData: TreeItem[] | undefined
+  treeData?: TreeItem[]
 }
 
 export interface NodeData extends TreeNode, TreePath, TreeIndex {}

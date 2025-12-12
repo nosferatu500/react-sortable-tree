@@ -14,30 +14,30 @@ export interface NodeRendererProps {
   canDrag: boolean
   scaffoldBlockPxWidth: number
   toggleChildrenVisibility?(data: NodeData): void | undefined
-  buttons: JSX.Element[] | undefined
-  className: string | undefined
-  style: React.CSSProperties | undefined
-  title: ((data: NodeData) => JSX.Element) | undefined
-  subtitle: ((data: NodeData) => JSX.Element) | undefined
-  icons: JSX.Element[] | undefined
+  buttons?: JSX.Element[]
+  className?: string
+  style?: React.CSSProperties
+  title?: ((data: NodeData) => JSX.Element)
+  subtitle?: ((data: NodeData) => JSX.Element)
+  icons?: JSX.Element[]
   lowerSiblingCounts: number[]
-  swapDepth: number | undefined
-  swapFrom: number | undefined
-  swapLength: number | undefined
+  swapDepth?: number
+  swapFrom?: number
+  swapLength?: number
   listIndex: number
   treeId: string
   rowDirection: 'ltr' | 'rtl' | string | undefined
 
   connectDragPreview: ConnectDragPreview
   connectDragSource: ConnectDragSource
-  parentNode: TreeItem | undefined
+  parentNode?: TreeItem
   startDrag: ({ path }: { path: number[] }) => void
   endDrag: (dropResult: unknown) => void
   isDragging: boolean
   didDrop: boolean
-  draggedNode: TreeItem | undefined
+  draggedNode?: TreeItem
   isOver: boolean
-  canDrop: boolean | undefined
+  canDrop?: boolean
 }
 
 const NodeRendererDefault: React.FC<NodeRendererProps> = ({

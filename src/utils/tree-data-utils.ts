@@ -14,7 +14,7 @@ import {
 export type WalkAndMapFunctionParameters = FullTree & {
   getNodeKey: GetNodeKeyFunction
   callback: Function
-  ignoreCollapsed: boolean | undefined
+  ignoreCollapsed?: boolean
 }
 
 export interface FlatDataItem extends TreeNode, TreePath {
@@ -93,10 +93,10 @@ const getNodeDataAtTreeIndexOrNextIndex = ({
 export const getDescendantCount = ({
   node,
   ignoreCollapsed = true,
-}: TreeNode & { ignoreCollapsed: boolean | undefined }): number => {
+}: TreeNode & { ignoreCollapsed?: boolean }): number => {
   return (
     getNodeDataAtTreeIndexOrNextIndex({
-      getNodeKey: () => {},
+      getNodeKey: () => { },
       ignoreCollapsed,
       node,
       currentIndex: 0,
@@ -123,12 +123,12 @@ const walkDescendants = ({
   const selfInfo = isPseudoRoot
     ? undefined
     : {
-        node,
-        parentNode,
-        path: selfPath,
-        lowerSiblingCounts,
-        treeIndex: currentIndex,
-      }
+      node,
+      parentNode,
+      path: selfPath,
+      lowerSiblingCounts,
+      treeIndex: currentIndex,
+    }
 
   if (!isPseudoRoot) {
     const callbackResult = callback(selfInfo)
@@ -342,7 +342,7 @@ export const toggleExpandedForAll = ({
   treeData,
   expanded = true,
 }: FullTree & {
-  expanded: boolean | undefined
+  expanded?: boolean
 }): TreeItem[] => {
   return map({
     treeData,
@@ -362,7 +362,7 @@ export const changeNodeAtPath = ({
   TreePath & {
     newNode: Function | any
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed: boolean | undefined
+    ignoreCollapsed?: boolean
   }): TreeItem[] => {
   if (!treeData || treeData.length === 0) return []
 
@@ -427,7 +427,7 @@ export const removeNodeAtPath = ({
 }: FullTree &
   TreePath & {
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed: boolean | undefined
+    ignoreCollapsed?: boolean
   }): TreeItem[] => {
   return changeNodeAtPath({
     treeData,
@@ -446,7 +446,7 @@ export const removeNode = ({
 }: FullTree &
   TreePath & {
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed: boolean | undefined
+    ignoreCollapsed?: boolean
   }): (FullTree & TreeNode & TreeIndex) | undefined => {
   let removedNode
   let removedTreeIndex
@@ -479,7 +479,7 @@ export const getNodeAtPath = ({
 }: FullTree &
   TreePath & {
     getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed: boolean | undefined
+    ignoreCollapsed?: boolean
   }): (TreeNode & TreeIndex) | null => {
   let foundNodeInfo
 
@@ -513,9 +513,9 @@ export const addNodeUnderParent = ({
   newNode: TreeItem
   parentKey: number | string | undefined | null
   getNodeKey: GetNodeKeyFunction
-  ignoreCollapsed: boolean | undefined
-  expandParent: boolean | undefined
-  addAsFirstChild: boolean | undefined
+  ignoreCollapsed?: boolean
+  expandParent?: boolean
+  addAsFirstChild?: boolean
 }): FullTree & TreeIndex => {
   if (parentKey === null || parentKey === undefined) {
     const newTreeData = addAsFirstChild
@@ -757,7 +757,7 @@ const addNodeAtDepthAndIndex = ({
       })
 
       if ('insertedTreeIndex' in mapResult) {
-        ;({
+        ; ({
           insertedTreeIndex,
           parentNode,
           parentPath: pathFragment,
@@ -797,8 +797,8 @@ export const insertNode = ({
   depth: number
   newNode: TreeItem
   minimumTreeIndex: number
-  ignoreCollapsed: boolean | undefined
-  expandParent: boolean | undefined
+  ignoreCollapsed?: boolean
+  expandParent?: boolean
   getNodeKey: GetNodeKeyFunction
 }): FullTree & TreeIndex & TreePath & { parentNode: TreeItem | null } => {
   if (!treeData && targetDepth === 0) {
@@ -846,7 +846,7 @@ export const getFlatDataFromTree = ({
   ignoreCollapsed = true,
 }: FullTree & {
   getNodeKey: GetNodeKeyFunction
-  ignoreCollapsed: boolean | undefined
+  ignoreCollapsed?: boolean
 }): FlatDataItem[] => {
   if (!treeData || treeData.length === 0) {
     return []
@@ -945,11 +945,11 @@ export const find = ({
   expandFocusMatchPaths = true,
 }: FullTree & {
   getNodeKey: GetNodeKeyFunction
-  searchQuery: string | number | undefined
+  searchQuery?: string | number
   searchMethod: (data: SearchData) => boolean
-  searchFocusOffset: number | undefined
-  expandAllMatchPaths: boolean | undefined
-  expandFocusMatchPaths: boolean | undefined
+  searchFocusOffset?: number
+  expandAllMatchPaths?: boolean
+  expandFocusMatchPaths?: boolean
 }): { matches: NodeData[] } & FullTree => {
   let matchCount = 0
   const trav = ({ isPseudoRoot = false, node, currentIndex, path = [] }) => {
@@ -963,9 +963,9 @@ export const find = ({
     const extraInfo = isPseudoRoot
       ? undefined
       : {
-          path: selfPath,
-          treeIndex: currentIndex,
-        }
+        path: selfPath,
+        treeIndex: currentIndex,
+      }
 
     // Nodes with with children that aren't lazy
     const hasChildren =

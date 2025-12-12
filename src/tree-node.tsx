@@ -12,9 +12,9 @@ export interface FlatDataItem extends TreeNode, TreePath {
 export interface TreeRendererProps {
   treeIndex: number
   treeId: string
-  swapFrom: number | undefined
-  swapDepth: number | undefined
-  swapLength: number | undefined
+  swapFrom?: number
+  swapDepth?: number
+  swapLength?: number
   scaffoldBlockPxWidth: number
   lowerSiblingCounts: number[]
   rowDirection: 'ltr' | 'rtl' | string | undefined
@@ -24,13 +24,13 @@ export interface TreeRendererProps {
 
   listIndex: number
   children: JSX.Element[]
-  style: React.CSSProperties | undefined
+  style?: React.CSSProperties
 
   // Drop target
   connectDropTarget: ConnectDropTarget
   isOver: boolean
-  canDrop: boolean | undefined
-  draggedNode: TreeItem | undefined
+  canDrop?: boolean
+  draggedNode?: TreeItem
 
   // used in dndManager
   getPrevRow: () => FlatDataItem | undefined
