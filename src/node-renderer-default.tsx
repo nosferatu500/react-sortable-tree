@@ -17,8 +17,8 @@ export interface NodeRendererProps {
   buttons?: JSX.Element[]
   className?: string
   style?: React.CSSProperties
-  title?: ((data: NodeData) => JSX.Element)
-  subtitle?: ((data: NodeData) => JSX.Element)
+  title?: (data: NodeData) => JSX.Element
+  subtitle?: (data: NodeData) => JSX.Element
   icons?: JSX.Element[]
   lowerSiblingCounts: number[]
   swapDepth?: number

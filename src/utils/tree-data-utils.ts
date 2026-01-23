@@ -96,7 +96,7 @@ export const getDescendantCount = ({
 }: TreeNode & { ignoreCollapsed?: boolean }): number => {
   return (
     getNodeDataAtTreeIndexOrNextIndex({
-      getNodeKey: () => { },
+      getNodeKey: () => {},
       ignoreCollapsed,
       node,
       currentIndex: 0,
@@ -123,12 +123,12 @@ const walkDescendants = ({
   const selfInfo = isPseudoRoot
     ? undefined
     : {
-      node,
-      parentNode,
-      path: selfPath,
-      lowerSiblingCounts,
-      treeIndex: currentIndex,
-    }
+        node,
+        parentNode,
+        path: selfPath,
+        lowerSiblingCounts,
+        treeIndex: currentIndex,
+      }
 
   if (!isPseudoRoot) {
     const callbackResult = callback(selfInfo)
@@ -757,7 +757,7 @@ const addNodeAtDepthAndIndex = ({
       })
 
       if ('insertedTreeIndex' in mapResult) {
-        ; ({
+        ;({
           insertedTreeIndex,
           parentNode,
           parentPath: pathFragment,
@@ -963,9 +963,9 @@ export const find = ({
     const extraInfo = isPseudoRoot
       ? undefined
       : {
-        path: selfPath,
-        treeIndex: currentIndex,
-      }
+          path: selfPath,
+          treeIndex: currentIndex,
+        }
 
     // Nodes with with children that aren't lazy
     const hasChildren =
