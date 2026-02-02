@@ -9,6 +9,7 @@ import RowDirectionExample from './rtl-support'
 import SearchExample from './search'
 import TreeDataIOExample from './tree-data-io'
 import DarkModeExample from './dark-mode'
+import FileExplorerExample from './file-explorer'
 
 const meta: Meta<typeof BarebonesExample> = {
   title: "Basics",
@@ -53,4 +54,8 @@ export const RowDirectionSupport: Story = {
 
 export const DarkModeTheme: Story = {
   render: () => <DarkModeExample />,
+};
+
+export const FileExplorerTheme: Story = {
+  render: () => <FileExplorerExample />,
 };

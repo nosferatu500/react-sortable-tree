@@ -139,7 +139,7 @@ export type ReactSortableTreeProps = {
   onMoveNode?: (params: OnMoveNodeParams) => void
   canDrag?: boolean | ((params: GenerateNodePropsParams) => boolean)
   canDrop?: (params: CanDropParams) => boolean
-  canNodeHaveChildren?: (node: TreeNodeType) => boolean
+  canNodeHaveChildren?: (node: TreeItem) => boolean
   shouldCopyOnOutsideDrop?:
     | ((params: ShouldCopyOnOutsideDropParams) => boolean)
     | boolean
@@ -661,7 +661,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   const canNodeHaveChildren = useCallback(
     (node: TreeItem) => {
       if (mergedProps.canNodeHaveChildren) {
-        return mergedProps.canNodeHaveChildren(node as TreeNodeType)
+        return mergedProps.canNodeHaveChildren(node)
       }
       return true
     },

@@ -1,0 +1,210 @@
+/* File Explorer Theme for react-sortable-tree */
+
+/* Theme container - apply to wrapper div */
+.rst__file-explorer-theme {
+  /* Override CSS variables for compact layout */
+  --rst-row-height: 28px;
+  --rst-block-width: 20px;
+  --rst-handle-width: 0px;
+  --rst-line-color: #c5c5c5;
+  --rst-line-highlight: #007acc;
+  --rst-line-highlight-arrow: #fff;
+  --rst-primary-color: #007acc;
+  --rst-focus-color: #007acc;
+  --rst-match-color: #ea5c00;
+  --rst-bg-landing: rgba(0, 122, 204, 0.1);
+  --rst-bg-cancel: rgba(255, 0, 0, 0.1);
+  --rst-text-color: #333;
+  --rst-icon-color: transparent;
+  --rst-button-bg: transparent;
+  --rst-button-border: transparent;
+
+  /* Theme-specific variables */
+  --rst-fe-hover-bg: rgba(0, 0, 0, 0.04);
+  --rst-fe-selected-bg: rgba(0, 122, 204, 0.1);
+  --rst-fe-chevron-color: #6e6e6e;
+  --rst-fe-text-color: #333;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 13px;
+  color: var(--rst-fe-text-color);
+}
+
+/* Disable default tree structure lines */
+.rst__file-explorer-theme .rst__lineBlock,
+.rst__file-explorer-theme .rst__lineHalfHorizontalRight,
+.rst__file-explorer-theme .rst__lineFullVertical,
+.rst__file-explorer-theme .rst__lineHalfVerticalTop,
+.rst__file-explorer-theme .rst__lineHalfVerticalBottom,
+.rst__file-explorer-theme .rst__lineChildren {
+  display: none;
+}
+
+/* Hide default highlight lines */
+.rst__file-explorer-theme .rst__highlightLineVertical,
+.rst__file-explorer-theme .rst__highlightBottomLeftCorner,
+.rst__file-explorer-theme .rst__highlightTopLeftCorner {
+  display: none;
+}
+
+/* File Explorer Row */
+.rst__fe-row {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.1s ease;
+  user-select: none;
+}
+
+.rst__fe-row:hover {
+  background-color: var(--rst-fe-hover-bg);
+}
+
+/* Landing pad styles */
+.rst__fe-rowLandingPad {
+  background-color: var(--rst-bg-landing);
+  border: 1px dashed var(--rst-primary-color);
+}
+
+.rst__fe-rowCancelPad {
+  background-color: var(--rst-bg-cancel);
+  border: 1px dashed #dc3545;
+}
+
+/* Search match styles */
+.rst__fe-rowSearchMatch {
+  background-color: rgba(234, 92, 0, 0.15);
+  outline: 1px solid var(--rst-match-color);
+}
+
+.rst__fe-rowSearchFocus {
+  background-color: rgba(0, 122, 204, 0.2);
+  outline: 2px solid var(--rst-focus-color);
+}
+
+/* Chevron (expand/collapse arrow) */
+.rst__fe-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+  color: var(--rst-fe-chevron-color);
+  flex-shrink: 0;
+  visibility: hidden;
+}
+
+.rst__fe-chevronVisible {
+  visibility: visible;
+  cursor: pointer;
+}
+
+.rst__fe-chevron:hover {
+  color: var(--rst-fe-text-color);
+}
+
+/* File/Folder Icon */
+.rst__fe-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+/* Node Title */
+.rst__fe-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* Toolbar (action buttons) */
+.rst__fe-toolbar {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.rst__fe-row:hover .rst__fe-toolbar {
+  opacity: 1;
+}
+
+.rst__fe-toolbarButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.rst__fe-toolbarButton:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* ====================== */
+/* Dark Theme Variant     */
+/* ====================== */
+
+.rst__file-explorer-theme.rst__file-explorer-dark {
+  --rst-line-color: #404040;
+  --rst-line-highlight: #0078d4;
+  --rst-bg-landing: rgba(0, 120, 212, 0.2);
+  --rst-bg-cancel: rgba(255, 0, 0, 0.2);
+  --rst-text-color: #cccccc;
+
+  /* Dark theme specific */
+  --rst-fe-hover-bg: rgba(255, 255, 255, 0.04);
+  --rst-fe-selected-bg: rgba(0, 120, 212, 0.3);
+  --rst-fe-chevron-color: #858585;
+  --rst-fe-text-color: #cccccc;
+
+  background-color: #1e1e1e;
+  color: var(--rst-fe-text-color);
+}
+
+.rst__file-explorer-dark .rst__fe-rowSearchMatch {
+  background-color: rgba(234, 92, 0, 0.25);
+}
+
+.rst__file-explorer-dark .rst__fe-rowSearchFocus {
+  background-color: rgba(0, 120, 212, 0.4);
+}
+
+.rst__file-explorer-dark .rst__fe-toolbarButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ====================== */
+/* RTL Support            */
+/* ====================== */
+
+.rst__fe-row.rst__rtl {
+  flex-direction: row-reverse;
+}
+
+.rst__rtl .rst__fe-chevron {
+  margin-right: 0;
+  margin-left: 2px;
+}
+
+.rst__rtl .rst__fe-icon {
+  margin-right: 0;
+  margin-left: 6px;
+}
+
+.rst__rtl .rst__fe-toolbar {
+  margin-left: 0;
+  margin-right: auto;
+}
