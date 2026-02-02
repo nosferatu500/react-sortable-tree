@@ -47,6 +47,17 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
           ;(ref as React.RefObject<T | null>).current = handle
         }
       }
+      // React 19: Return cleanup function (ignored in React 18)
+      return () => {
+        for (const ref of refs) {
+          if (!ref) continue
+          if (typeof ref === 'function') {
+            ref(null)
+          } else {
+            ;(ref as React.RefObject<T | null>).current = null
+          }
+        }
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     refs // Pass the array directly to avoid regeneration on every render
