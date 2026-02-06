@@ -180,7 +180,7 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   return (
     <div
       {...otherProps}
-      ref={connectDropTarget}
+      ref={connectDropTarget as unknown as React.Ref<HTMLDivElement>}
       style={{ height: `${calculatedRowHeight}px` }}
       className={classnames('rst__node', rowDirectionClass ?? '')}>
       {scaffold}

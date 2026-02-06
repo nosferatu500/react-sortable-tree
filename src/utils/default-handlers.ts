@@ -1,4 +1,4 @@
-import { ReactElement, ReactNode } from 'react'
+import { ReactNode } from 'react'
 import { SearchData, TreeIndex, TreeItem } from '../types'
 
 export const defaultGetNodeKey = ({ treeIndex }: TreeIndex) => treeIndex
@@ -12,7 +12,7 @@ const getReactElementText = (parent: ReactNode): string => {
     return String(parent)
   }
 
-  const parentEle = parent as ReactElement
+  const parentEle = parent as { props?: { children?: ReactNode } }
 
   if (
     !parentEle ||
@@ -29,7 +29,7 @@ const getReactElementText = (parent: ReactNode): string => {
 
   if (Array.isArray(parentEle.props.children)) {
     return parentEle.props.children
-      .map((child) => getReactElementText(child))
+      .map((child: ReactNode) => getReactElementText(child))
       .join('')
   }
 
@@ -50,7 +50,7 @@ const stringSearch = (
   }
   if (typeof node[key] === 'object') {
     // Search within text inside react elements
-    return getReactElementText(node[key]).includes(searchQuery)
+    return getReactElementText(node[key] as ReactNode).includes(searchQuery)
   }
 
   // Search within string

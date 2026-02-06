@@ -159,7 +159,7 @@ export const wrapPlaceholder = (
 const getTargetDepth = (
   dropTargetProps: any,
   monitor: DropTargetMonitor,
-  componentRef: React.RefObject<HTMLElement>,
+  componentRef: React.RefObject<HTMLElement | null>,
   canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
   maxDepth?: number
@@ -285,7 +285,11 @@ export const wrapTarget = (
       propsRef.current = props
     })
 
-    const [{ isOver, canDrop: isCanDrop }, dropConnector] = useDrop(
+    const [{ isOver, canDrop: isCanDrop }, dropConnector] = useDrop<
+      DragItem,
+      DropResult,
+      { isOver: boolean; canDrop: boolean }
+    >(
       () => ({
         accept: dndType,
         drop: (_item, monitor) => {
@@ -309,7 +313,7 @@ export const wrapTarget = (
           drop(result)
           return result
         },
-        hover: (item: DragItem, monitor) => {
+        hover: (item, monitor) => {
           const currentProps = propsRef.current
           const targetDepth = getTargetDepth(
             currentProps,
@@ -352,7 +356,10 @@ export const wrapTarget = (
       [dndType, treeId, maxDepth]
     )
 
-    const combinedRef = useCombinedRefs(dropConnector, nodeRef)
+    const combinedRef = useCombinedRefs(
+      dropConnector as unknown as Ref<HTMLElement>,
+      nodeRef
+    )
 
     return (
       <Component

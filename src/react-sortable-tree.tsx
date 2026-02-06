@@ -16,7 +16,7 @@ import NodeRendererDefault from './node-renderer-default'
 import PlaceholderRendererDefault from './placeholder-renderer-default'
 import TreeNode from './tree-node'
 import TreePlaceholder from './tree-placeholder'
-import { TreeItem, TreeNode as TreeNodeType } from './types'
+import { GetNodeKeyFunction, TreeItem } from './types'
 import { classnames } from './utils/classnames'
 import {
   defaultGetNodeKey,
@@ -101,9 +101,9 @@ type ThemeProps = {
   innerStyle?: React.CSSProperties
   scaffoldBlockPxWidth?: number
   slideRegionSize?: number
-  treeNodeRenderer?: React.ComponentType<unknown>
-  nodeContentRenderer?: React.ComponentType<unknown>
-  placeholderRenderer?: React.ComponentType<unknown>
+  treeNodeRenderer?: React.ComponentType<any>
+  nodeContentRenderer?: React.ComponentType<any>
+  placeholderRenderer?: React.ComponentType<any>
   dndType?: string
 }
 
@@ -127,14 +127,14 @@ export type ReactSortableTreeProps = {
   generateNodeProps?: (
     params: GenerateNodePropsParams
   ) => Record<string, unknown>
-  treeNodeRenderer?: React.ComponentType<unknown>
-  nodeContentRenderer?: React.ComponentType<unknown>
-  placeholderRenderer?: React.ComponentType<unknown>
+  treeNodeRenderer?: React.ComponentType<any>
+  nodeContentRenderer?: React.ComponentType<any>
+  placeholderRenderer?: React.ComponentType<any>
   theme?: ThemeProps
   rowHeight?:
     | number
     | ((treeIndex: number, node: TreeItem, path: number[]) => number)
-  getNodeKey?: (node: TreeNodeType) => string
+  getNodeKey?: GetNodeKeyFunction
   onChange: (treeData: TreeItem[]) => void
   onMoveNode?: (params: OnMoveNodeParams) => void
   canDrag?: boolean | ((params: GenerateNodePropsParams) => boolean)
@@ -152,14 +152,14 @@ export type ReactSortableTreeProps = {
 }
 
 interface MergedTheme extends ReactSortableTreeProps {
-  nodeContentRenderer: React.ComponentType<unknown>
-  placeholderRenderer: React.ComponentType<unknown>
+  nodeContentRenderer: React.ComponentType<any>
+  placeholderRenderer: React.ComponentType<any>
   scaffoldBlockPxWidth: number
   slideRegionSize: number
   rowHeight:
     | number
     | ((treeIndex: number, node: TreeItem, path: number[]) => number)
-  treeNodeRenderer: React.ComponentType<unknown>
+  treeNodeRenderer: React.ComponentType<any>
 }
 
 // Helper to memoize theme merging to avoid re-renders in StrictMode/Concurrent Root
@@ -1164,7 +1164,11 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   return (
     <div
       dir={rowDirection === 'rtl' ? 'rtl' : 'ltr'}
-      className={classnames('rst__tree', className || '', rowDirectionClass)}
+      className={classnames(
+        'rst__tree',
+        className || '',
+        rowDirectionClass ?? ''
+      )}
       style={containerStyle}>
       {list}
     </div>

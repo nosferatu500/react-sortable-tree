@@ -1,4 +1,4 @@
-import { Children, cloneElement, ReactNode } from 'react'
+import React, { Children, cloneElement, ReactNode } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
 import { TreeItem, TreeItemDropResult } from './types'
 
@@ -23,9 +23,9 @@ const TreePlaceholder = ({
   ...otherProps
 }: TreePlaceholderProps) => {
   return (
-    <div ref={connectDropTarget}>
+    <div ref={connectDropTarget as unknown as React.Ref<HTMLDivElement>}>
       {Children.map(children, (child) =>
-        cloneElement(child as React.ReactElement, {
+        cloneElement(child as React.ReactElement<any>, {
           canDrop,
           draggedNode,
           ...otherProps,

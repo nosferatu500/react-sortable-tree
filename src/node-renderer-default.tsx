@@ -89,7 +89,10 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
           </div>
         </div>
       ) : (
-        <div ref={connectDragSource} className="rst__moveHandle" />
+        <div
+          ref={connectDragSource as unknown as React.Ref<HTMLDivElement>}
+          className="rst__moveHandle"
+        />
       )
   }
 
@@ -138,7 +141,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
 
       <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
         <div
-          ref={connectDragPreview}
+          ref={connectDragPreview as unknown as React.Ref<HTMLDivElement>}
           className={classnames(
             'rst__row',
             isLandingPadActive ? 'rst__rowLandingPad' : '',
