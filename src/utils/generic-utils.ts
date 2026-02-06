@@ -4,14 +4,8 @@ export const slideRows = (
   toIndex: number,
   count = 1
 ) => {
-  const rowsWithoutMoved = [
-    ...rows.slice(0, fromIndex),
-    ...rows.slice(fromIndex + count),
-  ]
+  const movedItems = rows.slice(fromIndex, fromIndex + count)
+  const rowsWithoutMoved = rows.toSpliced(fromIndex, count)
 
-  return [
-    ...rowsWithoutMoved.slice(0, toIndex),
-    ...rows.slice(fromIndex, fromIndex + count),
-    ...rowsWithoutMoved.slice(toIndex),
-  ]
+  return rowsWithoutMoved.toSpliced(toIndex, 0, ...movedItems)
 }

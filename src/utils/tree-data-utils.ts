@@ -757,11 +757,7 @@ const addNodeAtDepthAndIndex = ({
     // Insert the newNode at the insertIndex
     const nextNode = {
       ...node,
-      children: [
-        ...node.children.slice(0, insertIndex),
-        newNode,
-        ...node.children.slice(insertIndex),
-      ],
+      children: node.children.toSpliced(insertIndex, 0, newNode),
     }
 
     // Return node with successful insert result
@@ -939,34 +935,28 @@ export const getTreeFromFlatData = ({
     return []
   }
 
-  const childrenToParents: Record<string, any[]> = {}
-  for (const child of flatData) {
-    const parentKey = getParentKey(child)
+  const childrenToParents = Object.groupBy(flatData, (child: any) =>
+    getParentKey(child)
+  )
 
-    if (parentKey in childrenToParents) {
-      childrenToParents[parentKey].push(child)
-    } else {
-      childrenToParents[parentKey] = [child]
-    }
-  }
-
-  if (rootKey === null || !(rootKey in childrenToParents)) {
+  if (rootKey === null || !childrenToParents[rootKey]) {
     return []
   }
 
   const trav = (parent: any): any => {
     const parentKey = getKey(parent)
-    if (parentKey in childrenToParents) {
+    const children = childrenToParents[parentKey]
+    if (children) {
       return {
         ...parent,
-        children: childrenToParents[parentKey].map((child: any) => trav(child)),
+        children: children.map((child: any) => trav(child)),
       }
     }
 
     return { ...parent }
   }
 
-  return childrenToParents[rootKey].map((child: any) => trav(child))
+  return childrenToParents[rootKey]!.map((child: any) => trav(child))
 }
 
 export const isDescendant = (older: TreeItem, younger: TreeItem): boolean => {
