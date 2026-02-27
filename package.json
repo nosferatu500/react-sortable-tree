@@ -1,6 +1,6 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
-  "version": "5.0.0-rc.2",
+  "version": "5.0.0",
   "description": "Drag-and-drop sortable component for nested data and hierarchies",
   "homepage": "https://nosferatu500.github.io/react-sortable-tree",
   "main": "lib/index.esm.js",
@@ -60,7 +60,6 @@
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
-    "babel-plugin-react-compiler": "^1.0.0",
     "@storybook/addon-docs": "^10.2.13",
     "@storybook/addon-links": "^10.2.13",
     "@storybook/addon-webpack5-compiler-swc": "^4.0.2",
@@ -69,6 +68,7 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
+    "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.39.3",
     "eslint-config-airbnb-extended": "^3.0.1",
     "eslint-config-prettier": "^10.1.8",
@@ -79,7 +79,7 @@
     "eslint-plugin-promise": "^7.2.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-sonarjs": "^4.0.0",
+    "eslint-plugin-sonarjs": "^3.0.7",
     "eslint-plugin-storybook": "^10.2.13",
     "eslint-plugin-unicorn": "^63.0.0",
     "gh-pages": "^6.3.0",
@@ -97,14 +97,14 @@
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0",
     "react-dnd": "^16.0.0",
-    "react-dnd-html5-backend": "^16.0.0"
+    "react-dnd-html5-backend": "^16.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
     "immer": "^11.1.4",
-    "react-dnd": "^16.0.1",
-    "react-dnd-html5-backend": "^16.0.1",
+    "react-dnd": "^16.0.0",
+    "react-dnd-html5-backend": "^16.0.0",
     "virtua": "^0.48.6"
   },
   "browserslist": {
