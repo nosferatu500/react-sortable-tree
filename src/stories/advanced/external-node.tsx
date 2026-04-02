@@ -37,7 +37,7 @@ const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
 
 const ExternalNode: React.FC = () => {
   const [treeData, setTreeData] = useState([
-    { title: 'Mama Rabbit' }, 
+    { title: 'Mama Rabbit' },
     { title: 'Papa Rabbit' }
   ]);
 

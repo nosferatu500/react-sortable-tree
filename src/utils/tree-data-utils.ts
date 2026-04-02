@@ -482,19 +482,24 @@ export const removeNode = ({
   }): (FullTree & TreeNode & TreeIndex) | undefined => {
   let removedNode: TreeItem | undefined
   let removedTreeIndex: number | undefined
-  const nextTreeData = changeNodeAtPath({
-    treeData,
-    path,
-    getNodeKey,
-    ignoreCollapsed,
-    newNode: ({ node, treeIndex }: { node: TreeItem; treeIndex: number }) => {
-      removedNode = original(node) || node
+  let nextTreeData: TreeItem[]
+  try {
+    nextTreeData = changeNodeAtPath({
+      treeData,
+      path,
+      getNodeKey,
+      ignoreCollapsed,
+      newNode: ({ node, treeIndex }: { node: TreeItem; treeIndex: number }) => {
+        removedNode = original(node) || node
 
-      removedTreeIndex = treeIndex
+        removedTreeIndex = treeIndex
 
-      return undefined
-    },
-  })
+        return undefined
+      },
+    })
+  } catch {
+    return undefined
+  }
 
   return {
     treeData: nextTreeData,
