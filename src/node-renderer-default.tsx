@@ -40,6 +40,75 @@ export interface NodeRendererProps {
   canDrop?: boolean
 }
 
+const renderToggleSection = (
+  node: TreeItem,
+  isDragging: boolean,
+  scaffoldBlockPxWidth: number,
+  rowDirectionClass: string | undefined,
+  toggleChildrenVisibility: ((data: NodeData) => void) | undefined,
+  path: number[],
+  treeIndex: number,
+  buttonStyle: React.CSSProperties
+): React.ReactNode => {
+  if (
+    !toggleChildrenVisibility ||
+    !node.children ||
+    (node.children.length === 0 && typeof node.children !== 'function')
+  ) {
+    return null
+  }
+  return (
+    <div>
+      <button
+        type="button"
+        aria-label={node.expanded ? 'Collapse' : 'Expand'}
+        className={classnames(
+          node.expanded ? 'rst__collapseButton' : 'rst__expandButton',
+          rowDirectionClass ?? ''
+        )}
+        style={buttonStyle}
+        onClick={() => toggleChildrenVisibility({ node, path, treeIndex })}
+      />
+      {node.expanded && !isDragging && (
+        <div
+          style={{ width: scaffoldBlockPxWidth }}
+          className={classnames('rst__lineChildren', rowDirectionClass ?? '')}
+        />
+      )}
+    </div>
+  )
+}
+
+const renderHandle = (
+  node: TreeItem,
+  rowDirectionClass: string | undefined,
+  connectDragSource: ConnectDragSource
+): React.ReactNode => {
+  if (typeof node.children === 'function' && node.expanded) {
+    return (
+      <div className="rst__loadingHandle">
+        <div className="rst__loadingCircle">
+          {Array.from({ length: 12 }).map((_, index) => (
+            <div
+              key={index}
+              className={classnames(
+                'rst__loadingCirclePoint',
+                rowDirectionClass ?? ''
+              )}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div
+      ref={connectDragSource as unknown as React.Ref<HTMLDivElement>}
+      className="rst__moveHandle"
+    />
+  )
+}
+
 const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   isSearchMatch = false,
   isSearchFocus = false,
@@ -48,7 +117,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   buttons = [],
   className = '',
   style = {},
-  parentNode = undefined,
+  parentNode: _parentNode = undefined,
   draggedNode = undefined,
   canDrop = false,
   title = undefined,
@@ -71,30 +140,9 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   const nodeSubtitle = subtitle || node.subtitle
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
-  let handle
-  if (canDrag) {
-    handle =
-      typeof node.children === 'function' && node.expanded ? (
-        <div className="rst__loadingHandle">
-          <div className="rst__loadingCircle">
-            {Array.from({ length: 12 }).map((_, index) => (
-              <div
-                key={index}
-                className={classnames(
-                  'rst__loadingCirclePoint',
-                  rowDirectionClass ?? ''
-                )}
-              />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div
-          ref={connectDragSource as unknown as React.Ref<HTMLDivElement>}
-          className="rst__moveHandle"
-        />
-      )
-  }
+  const handle = canDrag
+    ? renderHandle(node, rowDirectionClass, connectDragSource)
+    : undefined
 
   const isDraggedDescendant = draggedNode && isDescendant(draggedNode, node)
   const isLandingPadActive = !didDrop && isDragging
@@ -106,38 +154,16 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
 
   return (
     <div style={{ height: '100%' }} {...otherProps}>
-      {toggleChildrenVisibility &&
-        node.children &&
-        (node.children.length > 0 || typeof node.children === 'function') && (
-          <div>
-            <button
-              type="button"
-              aria-label={node.expanded ? 'Collapse' : 'Expand'}
-              className={classnames(
-                node.expanded ? 'rst__collapseButton' : 'rst__expandButton',
-                rowDirectionClass ?? ''
-              )}
-              style={buttonStyle}
-              onClick={() =>
-                toggleChildrenVisibility({
-                  node,
-                  path,
-                  treeIndex,
-                })
-              }
-            />
-
-            {node.expanded && !isDragging && (
-              <div
-                style={{ width: scaffoldBlockPxWidth }}
-                className={classnames(
-                  'rst__lineChildren',
-                  rowDirectionClass ?? ''
-                )}
-              />
-            )}
-          </div>
-        )}
+      {renderToggleSection(
+        node,
+        isDragging,
+        scaffoldBlockPxWidth,
+        rowDirectionClass,
+        toggleChildrenVisibility,
+        path,
+        treeIndex,
+        buttonStyle
+      )}
 
       <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
         <div

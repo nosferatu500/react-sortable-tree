@@ -96,14 +96,17 @@ type OnDragStateChangedParams = {
   draggedNode: TreeItem | undefined
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRenderer = React.ComponentType<any>
+
 type ThemeProps = {
   style?: React.CSSProperties
   innerStyle?: React.CSSProperties
   scaffoldBlockPxWidth?: number
   slideRegionSize?: number
-  treeNodeRenderer?: React.ComponentType<any>
-  nodeContentRenderer?: React.ComponentType<any>
-  placeholderRenderer?: React.ComponentType<any>
+  treeNodeRenderer?: AnyRenderer
+  nodeContentRenderer?: AnyRenderer
+  placeholderRenderer?: AnyRenderer
   dndType?: string
 }
 
@@ -127,9 +130,9 @@ export type ReactSortableTreeProps = {
   generateNodeProps?: (
     params: GenerateNodePropsParams
   ) => Record<string, unknown>
-  treeNodeRenderer?: React.ComponentType<any>
-  nodeContentRenderer?: React.ComponentType<any>
-  placeholderRenderer?: React.ComponentType<any>
+  treeNodeRenderer?: AnyRenderer
+  nodeContentRenderer?: AnyRenderer
+  placeholderRenderer?: AnyRenderer
   theme?: ThemeProps
   rowHeight?:
     | number
@@ -152,14 +155,14 @@ export type ReactSortableTreeProps = {
 }
 
 interface MergedTheme extends ReactSortableTreeProps {
-  nodeContentRenderer: React.ComponentType<any>
-  placeholderRenderer: React.ComponentType<any>
+  nodeContentRenderer: AnyRenderer
+  placeholderRenderer: AnyRenderer
   scaffoldBlockPxWidth: number
   slideRegionSize: number
   rowHeight:
     | number
     | ((treeIndex: number, node: TreeItem, path: number[]) => number)
-  treeNodeRenderer: React.ComponentType<any>
+  treeNodeRenderer: AnyRenderer
 }
 
 // Helper to memoize theme merging to avoid re-renders in StrictMode/Concurrent Root
@@ -396,7 +399,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   // Refs - always call useRef unconditionally
   const internalListRef = useRef<VListHandle>(null)
   const listRef = mergedProps.virtuaRef || internalListRef
-  const prevTreeDataRef = useRef<TreeItem[]>(mergedProps.treeData!)
+  const prevTreeDataRef = useRef<TreeItem[]>(mergedProps.treeData)
   const prevDeferredSearchQueryRef = useRef(deferredSearchQuery)
   const prevDeferredSearchFocusOffsetRef = useRef(deferredSearchFocusOffset)
   const prevDraggingRef = useRef(false)
@@ -418,7 +421,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     searchMatches: [],
     searchFocusTreeIndex: undefined,
     dragging: false,
-    treeData: mergedProps.treeData!,
+    treeData: mergedProps.treeData,
     ignoreOneTreeUpdate: false,
   }))
 
@@ -641,7 +644,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           draggedMinimumTreeIndex,
           draggingTreeData: changeNodeAtPath({
             treeData: newDraggingTreeData,
-            path: expandedParentPath.slice(0, -1),
+            path: expandedParentPath.toSpliced(-1),
             newNode: ({ node }: { node: TreeItem }) => ({
               ...node,
               expanded: true,
@@ -665,7 +668,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       }
       return true
     },
-    [mergedProps.canNodeHaveChildren]
+    [mergedProps]
   )
 
   const toggleChildrenVisibility = useCallback(
@@ -754,7 +757,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     if (pendingOnChangeRef.current !== null) {
       const treeData = pendingOnChangeRef.current
       pendingOnChangeRef.current = null
-      mergedProps.onChange!(treeData)
+      mergedProps.onChange(treeData)
     }
 
     if (pendingOnMoveNodeRef.current !== null) {
@@ -778,13 +781,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   useEffect(() => {
     loadLazyChildren(
       mergedProps as ReactSortableTreeProps,
-      mergedProps.treeData!
+      mergedProps.treeData
     )
 
     startSearchTransition(() => {
       const searchResult = performSearch(
         mergedProps as ReactSortableTreeProps,
-        mergedProps.treeData!,
+        mergedProps.treeData,
         true,
         true,
         false
@@ -819,14 +822,14 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           shouldSearch = false
           return {
             ...prevState,
-            treeData: mergedProps.treeData!,
+            treeData: mergedProps.treeData,
             ignoreOneTreeUpdate: false,
           }
         }
 
         return {
           ...prevState,
-          treeData: mergedProps.treeData!,
+          treeData: mergedProps.treeData,
           draggingTreeData: undefined,
           draggedNode: undefined,
           draggedMinimumTreeIndex: undefined,
@@ -839,13 +842,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       if (shouldSearch) {
         loadLazyChildren(
           mergedProps as ReactSortableTreeProps,
-          mergedProps.treeData!
+          mergedProps.treeData
         )
 
         startSearchTransition(() => {
           const searchResult = performSearch(
             mergedProps as ReactSortableTreeProps,
-            mergedProps.treeData!,
+            mergedProps.treeData,
             false,
             false,
             false
@@ -933,7 +936,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         })
       }
     }
-  }, [state.dragging, state.draggedNode, mergedProps.onDragStateChanged])
+  }, [state.dragging, state.draggedNode, mergedProps])
 
   // Render row function
   const renderRow = useCallback(

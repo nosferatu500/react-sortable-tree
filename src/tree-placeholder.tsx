@@ -18,14 +18,14 @@ const TreePlaceholder = ({
   draggedNode = undefined,
   children,
   connectDropTarget,
-  treeId,
-  drop,
+  treeId: _treeId,
+  drop: _drop,
   ...otherProps
 }: TreePlaceholderProps) => {
   return (
     <div ref={connectDropTarget as unknown as React.Ref<HTMLDivElement>}>
       {Children.map(children, (child) =>
-        cloneElement(child as React.ReactElement<any>, {
+        cloneElement(child as React.ReactElement<Record<string, unknown>>, {
           canDrop,
           draggedNode,
           ...otherProps,

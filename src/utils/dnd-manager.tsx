@@ -1,13 +1,32 @@
 import React, { Ref, useCallback, useLayoutEffect, useRef } from 'react'
-import {
-  ConnectDragSource,
-  ConnectDropTarget,
-  DropTargetMonitor,
-  useDrag,
-  useDrop,
-} from 'react-dnd'
+import { DropTargetMonitor, useDrag, useDrop } from 'react-dnd'
+import { type TreeRendererProps } from '../tree-node'
 import { TreeItem } from '../types'
 import { getDepth } from './tree-data-utils'
+
+type DropTargetProps = Pick<
+  TreeRendererProps,
+  | 'getPrevRow'
+  | 'path'
+  | 'rowDirection'
+  | 'scaffoldBlockPxWidth'
+  | 'treeIndex'
+  | 'listIndex'
+  | 'node'
+> & { parentNode?: TreeItem }
+
+type CanDropArgs = {
+  node: TreeItem
+  prevPath: number[]
+  prevParent: TreeItem | undefined
+  prevTreeIndex: number
+  nextPath: number[]
+  nextParent: TreeItem | undefined
+  nextTreeIndex: number
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyComponent = React.ComponentType<any>
 
 // Helper to avoid SSR warnings if used with Next.js/Gatsby
 const useIsomorphicLayoutEffect =
@@ -44,7 +63,7 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
         if (typeof ref === 'function') {
           ref(handle)
         } else {
-          ;(ref as React.RefObject<T | null>).current = handle
+          ref.current = handle
         }
       }
       // React 19: Return cleanup function (ignored in React 18)
@@ -54,7 +73,7 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
           if (typeof ref === 'function') {
             ref(null)
           } else {
-            ;(ref as React.RefObject<T | null>).current = null
+            ref.current = null
           }
         }
       }
@@ -65,11 +84,12 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
 }
 
 export const wrapSource = (
-  Component: React.ComponentType<any>,
-  startDrag: (props: any) => void,
+  Component: AnyComponent,
+  startDrag: (props: DragItem) => void,
   endDrag: (dropResult: DropResult | null) => void,
   dndType: string
 ) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DraggableSource: React.FC<any> = (props) => {
     // React 18: Use useLayoutEffect to ensure props are fresh
     // BEFORE any drag event callbacks fire.
@@ -106,7 +126,7 @@ export const wrapSource = (
     return (
       <Component
         {...props}
-        connectDragSource={drag as ConnectDragSource}
+        connectDragSource={drag}
         connectDragPreview={preview}
         isDragging={isDragging}
         didDrop={false}
@@ -117,11 +137,12 @@ export const wrapSource = (
 }
 
 export const wrapPlaceholder = (
-  Component: React.ComponentType<any>,
+  Component: AnyComponent,
   treeId: string,
   drop: (dropResult: DropResult) => void,
   dndType: string
 ) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppablePlaceholder: React.FC<any> = (props) => {
     const [{ isOver, canDrop }, dropRef] = useDrop({
       accept: dndType,
@@ -147,7 +168,7 @@ export const wrapPlaceholder = (
     return (
       <Component
         {...props}
-        connectDropTarget={dropRef as ConnectDropTarget}
+        connectDropTarget={dropRef}
         isOver={isOver}
         canDrop={canDrop}
       />
@@ -156,8 +177,46 @@ export const wrapPlaceholder = (
   return DroppablePlaceholder
 }
 
+const getBlocksOffset = (
+  dropTargetProps: DropTargetProps,
+  monitor: DropTargetMonitor,
+  treeId: string,
+  componentRef: React.RefObject<HTMLElement | null>
+): { blocksOffset: number; dragSourceInitialDepth: number } => {
+  const dragSourceInitialDepth = (monitor.getItem().path || []).length
+
+  if (monitor.getItem().treeId === treeId) {
+    const direction = dropTargetProps.rowDirection === 'rtl' ? -1 : 1
+    const diff = monitor.getDifferenceFromInitialOffset()
+    const x = diff ? diff.x : 0
+    return {
+      blocksOffset: Math.round(
+        (direction * x) / dropTargetProps.scaffoldBlockPxWidth
+      ),
+      dragSourceInitialDepth,
+    }
+  }
+
+  if (componentRef.current) {
+    const relativePosition = componentRef.current.getBoundingClientRect()
+    const clientOffset = monitor.getSourceClientOffset()
+    const leftShift = clientOffset ? clientOffset.x - relativePosition.left : 0
+    return {
+      blocksOffset: Math.round(
+        leftShift / dropTargetProps.scaffoldBlockPxWidth
+      ),
+      dragSourceInitialDepth: 0,
+    }
+  }
+
+  return {
+    blocksOffset: dropTargetProps.path.length,
+    dragSourceInitialDepth: 0,
+  }
+}
+
 const getTargetDepth = (
-  dropTargetProps: any,
+  dropTargetProps: DropTargetProps,
   monitor: DropTargetMonitor,
   componentRef: React.RefObject<HTMLElement | null>,
   canNodeHaveChildren: (node: TreeItem) => boolean,
@@ -170,39 +229,18 @@ const getTargetDepth = (
   if (rowAbove) {
     const { node } = rowAbove
     let { path } = rowAbove
-    const aboveNodeCannotHaveChildren = !canNodeHaveChildren(node)
-    if (aboveNodeCannotHaveChildren) {
-      path = path.slice(0, -1)
+    if (!canNodeHaveChildren(node)) {
+      path = path.toSpliced(-1)
     }
     dropTargetDepth = Math.min(path.length, dropTargetProps.path.length)
   }
 
-  let blocksOffset
-  let dragSourceInitialDepth = ((monitor.getItem() as DragItem).path || [])
-    .length
-
-  if ((monitor.getItem() as DragItem).treeId === treeId) {
-    const direction = dropTargetProps.rowDirection === 'rtl' ? -1 : 1
-    const diff = monitor.getDifferenceFromInitialOffset()
-    const x = diff ? diff.x : 0
-    blocksOffset = Math.round(
-      (direction * x) / dropTargetProps.scaffoldBlockPxWidth
-    )
-  } else {
-    dragSourceInitialDepth = 0
-    if (componentRef.current) {
-      const relativePosition = componentRef.current.getBoundingClientRect()
-      const clientOffset = monitor.getSourceClientOffset()
-      const leftShift = clientOffset
-        ? clientOffset.x - relativePosition.left
-        : 0
-      blocksOffset = Math.round(
-        leftShift / dropTargetProps.scaffoldBlockPxWidth
-      )
-    } else {
-      blocksOffset = dropTargetProps.path.length
-    }
-  }
+  const { blocksOffset, dragSourceInitialDepth } = getBlocksOffset(
+    dropTargetProps,
+    monitor,
+    treeId,
+    componentRef
+  )
 
   let targetDepth = Math.min(
     dropTargetDepth,
@@ -210,7 +248,7 @@ const getTargetDepth = (
   )
 
   if (maxDepth !== undefined) {
-    const draggedNode = (monitor.getItem() as DragItem).node
+    const draggedNode = monitor.getItem().node
     const draggedChildDepth = getDepth(draggedNode)
     targetDepth = Math.max(
       0,
@@ -222,12 +260,12 @@ const getTargetDepth = (
 }
 
 const canDrop = (
-  dropTargetProps: any,
+  dropTargetProps: DropTargetProps,
   monitor: DropTargetMonitor,
   canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
   maxDepth: number | undefined,
-  treeRefCanDrop: ((args: any) => boolean) | undefined
+  treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined
 ) => {
   if (!monitor.isOver()) {
     return false
@@ -246,12 +284,12 @@ const canDrop = (
   }
 
   if (typeof treeRefCanDrop === 'function') {
-    const { node } = monitor.getItem() as DragItem
+    const { node } = monitor.getItem()
     return treeRefCanDrop({
       node,
-      prevPath: (monitor.getItem() as DragItem).path,
-      prevParent: (monitor.getItem() as DragItem).parentNode,
-      prevTreeIndex: (monitor.getItem() as DragItem).treeIndex,
+      prevPath: monitor.getItem().path,
+      prevParent: monitor.getItem().parentNode,
+      prevTreeIndex: monitor.getItem().treeIndex,
       nextPath: dropTargetProps.path,
       nextParent: dropTargetProps.parentNode,
       nextTreeIndex: dropTargetProps.treeIndex,
@@ -261,11 +299,11 @@ const canDrop = (
 }
 
 export const wrapTarget = (
-  Component: React.ComponentType<any>,
+  Component: AnyComponent,
   canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
   maxDepth: number | undefined,
-  treeRefCanDrop: ((args: any) => boolean) | undefined,
+  treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined,
   drop: (dropResult: DropResult) => void,
   dragHover: (args: {
     node: TreeItem
@@ -275,6 +313,7 @@ export const wrapTarget = (
   }) => void,
   dndType: string
 ) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppableTarget: React.FC<any> = (props) => {
     const nodeRef = useRef<HTMLElement>(null)
 
@@ -294,7 +333,7 @@ export const wrapTarget = (
         accept: dndType,
         drop: (_item, monitor) => {
           const currentProps = propsRef.current
-          const item = monitor.getItem() as DragItem
+          const item = monitor.getItem()
           const result: DropResult = {
             node: item.node,
             path: item.path,

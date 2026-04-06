@@ -38,6 +38,55 @@ export interface TreeRendererProps {
   path: number[]
 }
 
+const getLineClass = (
+  lowerSiblingCount: number,
+  listIndex: number,
+  i: number,
+  scaffoldBlockCount: number
+): string => {
+  if (lowerSiblingCount > 0) {
+    if (listIndex === 0)
+      // Top-left corner of the tree
+      // +-----+
+      // |     |
+      // |  +--+
+      // |  |  |
+      // +--+--+
+      return 'rst__lineHalfHorizontalRight rst__lineHalfVerticalBottom'
+    if (i === scaffoldBlockCount - 1)
+      // Last scaffold block in the row, right before the row content
+      // +--+--+
+      // |  |  |
+      // |  +--+
+      // |  |  |
+      // +--+--+
+      return 'rst__lineHalfHorizontalRight rst__lineFullVertical'
+    // Simply connecting the line extending down to the next sibling on this level
+    // +--+--+
+    // |  |  |
+    // |  |  |
+    // |  |  |
+    // +--+--+
+    return 'rst__lineFullVertical'
+  }
+  // Top-left corner of the tree, but has no siblings
+  // +-----+
+  // |     |
+  // |  +--+
+  // |     |
+  // +-----+
+  if (listIndex === 0) return 'rst__lineHalfHorizontalRight'
+  if (i === scaffoldBlockCount - 1)
+    // The last or only node in this level of the tree
+    // +--+--+
+    // |  |  |
+    // |  +--+
+    // |     |
+    // +-----+
+    return 'rst__lineHalfVerticalTop rst__lineHalfHorizontalRight'
+  return ''
+}
+
 const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   children,
   listIndex,
@@ -67,51 +116,12 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   const scaffold: ReactNode[] = []
 
   for (const [i, lowerSiblingCount] of lowerSiblingCounts.entries()) {
-    let lineClass = ''
-    if (lowerSiblingCount > 0) {
-      // At this level in the tree, the nodes had sibling nodes further down
-      if (listIndex === 0) {
-        // Top-left corner of the tree
-        // +-----+
-        // |     |
-        // |  +--+
-        // |  |  |
-        // +--+--+
-        lineClass = 'rst__lineHalfHorizontalRight rst__lineHalfVerticalBottom'
-      } else if (i === scaffoldBlockCount - 1) {
-        // Last scaffold block in the row, right before the row content
-        // +--+--+
-        // |  |  |
-        // |  +--+
-        // |  |  |
-        // +--+--+
-        lineClass = 'rst__lineHalfHorizontalRight rst__lineFullVertical'
-      } else {
-        // Simply connecting the line extending down to the next sibling on this level
-        // +--+--+
-        // |  |  |
-        // |  |  |
-        // |  |  |
-        // +--+--+
-        lineClass = 'rst__lineFullVertical'
-      }
-    } else if (listIndex === 0) {
-      // Top-left corner of the tree, but has no siblings
-      // +-----+
-      // |     |
-      // |  +--+
-      // |     |
-      // +-----+
-      lineClass = 'rst__lineHalfHorizontalRight'
-    } else if (i === scaffoldBlockCount - 1) {
-      // The last or only node in this level of the tree
-      // +--+--+
-      // |  |  |
-      // |  +--+
-      // |     |
-      // +-----+
-      lineClass = 'rst__lineHalfVerticalTop rst__lineHalfHorizontalRight'
-    }
+    const lineClass = getLineClass(
+      lowerSiblingCount,
+      listIndex,
+      i,
+      scaffoldBlockCount
+    )
 
     scaffold.push(
       <div
@@ -186,8 +196,8 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
       {scaffold}
 
       <div className="rst__nodeContent" style={contentStyle}>
-        {Children.map(children, (child: any) =>
-          cloneElement(child, {
+        {Children.map(children, (child) =>
+          cloneElement(child as React.ReactElement<Record<string, unknown>>, {
             isOver,
             canDrop,
             draggedNode,

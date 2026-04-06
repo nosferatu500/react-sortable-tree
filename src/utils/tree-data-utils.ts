@@ -2,7 +2,6 @@ import { original, produce } from 'immer'
 import {
   FullTree,
   GetNodeKeyFunction,
-  GetTreeItemChildren,
   NodeData,
   SearchData,
   TreeIndex,
@@ -11,15 +10,28 @@ import {
   TreePath,
 } from '../types'
 
-export type WalkAndMapFunctionParameters = FullTree & {
-  getNodeKey: GetNodeKeyFunction
-  callback: Function
-  ignoreCollapsed?: boolean
+const STOP_WALK = Number.NEGATIVE_INFINITY
+
+export interface FlatDataItem extends TreeNode {
+  path: Array<string | number>
+  lowerSiblingCounts: number[]
+  parentNode?: TreeItem
 }
 
-export interface FlatDataItem extends TreeNode, TreePath {
+type WalkInfo = {
+  node: TreeItem
+  parentNode?: TreeItem
+  path: Array<string | number>
   lowerSiblingCounts: number[]
-  parentNode: TreeItem
+  treeIndex: number
+}
+
+type NodeCallback = (nodeInfo: WalkInfo) => unknown
+
+export type WalkAndMapFunctionParameters = FullTree & {
+  getNodeKey: GetNodeKeyFunction
+  callback: NodeCallback
+  ignoreCollapsed?: boolean
 }
 
 type NodeDataResult = {
@@ -116,6 +128,52 @@ export const getDescendantCount = ({
   )
 }
 
+type WalkDescendantsParams = {
+  callback: NodeCallback
+  getNodeKey: GetNodeKeyFunction
+  ignoreCollapsed: boolean
+  isPseudoRoot?: boolean
+  node: TreeItem
+  parentNode?: TreeItem
+  currentIndex: number
+  path?: Array<string | number>
+  lowerSiblingCounts?: number[]
+}
+
+const walkChildren = (
+  params: WalkDescendantsParams,
+  selfPath: Array<string | number>,
+  childIndex: number
+): number => {
+  const {
+    callback,
+    getNodeKey,
+    ignoreCollapsed,
+    isPseudoRoot,
+    node,
+    lowerSiblingCounts = [],
+  } = params
+  if (!node.children || typeof node.children === 'function') return childIndex
+
+  let idx = childIndex
+  const childCount = node.children.length
+  for (let i = 0; i < childCount; i += 1) {
+    const result = walkDescendants({
+      callback,
+      getNodeKey,
+      ignoreCollapsed,
+      node: node.children[i],
+      parentNode: isPseudoRoot ? undefined : node,
+      currentIndex: idx + 1,
+      lowerSiblingCounts: [...lowerSiblingCounts, childCount - i - 1],
+      path: selfPath,
+    })
+    if (result === STOP_WALK) return STOP_WALK
+    idx = result
+  }
+  return idx
+}
+
 const walkDescendants = ({
   callback,
   getNodeKey,
@@ -126,41 +184,22 @@ const walkDescendants = ({
   currentIndex,
   path = [],
   lowerSiblingCounts = [],
-}: {
-  callback: Function
-  getNodeKey: GetNodeKeyFunction
-  ignoreCollapsed: boolean
-  isPseudoRoot?: boolean
-  node: TreeItem
-  parentNode?: TreeItem
-  currentIndex: number
-  path?: Array<string | number>
-  lowerSiblingCounts?: number[]
-}): number | false => {
-  // The pseudo-root is not considered in the path
+}: WalkDescendantsParams): number => {
   const selfPath = isPseudoRoot
     ? []
     : [...path, getNodeKey({ node, treeIndex: currentIndex })]
-  const selfInfo = isPseudoRoot
-    ? undefined
-    : {
-        node,
-        parentNode,
-        path: selfPath,
-        lowerSiblingCounts,
-        treeIndex: currentIndex,
-      }
 
   if (!isPseudoRoot) {
-    const callbackResult = callback(selfInfo)
-
-    // Cut walk short if the callback returned false
-    if (callbackResult === false) {
-      return false
+    const selfInfo = {
+      node,
+      parentNode,
+      path: selfPath,
+      lowerSiblingCounts,
+      treeIndex: currentIndex,
     }
+    if (callback(selfInfo) === false) return STOP_WALK
   }
 
-  // Return self on nodes with no children or hidden children
   if (
     !node.children ||
     (node.expanded !== true && ignoreCollapsed && !isPseudoRoot)
@@ -168,30 +207,21 @@ const walkDescendants = ({
     return currentIndex
   }
 
-  // Get all descendants
-  let childIndex = currentIndex
-  const childCount = node.children.length
-  if (typeof node.children !== 'function') {
-    for (let i = 0; i < childCount; i += 1) {
-      childIndex = walkDescendants({
-        callback,
-        getNodeKey,
-        ignoreCollapsed,
-        node: node.children[i],
-        parentNode: isPseudoRoot ? undefined : node,
-        currentIndex: childIndex + 1,
-        lowerSiblingCounts: [...lowerSiblingCounts, childCount - i - 1],
-        path: selfPath,
-      }) as number
-
-      // Cut walk short if the callback returned false
-      if (childIndex === (false as any)) {
-        return false
-      }
-    }
-  }
-
-  return childIndex
+  return walkChildren(
+    {
+      callback,
+      getNodeKey,
+      ignoreCollapsed,
+      isPseudoRoot,
+      node,
+      parentNode,
+      currentIndex,
+      path,
+      lowerSiblingCounts,
+    },
+    selfPath,
+    currentIndex
+  )
 }
 
 const mapDescendants = ({
@@ -205,7 +235,7 @@ const mapDescendants = ({
   path = [],
   lowerSiblingCounts = [],
 }: {
-  callback: Function
+  callback: NodeCallback
   getNodeKey: GetNodeKeyFunction
   ignoreCollapsed: boolean
   isPseudoRoot?: boolean
@@ -236,7 +266,7 @@ const mapDescendants = ({
   ) {
     return {
       treeIndex: currentIndex,
-      node: callback(selfInfo),
+      node: callback(selfInfo) as TreeItem,
     }
   }
 
@@ -262,7 +292,7 @@ const mapDescendants = ({
   }
 
   return {
-    node: callback(selfInfo),
+    node: callback(selfInfo) as TreeItem,
     treeIndex: childIndex,
   }
 }
@@ -384,6 +414,91 @@ export const toggleExpandedForAll = ({
   })
 }
 
+type NewNodeArg =
+  | ((info: {
+      node: TreeItem
+      treeIndex: number
+    }) => TreeItem | null | undefined)
+  | TreeItem
+  | null
+  | undefined
+
+type PseudoRoot = { children: TreeItem[] }
+
+const findChildByKey = (
+  children: TreeItem[],
+  key: string | number,
+  startTreeIndex: number,
+  getNodeKey: GetNodeKeyFunction,
+  ignoreCollapsed: boolean
+): { foundIndex: number; treeIndex: number } => {
+  let treeIndex = startTreeIndex
+  for (const [j, child] of children.entries()) {
+    const childIndex = treeIndex + 1
+    if (getNodeKey({ node: child, treeIndex: childIndex }) === key) {
+      return { foundIndex: j, treeIndex: childIndex }
+    }
+    treeIndex += 1 + getDescendantCount({ node: child, ignoreCollapsed })
+  }
+  return { foundIndex: -1, treeIndex }
+}
+
+const applyNewNode = (
+  children: TreeItem[],
+  foundIndex: number,
+  treeIndex: number,
+  newNode: NewNodeArg
+): void => {
+  const targetNode = children[foundIndex]
+  const result =
+    typeof newNode === 'function'
+      ? newNode({ node: targetNode, treeIndex })
+      : newNode
+
+  if (result === undefined || result === null) {
+    children.splice(foundIndex, 1)
+  } else {
+    children[foundIndex] = result
+  }
+}
+
+const findAndUpdateNode = (
+  root: PseudoRoot,
+  path: number[],
+  newNode: NewNodeArg,
+  getNodeKey: GetNodeKeyFunction,
+  ignoreCollapsed: boolean
+): void => {
+  let node = root as PseudoRoot & TreeItem
+  let currentTreeIndex = -1
+
+  for (const [i, key] of path.entries()) {
+    if (!node.children) {
+      throw new Error('Path referenced children of node with no children.')
+    }
+
+    const { foundIndex, treeIndex } = findChildByKey(
+      node.children,
+      key,
+      currentTreeIndex,
+      getNodeKey,
+      ignoreCollapsed
+    )
+
+    if (foundIndex === -1) {
+      throw new Error('No node found at the given path.')
+    }
+
+    currentTreeIndex = treeIndex
+
+    if (i === path.length - 1) {
+      applyNewNode(node.children, foundIndex, currentTreeIndex, newNode)
+    } else {
+      node = node.children[foundIndex] as PseudoRoot & TreeItem
+    }
+  }
+}
+
 export const changeNodeAtPath = ({
   treeData,
   path,
@@ -392,75 +507,35 @@ export const changeNodeAtPath = ({
   ignoreCollapsed = true,
 }: FullTree &
   TreePath & {
-    newNode: Function | any
+    newNode: NewNodeArg
     getNodeKey: GetNodeKeyFunction
     ignoreCollapsed?: boolean
   }): TreeItem[] => {
   if (!treeData || treeData.length === 0) return []
 
   return produce(treeData, (draft) => {
-    let currentNode = { children: draft } as any // Pseudo-root
-    let currentTreeIndex = -1
-
-    for (const [i, key] of path.entries()) {
-      const isLast = i === path.length - 1
-
-      if (!currentNode.children) {
-        throw new Error('Path referenced children of node with no children.')
-      }
-
-      // Find the child matching the key
-      let foundIndex = -1
-      for (let j = 0; j < currentNode.children.length; j++) {
-        const child = currentNode.children[j]
-        const childIndex = currentTreeIndex + 1
-
-        // We need to calculate indices to match keys, but we don't need
-        // to modify the index logic significantly for Immer, just navigation
-        if (getNodeKey({ node: child, treeIndex: childIndex }) === key) {
-          foundIndex = j
-          currentTreeIndex = childIndex
-          break
-        }
-
-        // Increment index by skipping descendants
-        currentTreeIndex +=
-          1 + getDescendantCount({ node: child, ignoreCollapsed })
-      }
-
-      if (foundIndex === -1) {
-        throw new Error('No node found at the given path.')
-      }
-
-      if (isLast) {
-        const targetNode = currentNode.children[foundIndex]
-        const result =
-          typeof newNode === 'function'
-            ? newNode({ node: targetNode, treeIndex: currentTreeIndex })
-            : newNode
-
-        if (result === undefined || result === null) {
-          currentNode.children.splice(foundIndex, 1)
-        } else {
-          currentNode.children[foundIndex] = result
-        }
-      } else {
-        currentNode = currentNode.children[foundIndex]
-      }
-    }
+    findAndUpdateNode(
+      { children: draft },
+      path,
+      newNode,
+      getNodeKey,
+      ignoreCollapsed
+    )
   })
 }
+
+type TreePathParams = FullTree &
+  TreePath & {
+    getNodeKey: GetNodeKeyFunction
+    ignoreCollapsed?: boolean
+  }
 
 export const removeNodeAtPath = ({
   treeData,
   path,
   getNodeKey,
   ignoreCollapsed = true,
-}: FullTree &
-  TreePath & {
-    getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean
-  }): TreeItem[] => {
+}: TreePathParams): TreeItem[] => {
   return changeNodeAtPath({
     treeData,
     path,
@@ -475,11 +550,7 @@ export const removeNode = ({
   path,
   getNodeKey,
   ignoreCollapsed = true,
-}: FullTree &
-  TreePath & {
-    getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean
-  }): (FullTree & TreeNode & TreeIndex) | undefined => {
+}: TreePathParams): (FullTree & TreeNode & TreeIndex) | undefined => {
   let removedNode: TreeItem | undefined
   let removedTreeIndex: number | undefined
   let nextTreeData: TreeItem[]
@@ -513,11 +584,7 @@ export const getNodeAtPath = ({
   path,
   getNodeKey,
   ignoreCollapsed = true,
-}: FullTree &
-  TreePath & {
-    getNodeKey: GetNodeKeyFunction
-    ignoreCollapsed?: boolean
-  }): (TreeNode & TreeIndex) | null => {
+}: TreePathParams): (TreeNode & TreeIndex) | null => {
   let foundNodeInfo: (TreeNode & TreeIndex) | undefined
 
   try {
@@ -526,7 +593,7 @@ export const getNodeAtPath = ({
       path,
       getNodeKey,
       ignoreCollapsed,
-      newNode: ({ node, treeIndex }: GetTreeItemChildren) => {
+      newNode: ({ node, treeIndex }: { node: TreeItem; treeIndex: number }) => {
         foundNodeInfo = { node: original(node) || node, treeIndex }
         return node
       },
@@ -567,75 +634,60 @@ export const addNodeUnderParent = ({
   let insertedTreeIndex = -1
   let found = false
 
-  const nextTreeData = produce(treeData, (draft) => {
-    // Helper to find parent and insert
-    const findAndInsert = (
-      nodes: TreeItem[],
-      currentTreeIndex: number
-    ): number => {
-      let indexCounter = currentTreeIndex
-
-      for (const node of nodes) {
-        // Calculate key
-        const key = getNodeKey({ node, treeIndex: indexCounter })
-
-        if (key === parentKey) {
-          found = true
-          if (expandParent) {
-            node.expanded = true
-          }
-
-          if (!node.children) {
-            node.children = [newNode]
-            insertedTreeIndex = indexCounter + 1
-            return -1 // Stop traversal, we found it
-          }
-
-          if (typeof node.children === 'function') {
-            throw new TypeError('Cannot add to children defined by a function')
-          }
-
-          // Calculate where the new node lands in the index
-          let childIndexOffset = indexCounter + 1
-          if (!addAsFirstChild) {
-            for (const child of node.children) {
-              childIndexOffset +=
-                1 + getDescendantCount({ node: child, ignoreCollapsed })
-            }
-          }
-          insertedTreeIndex = childIndexOffset
-
-          if (addAsFirstChild) {
-            node.children.unshift(newNode)
-          } else {
-            node.children.push(newNode)
-          }
-          return -1 // Stop traversal
-        }
-
-        // Standard traversal increment
-        // If not found, add self (1) + descendants
-        const descendants = getDescendantCount({ node, ignoreCollapsed })
-        const nextIndex = indexCounter + 1 + descendants
-
-        // If the node has children, we might need to look inside them
-        if (
-          node.children &&
-          typeof node.children !== 'function' &&
-          (node.expanded || !ignoreCollapsed)
-        ) {
-          // If we are strictly counting indices, we can skip traversing children
-          // if we know the key isn't in there?
-          // No, getNodeKey depends on treeIndex, so we must traverse to calculate index accurately.
-          const result = findAndInsert(node.children, indexCounter + 1)
-          if (result === -1) return -1
-        }
-
-        indexCounter = nextIndex
-      }
-      return indexCounter
+  const insertIntoParentNode = (node: TreeItem, nodeIndex: number): boolean => {
+    if (expandParent) node.expanded = true
+    if (!node.children) {
+      node.children = [newNode]
+      insertedTreeIndex = nodeIndex + 1
+      return true
     }
+    if (typeof node.children === 'function') {
+      throw new TypeError('Cannot add to children defined by a function')
+    }
+    let childIndexOffset = nodeIndex + 1
+    if (!addAsFirstChild) {
+      for (const child of node.children) {
+        childIndexOffset +=
+          1 + getDescendantCount({ node: child, ignoreCollapsed })
+      }
+    }
+    insertedTreeIndex = childIndexOffset
+    if (addAsFirstChild) {
+      node.children.unshift(newNode)
+    } else {
+      node.children.push(newNode)
+    }
+    return true
+  }
 
+  const findAndInsert = (
+    nodes: TreeItem[],
+    currentTreeIndex: number
+  ): number => {
+    let indexCounter = currentTreeIndex
+    for (const node of nodes) {
+      const key = getNodeKey({ node, treeIndex: indexCounter })
+      if (key === parentKey) {
+        found = true
+        insertIntoParentNode(node, indexCounter)
+        return -1
+      }
+      const descendants = getDescendantCount({ node, ignoreCollapsed })
+      const nextIndex = indexCounter + 1 + descendants
+      if (
+        node.children &&
+        typeof node.children !== 'function' &&
+        (node.expanded || !ignoreCollapsed)
+      ) {
+        const result = findAndInsert(node.children, indexCounter + 1)
+        if (result === -1) return -1
+      }
+      indexCounter = nextIndex
+    }
+    return indexCounter
+  }
+
+  const nextTreeData = produce(treeData, (draft) => {
     findAndInsert(draft, 0)
   })
 
@@ -657,20 +709,7 @@ interface AddNodeResult {
   parentNode?: TreeItem
 }
 
-const addNodeAtDepthAndIndex = ({
-  targetDepth,
-  minimumTreeIndex,
-  newNode,
-  ignoreCollapsed,
-  expandParent,
-  isPseudoRoot = false,
-  isLastChild,
-  node,
-  currentIndex,
-  currentDepth,
-  getNodeKey,
-  path = [],
-}: {
+interface AddNodeAtDepthParams {
   targetDepth: number
   minimumTreeIndex: number
   newNode: TreeItem
@@ -683,163 +722,171 @@ const addNodeAtDepthAndIndex = ({
   currentDepth: number
   getNodeKey: GetNodeKeyFunction
   path?: Array<string | number>
-}): AddNodeResult => {
-  const selfPath = (n: TreeItem) =>
-    isPseudoRoot
-      ? []
-      : [...path, getNodeKey({ node: n, treeIndex: currentIndex })]
+}
 
-  // If the current position is the only possible place to add, add it
-  if (
+const makeSelfPath = (
+  params: AddNodeAtDepthParams,
+  n: TreeItem
+): Array<string | number> => {
+  const { isPseudoRoot, path = [], getNodeKey, currentIndex } = params
+  return isPseudoRoot
+    ? []
+    : [...path, getNodeKey({ node: n, treeIndex: currentIndex })]
+}
+
+const isChildrenHidden = (
+  node: TreeItem,
+  ignoreCollapsed: boolean,
+  isPseudoRoot: boolean
+): boolean =>
+  !node.children ||
+  typeof node.children === 'function' ||
+  (node.expanded !== true && ignoreCollapsed && !isPseudoRoot)
+
+const insertAtCurrentPosition = (
+  params: AddNodeAtDepthParams
+): AddNodeResult | undefined => {
+  const {
+    currentIndex,
+    minimumTreeIndex,
+    isLastChild,
+    node,
+    expandParent,
+    isPseudoRoot = false,
+    newNode,
+  } = params
+  const isOnlyOption =
     currentIndex >= minimumTreeIndex - 1 ||
     (isLastChild && !(node.children && node.children.length > 0))
-  ) {
-    if (typeof node.children === 'function') {
-      throw new TypeError('Cannot add to children defined by a function')
-    } else {
-      const extraNodeProps = expandParent ? { expanded: true } : {}
-      const nextNode = {
-        ...node,
+  if (!isOnlyOption) return undefined
 
-        ...extraNodeProps,
-        children: node.children ? [newNode, ...node.children] : [newNode],
-      }
-
-      return {
-        node: nextNode,
-        nextIndex: currentIndex + 2,
-        insertedTreeIndex: currentIndex + 1,
-        parentPath: selfPath(nextNode),
-        parentNode: isPseudoRoot ? undefined : nextNode,
-      }
-    }
+  if (typeof node.children === 'function') {
+    throw new TypeError('Cannot add to children defined by a function')
   }
-
-  // If this is the target depth for the insertion,
-  // i.e., where the newNode can be added to the current node's children
-  if (currentDepth >= targetDepth - 1) {
-    // Skip over nodes with no children or hidden children
-    if (
-      !node.children ||
-      typeof node.children === 'function' ||
-      (node.expanded !== true && ignoreCollapsed && !isPseudoRoot)
-    ) {
-      return { node, nextIndex: currentIndex + 1 }
-    }
-
-    // Scan over the children to see if there's a place among them that fulfills
-    // the minimumTreeIndex requirement
-    let childIndex = currentIndex + 1
-    let insertedTreeIndex: number | undefined
-    let insertIndex: number | undefined
-    for (let i = 0; i < node.children.length; i += 1) {
-      // If a valid location is found, mark it as the insertion location and
-      // break out of the loop
-      if (childIndex >= minimumTreeIndex) {
-        insertedTreeIndex = childIndex
-        insertIndex = i
-        break
-      }
-
-      // Increment the index by the child itself plus the number of descendants it has
-      childIndex +=
-        1 + getDescendantCount({ node: node.children[i], ignoreCollapsed })
-    }
-
-    // If no valid indices to add the node were found
-    if (insertIndex === null || insertIndex === undefined) {
-      // If the last position in this node's children is less than the minimum index
-      // and there are more children on the level of this node, return without insertion
-      if (childIndex < minimumTreeIndex && !isLastChild) {
-        return { node, nextIndex: childIndex }
-      }
-
-      // Use the last position in the children array to insert the newNode
-      insertedTreeIndex = childIndex
-      insertIndex = node.children.length
-    }
-
-    // Insert the newNode at the insertIndex
-    const nextNode = {
-      ...node,
-      children: node.children.toSpliced(insertIndex, 0, newNode),
-    }
-
-    // Return node with successful insert result
-    return {
-      node: nextNode,
-      nextIndex: childIndex,
-      insertedTreeIndex,
-      parentPath: selfPath(nextNode),
-      parentNode: isPseudoRoot ? undefined : nextNode,
-    }
+  const extraNodeProps = expandParent ? { expanded: true } : {}
+  const nextNode = {
+    ...node,
+    ...extraNodeProps,
+    children: node.children ? [newNode, ...node.children] : [newNode],
   }
+  return {
+    node: nextNode,
+    nextIndex: currentIndex + 2,
+    insertedTreeIndex: currentIndex + 1,
+    parentPath: makeSelfPath(params, nextNode),
+    parentNode: isPseudoRoot ? undefined : nextNode,
+  }
+}
 
-  // Skip over nodes with no children or hidden children
-  if (
-    !node.children ||
-    typeof node.children === 'function' ||
-    (node.expanded !== true && ignoreCollapsed && !isPseudoRoot)
-  ) {
+const findInsertAtDepth = (params: AddNodeAtDepthParams): AddNodeResult => {
+  const {
+    node,
+    currentIndex,
+    minimumTreeIndex,
+    isLastChild,
+    isPseudoRoot = false,
+    ignoreCollapsed,
+    newNode,
+  } = params
+  if (isChildrenHidden(node, ignoreCollapsed, isPseudoRoot)) {
     return { node, nextIndex: currentIndex + 1 }
   }
 
-  // Get all descendants
+  // Scan children to find first position that fulfills minimumTreeIndex
+  const children = node.children as TreeItem[]
+  let childIndex = currentIndex + 1
+  let insertedTreeIndex: number | undefined
+  let insertIndex: number | undefined
+  for (const [i, child] of children.entries()) {
+    if (childIndex >= minimumTreeIndex) {
+      insertedTreeIndex = childIndex
+      insertIndex = i
+      break
+    }
+    childIndex += 1 + getDescendantCount({ node: child, ignoreCollapsed })
+  }
+
+  if (insertIndex === undefined) {
+    if (childIndex < minimumTreeIndex && !isLastChild) {
+      return { node, nextIndex: childIndex }
+    }
+    insertedTreeIndex = childIndex
+    insertIndex = children.length
+  }
+
+  const nextNode = {
+    ...node,
+    children: children.toSpliced(insertIndex, 0, newNode),
+  }
+  return {
+    node: nextNode,
+    nextIndex: childIndex,
+    insertedTreeIndex,
+    parentPath: makeSelfPath(params, nextNode),
+    parentNode: isPseudoRoot ? undefined : nextNode,
+  }
+}
+
+const traverseChildrenForInsert = (
+  params: AddNodeAtDepthParams
+): AddNodeResult => {
+  const {
+    node,
+    currentIndex,
+    isPseudoRoot = false,
+    isLastChild,
+    ignoreCollapsed,
+  } = params
+  if (isChildrenHidden(node, ignoreCollapsed, isPseudoRoot)) {
+    return { node, nextIndex: currentIndex + 1 }
+  }
+
+  const children = node.children as TreeItem[]
   let insertedTreeIndex: number | undefined
   let pathFragment: Array<string | number> | undefined
   let parentNode: TreeItem | undefined
   let childIndex = currentIndex + 1
-  let newChildren = node.children
-  if (typeof newChildren !== 'function') {
-    newChildren = newChildren.map((child: TreeItem, i: number) => {
-      if (insertedTreeIndex !== null && insertedTreeIndex !== undefined) {
-        return child
-      }
 
-      const mapResult = addNodeAtDepthAndIndex({
-        targetDepth,
-        minimumTreeIndex,
-        newNode,
-        ignoreCollapsed,
-        expandParent,
-        isLastChild: isLastChild && i === newChildren.length - 1,
-        node: child,
-        currentIndex: childIndex,
-        currentDepth: currentDepth + 1,
-        getNodeKey,
-        path: [], // Cannot determine the parent path until the children have been processed
-      })
+  const newChildren = children.map((child: TreeItem, i: number) => {
+    if (insertedTreeIndex !== undefined) return child
 
-      if (
-        'insertedTreeIndex' in mapResult &&
-        mapResult.insertedTreeIndex !== undefined
-      ) {
-        ;({
-          insertedTreeIndex,
-          parentNode,
-          parentPath: pathFragment,
-        } = mapResult)
-      }
-
-      childIndex = mapResult.nextIndex
-
-      return mapResult.node
+    const mapResult = addNodeAtDepthAndIndex({
+      ...params,
+      isLastChild: isLastChild && i === children.length - 1,
+      node: child,
+      currentIndex: childIndex,
+      currentDepth: params.currentDepth + 1,
+      path: [], // Cannot determine the parent path until children are processed
     })
-  }
+
+    if (mapResult.insertedTreeIndex !== undefined) {
+      ;({ insertedTreeIndex, parentNode, parentPath: pathFragment } = mapResult)
+    }
+    childIndex = mapResult.nextIndex
+    return mapResult.node
+  })
 
   const nextNode = { ...node, children: newChildren }
-  const result: AddNodeResult = {
-    node: nextNode,
-    nextIndex: childIndex,
-  }
-
-  if (insertedTreeIndex !== null && insertedTreeIndex !== undefined) {
+  const result: AddNodeResult = { node: nextNode, nextIndex: childIndex }
+  if (insertedTreeIndex !== undefined) {
     result.insertedTreeIndex = insertedTreeIndex
-    result.parentPath = [...selfPath(nextNode), ...(pathFragment || [])]
+    result.parentPath = [
+      ...makeSelfPath(params, nextNode),
+      ...(pathFragment ?? []),
+    ]
     result.parentNode = parentNode
   }
-
   return result
+}
+
+const addNodeAtDepthAndIndex = (
+  params: AddNodeAtDepthParams
+): AddNodeResult => {
+  const earlyResult = insertAtCurrentPosition(params)
+  if (earlyResult) return earlyResult
+  if (params.currentDepth >= params.targetDepth - 1)
+    return findInsertAtDepth(params)
+  return traverseChildrenForInsert(params)
 }
 
 export const insertNode = ({
@@ -925,22 +972,22 @@ export const getFlatDataFromTree = ({
   return flattened
 }
 
-export const getTreeFromFlatData = ({
+export const getTreeFromFlatData = <T extends Record<string, unknown>>({
   flatData,
-  getKey = (node) => node.id,
-  getParentKey = (node) => node.parentId,
+  getKey = (node) => node['id'] as string,
+  getParentKey = (node) => node['parentId'] as string,
   rootKey = '0',
 }: {
-  flatData: any
-  getKey: (node: any) => string
-  getParentKey: (node: any) => string
-  rootKey: string | null
-}) => {
+  flatData: T[]
+  getKey?: (node: T) => string
+  getParentKey?: (node: T) => string
+  rootKey?: string | null
+}): T[] => {
   if (!flatData) {
     return []
   }
 
-  const childrenToParents = Object.groupBy(flatData, (child: any) =>
+  const childrenToParents = Object.groupBy(flatData, (child) =>
     getParentKey(child)
   )
 
@@ -948,20 +995,20 @@ export const getTreeFromFlatData = ({
     return []
   }
 
-  const trav = (parent: any): any => {
+  const trav = (parent: T): T => {
     const parentKey = getKey(parent)
     const children = childrenToParents[parentKey]
     if (children) {
       return {
         ...parent,
-        children: children.map((child: any) => trav(child)),
+        children: children.map((child) => trav(child)),
       }
     }
 
     return { ...parent }
   }
 
-  return childrenToParents[rootKey]!.map((child: any) => trav(child))
+  return childrenToParents[rootKey].map((child) => trav(child))
 }
 
 export const isDescendant = (older: TreeItem, younger: TreeItem): boolean => {
@@ -983,10 +1030,11 @@ export const getDepth = (node: TreeItem, depth = 0): number => {
     return depth + 1
   }
 
-  return node.children.reduce(
-    (deepest, child) => Math.max(deepest, getDepth(child, depth + 1)),
-    depth
-  )
+  let deepest = depth
+  for (const child of node.children) {
+    deepest = Math.max(deepest, getDepth(child, depth + 1))
+  }
+  return deepest
 }
 
 export const find = ({
@@ -1017,7 +1065,11 @@ export const find = ({
     currentIndex: number
     path?: Array<string | number>
   }) => {
-    let matches: any[] = []
+    let matches: Array<{
+      node: TreeItem
+      path?: Array<string | number>
+      treeIndex?: number
+    }> = []
     let isSelfMatch = false
     let hasFocusMatch = false
     // The pseudo-root is not considered in the path
@@ -1135,7 +1187,7 @@ export const find = ({
   })
 
   return {
-    matches: result.matches,
+    matches: result.matches as NodeData[],
     treeData: result.node.children as TreeItem[],
   }
 }
