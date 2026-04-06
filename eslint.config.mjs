@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
-import { fixupPluginRules } from '@eslint/compat';
 import globals from 'globals';
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 // Plugins
@@ -20,8 +20,8 @@ import prettierConfig from 'eslint-config-prettier';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default tseslint.config(
-  // 1. Global Ignores
+export default defineConfig(
+  // Global Ignores
   {
     ignores: [
       '**/node_modules/**',
@@ -34,14 +34,15 @@ export default tseslint.config(
     ],
   },
 
-  // 2. Base Configuration (JS & TS)
+  // Base Configuration (JS & TS) - source files only (covered by tsconfig.json)
   {
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommended,
       // ...tseslint.configs.recommendedTypeChecked, // Uncomment if you want strict type-aware rules
     ],
-    files: ['**/*.{js,mjs,cjs,jsx,ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/stories/**'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
@@ -56,9 +57,8 @@ export default tseslint.config(
       },
     },
     plugins: {
-      // Fixup is needed for legacy plugins not yet fully v9 compatible
-      'import': fixupPluginRules(importPlugin),
-      'promise': fixupPluginRules(promisePlugin),
+      'import': importPlugin,
+      'promise': promisePlugin,
     },
     settings: {
       'import/resolver': {
@@ -88,32 +88,112 @@ export default tseslint.config(
           alphabetize: { order: 'asc', caseInsensitive: true },
         },
       ],
-      
+
       // Common Overrides
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-underscore-dangle': 'off',
       'no-nested-ternary': 'off',
       'no-plusplus': 'off',
+
+      // Allow _-prefixed variables as intentionally unused markers
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          varsIgnorePattern: '^_',
+          argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
 
-  // 3. React Specifics
+  // Stories files - use default project (no tsconfig coverage needed)
+  {
+    extends: [
+      js.configs.recommended,
+      ...tseslint.configs.recommended,
+    ],
+    files: ['src/stories/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2021,
+      },
+      parserOptions: {
+        project: null,
+      },
+    },
+    plugins: {
+      'import': importPlugin,
+      'promise': promisePlugin,
+    },
+    settings: {
+      'import/resolver': {
+        typescript: {
+          alwaysTryTypes: true,
+          project: './tsconfig.json',
+        },
+        node: true,
+      },
+    },
+    rules: {
+      'import/no-unresolved': 'error',
+      'no-console': 'off',
+      'no-underscore-dangle': 'off',
+      'no-nested-ternary': 'off',
+      'no-plusplus': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          varsIgnorePattern: '^_',
+          argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      // Relax strict rules for demo/story code
+      '@typescript-eslint/no-explicit-any': 'off',
+      'unicorn/consistent-function-scoping': 'off',
+      'unicorn/no-array-reduce': 'off',
+      'unicorn/prefer-spread': 'off',
+      'sonarjs/pseudo-random': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      'jsx-a11y/click-events-have-key-events': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+    },
+  },
+
+  // Config and other JS/MJS files (not covered by tsconfig)
+  {
+    extends: [
+      js.configs.recommended,
+    ],
+    files: ['*.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
+    },
+  },
+
+  // React Specifics
   {
     files: ['**/*.{jsx,tsx}'],
     extends: [
       reactPlugin.configs.flat.recommended,
       reactPlugin.configs.flat['jsx-runtime'], // React 17+
+      reactHooksPlugin.configs.flat['recommended-latest'],
+      jsxA11yPlugin.flatConfigs.recommended,
     ],
-    plugins: {
-      'react-hooks': fixupPluginRules(reactHooksPlugin),
-      'jsx-a11y': fixupPluginRules(jsxA11yPlugin),
-    },
     settings: {
       react: { version: 'detect' },
     },
     rules: {
-      ...reactHooksPlugin.configs.recommended.rules,
-      ...jsxA11yPlugin.configs.recommended.rules,
       
       // React Rules Overrides
       'react/prop-types': 'off', // Not needed with TypeScript
@@ -131,7 +211,7 @@ export default tseslint.config(
     },
   },
 
-  // 4. SonarJS & Unicorn (Code Quality)
+  // SonarJS & Unicorn (Code Quality)
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     extends: [
@@ -148,10 +228,27 @@ export default tseslint.config(
     },
   },
 
-  // 5. Storybook Specifics
+  // Relaxed rules for demo/story files (overrides stricter rules from block 4)
+  {
+    files: ['src/stories/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      'unicorn/consistent-function-scoping': 'off',
+      'unicorn/no-array-reduce': 'off',
+      'unicorn/prefer-spread': 'off',
+      'sonarjs/pseudo-random': 'off',
+      'sonarjs/cognitive-complexity': 'off',
+      'jsx-a11y/click-events-have-key-events': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'no-console': 'off',
+      'react/jsx-key': 'off',
+    },
+  },
+
+  // Storybook Specifics
   ...storybookPlugin.configs['flat/recommended'],
 
-  // 6. Prettier (Must be last)
+  // Prettier (Must be last)
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     plugins: {
