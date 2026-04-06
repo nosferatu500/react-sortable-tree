@@ -5,19 +5,16 @@ import { SortableTree } from '../../../src'
 
 const data = [
   { title: 'Chicken', expanded: true, children: [{ title: 'Egg' }] },
-];
+]
 
 const Barebones: React.FC = () => {
-  const [treeData, setTreeData] = useState(data);
+  const [treeData, setTreeData] = useState(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>
-      <SortableTree
-        treeData={treeData}
-        onChange={setTreeData}
-      />
+      <SortableTree treeData={treeData} onChange={setTreeData} />
     </div>
   )
 }
 
-export default Barebones;
+export default Barebones

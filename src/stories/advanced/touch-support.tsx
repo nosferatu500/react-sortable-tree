@@ -5,30 +5,29 @@ import { TouchBackend } from 'react-dnd-touch-backend'
 import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
 
 // https://stackoverflow.com/a/4819886/1601953
-const isTouchDevice = !!('ontouchstart' in window || navigator.maxTouchPoints)
+const isTouchDevice = !!(
+  'ontouchstart' in globalThis || navigator.maxTouchPoints
+)
 const dndBackend = isTouchDevice ? TouchBackend : HTML5Backend
 
 const TouchSupport: React.FC = () => {
   const [treeData, setTreeData] = useState([
     { title: 'Chicken', expanded: true, children: [{ title: 'Egg' }] },
-  ]);
+  ])
 
   return (
     <DndProvider backend={dndBackend}>
-        <div>
-          <span>
-            This is {!isTouchDevice && 'not '}a touch-supporting browser
-          </span>
+      <div>
+        <span>
+          This is {!isTouchDevice && 'not '}a touch-supporting browser
+        </span>
 
-          <div style={{ height: 300, width: 700 }}>
-            <SortableTree
-              treeData={treeData}
-              onChange={setTreeData}
-            />
-          </div>
+        <div style={{ height: 300, width: 700 }}>
+          <SortableTree treeData={treeData} onChange={setTreeData} />
         </div>
-      </DndProvider>
+      </div>
+    </DndProvider>
   )
 }
 
-export default TouchSupport;
+export default TouchSupport

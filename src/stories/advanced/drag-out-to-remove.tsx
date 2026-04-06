@@ -1,4 +1,4 @@
-import React, { Component, useState } from 'react'
+import React, { useState } from 'react'
 import { DndProvider, useDrop } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
@@ -44,7 +44,7 @@ const DragOutToRemove: React.FC = () => {
     { title: '2' },
     { title: '3' },
     { title: '4', expanded: true, children: [{ title: '5' }] },
-  ]);
+  ])
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -63,4 +63,4 @@ const DragOutToRemove: React.FC = () => {
   )
 }
 
-export default DragOutToRemove;
+export default DragOutToRemove

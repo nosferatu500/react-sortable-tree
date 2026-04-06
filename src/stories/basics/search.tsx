@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { SortableTree } from '../../../src'
 
 const Search: React.FC = () => {
-  const title = 'Hay';
+  const title = 'Hay'
 
   // For generating a haystack (you probably won't need to do this)
   const getStack = (left: number, hasNeedle: any = false): any => {
@@ -29,38 +29,30 @@ const Search: React.FC = () => {
     }
   }
 
-  const [searchString, setSearchString] = useState('');
-  const [searchFocusIndex, setSearchFocusIndex] = useState(0);
-  const [searchFoundCount, setSearchFoundCount] = useState(0);
+  const [searchString, setSearchString] = useState('')
+  const [searchFocusIndex, setSearchFocusIndex] = useState(0)
+  const [searchFoundCount, setSearchFoundCount] = useState(0)
   const [treeData, setTreeData] = useState([
     {
       title: 'Haystack',
-      children: [
-        getStack(3, true),
-        getStack(3),
-        { title },
-        getStack(2, true),
-      ],
+      children: [getStack(3, true), getStack(3), { title }, getStack(2, true)],
     },
-  ]);
+  ])
 
   // Case insensitive search of `node.title`
   const customSearchMethod = ({ node, searchQuery }: any) =>
-    searchQuery &&
-    node.title.toLowerCase().indexOf(searchQuery.toLowerCase()) > -1
+    searchQuery && node.title.toLowerCase().includes(searchQuery.toLowerCase())
 
   const selectPrevMatch = () =>
     setSearchFocusIndex(
-      searchFocusIndex !== null
-        ? (searchFoundCount + searchFocusIndex - 1) % searchFoundCount
-        : searchFoundCount - 1,
+      searchFocusIndex === null
+        ? searchFoundCount - 1
+        : (searchFoundCount + searchFocusIndex - 1) % searchFoundCount
     )
 
   const selectNextMatch = () =>
     setSearchFocusIndex(
-      searchFocusIndex !== null
-        ? (searchFocusIndex + 1) % searchFoundCount
-        : 0,
+      searchFocusIndex === null ? 0 : (searchFocusIndex + 1) % searchFoundCount
     )
 
   return (
@@ -77,9 +69,7 @@ const Search: React.FC = () => {
           placeholder="Search..."
           style={{ fontSize: '1rem' }}
           value={searchString}
-          onChange={(event) =>
-            setSearchString(event.target.value)
-          }
+          onChange={(event) => setSearchString(event.target.value)}
         />
 
         <button
@@ -128,14 +118,15 @@ const Search: React.FC = () => {
           // This is optional, but without it, the only thing searches
           // do natively is outline the matching nodes.
           searchFinishCallback={(matches) => {
-            setSearchFoundCount(matches.length);
-            setSearchFocusIndex(matches.length > 0 ? searchFocusIndex % matches.length : 0);
+            setSearchFoundCount(matches.length)
+            setSearchFocusIndex(
+              matches.length > 0 ? searchFocusIndex % matches.length : 0
+            )
           }}
         />
       </div>
     </div>
-
   )
 }
 
-export default Search;
+export default Search

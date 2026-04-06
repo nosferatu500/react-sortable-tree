@@ -63,10 +63,7 @@ const initialTreeData: TreeItem[] = [
       {
         title: 'images',
         isDirectory: true,
-        children: [
-          { title: 'logo.png' },
-          { title: 'banner.jpg' },
-        ],
+        children: [{ title: 'logo.png' }, { title: 'banner.jpg' }],
       },
     ],
   },
@@ -96,21 +93,21 @@ const FileExplorer: React.FC = () => {
         backgroundColor: isDark ? '#252526' : '#f3f3f3',
         minHeight: '100vh',
         transition: 'background-color 0.3s ease',
-      }}
-    >
+      }}>
       <div
         style={{
           marginBottom: 16,
           display: 'flex',
           gap: 12,
           alignItems: 'center',
-        }}
-      >
+        }}>
         <strong style={{ color: isDark ? '#fff' : '#333' }}>
           File Explorer Theme
         </strong>
         <button
-          onClick={() => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
+          onClick={() =>
+            setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+          }
           style={{
             padding: '6px 12px',
             cursor: 'pointer',
@@ -119,8 +116,7 @@ const FileExplorer: React.FC = () => {
             border: 'none',
             borderRadius: 3,
             fontSize: 12,
-          }}
-        >
+          }}>
           Toggle {isDark ? 'Light' : 'Dark'} Mode
         </button>
       </div>
@@ -132,8 +128,7 @@ const FileExplorer: React.FC = () => {
           borderRadius: 4,
           overflow: 'hidden',
           border: isDark ? '1px solid #3c3c3c' : '1px solid #e0e0e0',
-        }}
-      >
+        }}>
         <div style={{ height: 500 }}>
           <SortableTree
             treeData={treeData}
@@ -160,8 +155,7 @@ const FileExplorer: React.FC = () => {
                     fontSize: 12,
                     color: isDark ? '#ccc' : '#666',
                   }}
-                  title="Delete"
-                >
+                  title="Delete">
                   ×
                 </button>,
               ],
@@ -179,8 +173,7 @@ const FileExplorer: React.FC = () => {
           border: isDark ? '1px solid #3c3c3c' : '1px solid #e0e0e0',
           color: isDark ? '#ccc' : '#333',
           fontSize: 13,
-        }}
-      >
+        }}>
         <strong>Usage:</strong>
         <pre
           style={{
@@ -190,9 +183,8 @@ const FileExplorer: React.FC = () => {
             borderRadius: 4,
             overflow: 'auto',
             fontSize: 12,
-          }}
-        >
-{`import { fileExplorerTheme, FILE_EXPLORER_THEME_CLASS } from './themes/file-explorer'
+          }}>
+          {`import { fileExplorerTheme, FILE_EXPLORER_THEME_CLASS } from './themes/file-explorer'
 
 <div className={FILE_EXPLORER_THEME_CLASS}>
   <SortableTree

@@ -1,4 +1,4 @@
-import React, { Component, useState } from 'react'
+import React, { useState } from 'react'
 import { DndProvider, useDrag } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
@@ -11,13 +11,16 @@ import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
 const externalNodeType = 'yourNodeType'
 
 const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: externalNodeType,
-    item: { node: { ...node } },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: externalNodeType,
+      item: { node: { ...node } },
+      collect: (monitor) => ({
+        isDragging: !!monitor.isDragging(),
+      }),
     }),
-  }), [node])
+    [node]
+  )
 
   return (
     <div
@@ -38,8 +41,8 @@ const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
 const ExternalNode: React.FC = () => {
   const [treeData, setTreeData] = useState([
     { title: 'Mama Rabbit' },
-    { title: 'Papa Rabbit' }
-  ]);
+    { title: 'Papa Rabbit' },
+  ])
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -52,10 +55,11 @@ const ExternalNode: React.FC = () => {
           />
         </div>
         <br />
-        <YourExternalNodeComponent node={{ title: 'Baby Rabbit' }} /> ← drag this
+        <YourExternalNodeComponent node={{ title: 'Baby Rabbit' }} /> ← drag
+        this
       </div>
     </DndProvider>
   )
 }
 
-export default ExternalNode;
+export default ExternalNode

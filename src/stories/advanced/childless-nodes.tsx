@@ -34,10 +34,10 @@ const data = [
       },
     ],
   },
-];
+]
 
 const ChildlessNodes: React.FC = () => {
-  const [treeData, setTreeData] = useState(data);
+  const [treeData, setTreeData] = useState(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>
@@ -50,4 +50,4 @@ const ChildlessNodes: React.FC = () => {
   )
 }
 
-export default ChildlessNodes;
+export default ChildlessNodes

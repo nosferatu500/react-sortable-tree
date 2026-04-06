@@ -76,10 +76,10 @@ const darkModeStyles = `
     outline: solid 3px var(--rst-match-color);
     color: #fff;
   }
-`;
+`
 
 const DarkMode: React.FC = () => {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [treeData, setTreeData] = useState([
     {
       title: 'Dark Mode Ready',
@@ -88,61 +88,64 @@ const DarkMode: React.FC = () => {
       children: [
         { title: 'Handle color updated' },
         { title: 'Background is dark slate' },
-        { 
-          title: 'Deep Nested Node', 
-          expanded: true, 
-          children: [{ title: 'I am visible!' }] 
+        {
+          title: 'Deep Nested Node',
+          expanded: true,
+          children: [{ title: 'I am visible!' }],
         },
       ],
     },
     { title: 'Drag me around to test the handle' },
-  ]);
+  ])
 
-  const isDark = theme === 'dark';
+  const isDark = theme === 'dark'
 
   return (
-    <div 
+    <div
       className={isDark ? 'rst__theme-dark' : ''}
-      style={{ 
-        width: 700, 
+      style={{
+        width: 700,
         padding: '20px',
         // Simulate a full app background change
         backgroundColor: isDark ? '#121212' : '#fff',
         color: isDark ? '#fff' : '#333',
         transition: 'background-color 0.3s ease',
         borderRadius: '8px',
-        minHeight: '500px'
-      }}
-    >
+        minHeight: '500px',
+      }}>
       {/* Inject styles */}
       <style>{darkModeStyles}</style>
 
-      <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div
+        style={{
+          marginBottom: '1.5rem',
+          display: 'flex',
+          gap: '1rem',
+          alignItems: 'center',
+        }}>
         <strong>Current Theme: {theme.toUpperCase()}</strong>
-        <button 
-          onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
-          style={{ 
-            padding: '8px 16px', 
+        <button
+          onClick={() =>
+            setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+          }
+          style={{
+            padding: '8px 16px',
             cursor: 'pointer',
             backgroundColor: isDark ? '#333' : '#eee',
             color: isDark ? '#fff' : '#000',
             border: `1px solid ${isDark ? '#666' : '#ccc'}`,
             borderRadius: '4px',
-            fontWeight: 'bold'
-          }}
-        >
+            fontWeight: 'bold',
+          }}>
           Toggle Theme
         </button>
       </div>
 
       <div style={{ height: 400 }}>
-        <SortableTree
-          treeData={treeData}
-          onChange={setTreeData}
-        />
+        <SortableTree treeData={treeData} onChange={setTreeData} />
       </div>
     </div>
   )
 }
 
-export default DarkMode;
+export default DarkMode

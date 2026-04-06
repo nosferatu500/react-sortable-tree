@@ -37,8 +37,8 @@ export const fileExplorerTheme = {
   slideRegionSize: 50,
 }
 
-export { FileExplorerNodeRenderer }
-
 // CSS class names for the theme wrapper
 export const FILE_EXPLORER_THEME_CLASS = 'rst__file-explorer-theme'
 export const FILE_EXPLORER_DARK_CLASS = 'rst__file-explorer-dark'
+
+export { default as FileExplorerNodeRenderer } from './file-explorer-node-renderer'

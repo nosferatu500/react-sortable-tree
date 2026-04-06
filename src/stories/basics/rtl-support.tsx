@@ -8,28 +8,35 @@ const rtlData = [
     children: [
       { title: 'ملف واحد (File 1)' },
       { title: 'ملف اثنان (File 2)' },
-      { 
-        title: 'مجلد فرعي (Subfolder)', 
+      {
+        title: 'مجلد فرعي (Subfolder)',
         expanded: false,
-        children: [{ title: 'عنصر مخفي (Hidden)' }]
+        children: [{ title: 'عنصر مخفي (Hidden)' }],
       },
     ],
   },
   { title: 'عنصر آخر (Another Node)' },
-];
+]
 
 const RTLSupport: React.FC = () => {
-  const [treeData, setTreeData] = useState(rtlData);
-  const [direction, setDirection] = useState<'ltr' | 'rtl'>('rtl');
+  const [treeData, setTreeData] = useState(rtlData)
+  const [direction, setDirection] = useState<'ltr' | 'rtl'>('rtl')
 
   return (
     <div style={{ width: 700 }}>
-      <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div
+        style={{
+          marginBottom: '1rem',
+          display: 'flex',
+          gap: '1rem',
+          alignItems: 'center',
+        }}>
         <strong>Current Direction: {direction.toUpperCase()}</strong>
-        <button 
-          onClick={() => setDirection(prev => prev === 'rtl' ? 'ltr' : 'rtl')}
-          style={{ padding: '5px 10px', cursor: 'pointer' }}
-        >
+        <button
+          onClick={() =>
+            setDirection((prev) => (prev === 'rtl' ? 'ltr' : 'rtl'))
+          }
+          style={{ padding: '5px 10px', cursor: 'pointer' }}>
           Toggle Direction
         </button>
       </div>
@@ -45,4 +52,4 @@ const RTLSupport: React.FC = () => {
   )
 }
 
-export default RTLSupport;
+export default RTLSupport

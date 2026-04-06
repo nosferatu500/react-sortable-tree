@@ -6,18 +6,15 @@ import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
 const BarebonesNoContext: React.FC = () => {
   const [treeData, setTreeData] = useState([
     { title: 'Chicken', expanded: true, children: [{ title: 'Egg' }] },
-  ]);
+  ])
 
   return (
     <div style={{ height: 300, width: 700 }}>
       <DndProvider backend={HTML5Backend}>
-          <SortableTree
-            treeData={treeData}
-            onChange={setTreeData}
-          />
-        </DndProvider>
+        <SortableTree treeData={treeData} onChange={setTreeData} />
+      </DndProvider>
     </div>
   )
 }
 
-export default BarebonesNoContext;
+export default BarebonesNoContext

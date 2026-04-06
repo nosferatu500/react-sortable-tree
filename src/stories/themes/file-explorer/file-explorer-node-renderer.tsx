@@ -42,13 +42,23 @@ export interface FileExplorerNodeRendererProps {
 // SVG Icons
 const ChevronRightIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path
+      d="M6 4l4 4-4 4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
   </svg>
 )
 
 const ChevronDownIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path
+      d="M4 6l4 4 4-4"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      fill="none"
+    />
   </svg>
 )
 
@@ -79,28 +89,38 @@ const FileIcon = ({ extension }: { extension?: string }) => {
   const getColor = () => {
     switch (extension?.toLowerCase()) {
       case 'ts':
-      case 'tsx':
+      case 'tsx': {
         return '#3178c6'
+      }
       case 'js':
-      case 'jsx':
+      case 'jsx': {
         return '#f7df1e'
+      }
       case 'css':
-      case 'scss':
+      case 'scss': {
         return '#264de4'
-      case 'html':
+      }
+      case 'html': {
         return '#e34c26'
-      case 'json':
+      }
+      case 'json': {
         return '#cbcb41'
-      case 'md':
+      }
+      case 'md': {
         return '#083fa1'
-      case 'py':
+      }
+      case 'py': {
         return '#3776ab'
-      case 'go':
+      }
+      case 'go': {
         return '#00add8'
-      case 'rs':
+      }
+      case 'rs': {
         return '#dea584'
-      default:
+      }
+      default: {
         return '#8a8a8a'
+      }
     }
   }
 
@@ -112,7 +132,12 @@ const FileIcon = ({ extension }: { extension?: string }) => {
         stroke="#ccc"
         strokeWidth="0.5"
       />
-      <path d="M9.5 1.5v3.5h3.5" stroke="#ccc" strokeWidth="0.5" fill="#f5f5f5" />
+      <path
+        d="M9.5 1.5v3.5h3.5"
+        stroke="#ccc"
+        strokeWidth="0.5"
+        fill="#f5f5f5"
+      />
       {extension && (
         <text
           x="7"
@@ -121,8 +146,7 @@ const FileIcon = ({ extension }: { extension?: string }) => {
           fill={getColor()}
           textAnchor="middle"
           fontWeight="bold"
-          fontFamily="monospace"
-        >
+          fontFamily="monospace">
           {extension.slice(0, 3).toUpperCase()}
         </text>
       )}
@@ -138,13 +162,13 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
   buttons = [],
   className = '',
   style = {},
-  parentNode = undefined,
+  parentNode: _parentNode = undefined,
   draggedNode = undefined,
   canDrop = false,
   title = undefined,
   rowDirection = 'ltr',
 
-  scaffoldBlockPxWidth,
+  scaffoldBlockPxWidth: _scaffoldBlockPxWidth,
   connectDragPreview,
   connectDragSource,
   isDragging,
@@ -158,7 +182,9 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
 }) => {
   const nodeTitle = title || node.title
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
-  const hasChildren = node.children && (node.children.length > 0 || typeof node.children === 'function')
+  const hasChildren =
+    node.children &&
+    (node.children.length > 0 || typeof node.children === 'function')
   const isFolder = hasChildren || node.isDirectory
 
   // Extract file extension from title if it's a string
@@ -166,7 +192,7 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
     if (typeof nodeTitle === 'string' && !isFolder) {
       const parts = nodeTitle.split('.')
       if (parts.length > 1) {
-        return parts[parts.length - 1]
+        return parts.at(-1)
       }
     }
     return undefined
@@ -195,17 +221,16 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
       style={{
         opacity: isDraggedDescendant ? 0.5 : 1,
         ...style,
-      }}
-    >
+      }}>
       {/* Expand/Collapse Chevron */}
       <span
         className={classnames(
           'rst__fe-chevron',
           hasChildren ? 'rst__fe-chevronVisible' : ''
         )}
-        onClick={handleToggle}
-      >
-        {hasChildren && (node.expanded ? <ChevronDownIcon /> : <ChevronRightIcon />)}
+        onClick={handleToggle}>
+        {hasChildren &&
+          (node.expanded ? <ChevronDownIcon /> : <ChevronRightIcon />)}
       </span>
 
       {/* File/Folder Icon */}

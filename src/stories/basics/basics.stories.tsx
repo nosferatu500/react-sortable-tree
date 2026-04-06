@@ -1,5 +1,4 @@
-import React from 'react'
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
+import type { Meta, StoryObj } from '@storybook/react-webpack5'
 import AddRemoveExample from './add-remove'
 import BarebonesExample from './barebones'
 import CallbacksExample from './callbacks'
@@ -12,50 +11,50 @@ import DarkModeExample from './dark-mode'
 import FileExplorerExample from './file-explorer'
 
 const meta: Meta<typeof BarebonesExample> = {
-  title: "Basics",
+  title: 'Basics',
   component: BarebonesExample,
-};
+}
 
-export default meta;
+export default meta
 
-type Story = StoryObj<typeof BarebonesExample>;
+type Story = StoryObj<typeof BarebonesExample>
 
 export const MinimalImplementation: Story = {
   render: () => <BarebonesExample />,
-};
+}
 
 export const TreeDataImportExport: Story = {
   render: () => <TreeDataIOExample />,
-};
+}
 
 export const AddAndRemoveNodesProgrammatically: Story = {
   render: () => <AddRemoveExample />,
-};
+}
 
 export const ModifyNodes: Story = {
   render: () => <ModifyNodesExample />,
-};
+}
 
 export const PreventDrop: Story = {
   render: () => <CanDropExample />,
-};
+}
 
 export const Search: Story = {
   render: () => <SearchExample />,
-};
+}
 
 export const Callbacks: Story = {
   render: () => <CallbacksExample />,
-};
+}
 
 export const RowDirectionSupport: Story = {
   render: () => <RowDirectionExample />,
-};
+}
 
 export const DarkModeTheme: Story = {
   render: () => <DarkModeExample />,
-};
+}
 
 export const FileExplorerTheme: Story = {
   render: () => <FileExplorerExample />,
-};
+}
