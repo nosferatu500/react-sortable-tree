@@ -991,7 +991,7 @@ export const getTreeFromFlatData = <T extends Record<string, unknown>>({
     getParentKey(child)
   )
 
-  if (rootKey === null || !childrenToParents[rootKey]) {
+  if (!(String(rootKey) in childrenToParents)) {
     return []
   }
 
