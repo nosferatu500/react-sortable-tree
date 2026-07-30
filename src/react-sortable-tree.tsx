@@ -16,7 +16,12 @@ import NodeRendererDefault from './node-renderer-default'
 import PlaceholderRendererDefault from './placeholder-renderer-default'
 import TreeNode from './tree-node'
 import TreePlaceholder from './tree-placeholder'
-import { GetNodeKeyFunction, TreeItem } from './types'
+import {
+  GetNodeKeyFunction,
+  GetTreeItemChildrenFn,
+  TreeItem,
+  TreeKey,
+} from './types'
 import { classnames } from './utils/classnames'
 import {
   defaultGetNodeKey,
@@ -25,6 +30,7 @@ import {
 import { wrapPlaceholder, wrapSource, wrapTarget } from './utils/dnd-manager'
 import { slideRows } from './utils/generic-utils'
 import {
+  type FlatDataItem,
   changeNodeAtPath,
   find,
   getDescendantCount,
@@ -49,7 +55,7 @@ type SearchFinishCallbackParams = {
   treeIndex: number
 }[]
 
-type GenerateNodePropsParams = {
+export type GenerateNodePropsParams = {
   node: TreeItem
   path: number[]
   treeIndex: number
@@ -74,13 +80,13 @@ type OnMoveNodeParams = {
   nextTreeIndex?: number
 }
 
-type CanDropParams = {
+export type CanDropParams = {
   node: TreeItem
   prevPath: number[]
-  prevParent: TreeItem
+  prevParent?: TreeItem
   prevTreeIndex: number
   nextPath: number[]
-  nextParent: TreeItem
+  nextParent?: TreeItem
   nextTreeIndex: number
 }
 
@@ -135,8 +141,7 @@ export type ReactSortableTreeProps = {
   placeholderRenderer?: AnyRenderer
   theme?: ThemeProps
   rowHeight?:
-    | number
-    | ((treeIndex: number, node: TreeItem, path: number[]) => number)
+    number | ((treeIndex: number, node: TreeItem, path: number[]) => number)
   getNodeKey?: GetNodeKeyFunction
   onChange: (treeData: TreeItem[]) => void
   onMoveNode?: (params: OnMoveNodeParams) => void
@@ -144,8 +149,7 @@ export type ReactSortableTreeProps = {
   canDrop?: (params: CanDropParams) => boolean
   canNodeHaveChildren?: (node: TreeItem) => boolean
   shouldCopyOnOutsideDrop?:
-    | ((params: ShouldCopyOnOutsideDropParams) => boolean)
-    | boolean
+    ((params: ShouldCopyOnOutsideDropParams) => boolean) | boolean
   onVisibilityToggle?: (params: OnVisibilityToggleParams) => void
   dndType?: string
   onDragStateChanged?: (params: OnDragStateChangedParams) => void
@@ -160,8 +164,7 @@ interface MergedTheme extends ReactSortableTreeProps {
   scaffoldBlockPxWidth: number
   slideRegionSize: number
   rowHeight:
-    | number
-    | ((treeIndex: number, node: TreeItem, path: number[]) => number)
+    number | ((treeIndex: number, node: TreeItem, path: number[]) => number)
   treeNodeRenderer: AnyRenderer
 }
 
@@ -291,17 +294,7 @@ const loadLazyChildren = (
   walk({
     treeData,
     getNodeKey: props.getNodeKey!,
-    callback: ({
-      node,
-      path,
-      lowerSiblingCounts,
-      treeIndex,
-    }: {
-      node: TreeItem
-      path: number[]
-      lowerSiblingCounts: number[]
-      treeIndex: number
-    }) => {
+    callback: ({ node, path, lowerSiblingCounts, treeIndex }) => {
       // If the node has children defined by a function, and is either expanded
       //  or set to load even before expansion, run the function.
       if (
@@ -310,15 +303,7 @@ const loadLazyChildren = (
         (node.expanded || props.loadCollapsedLazyChildren)
       ) {
         // Call the children fetching function
-        ;(
-          node.children as (params: {
-            node: TreeItem
-            path: number[]
-            lowerSiblingCounts: number[]
-            treeIndex: number
-            done: (childrenArray: TreeItem[]) => void
-          }) => void
-        )({
+        ;(node.children as GetTreeItemChildrenFn)({
           node,
           path,
           lowerSiblingCounts,
@@ -513,6 +498,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
         return {
           ...prevState,
+          treeData,
           draggingTreeData: undefined,
           draggedNode: undefined,
           draggedMinimumTreeIndex: undefined,
@@ -556,20 +542,18 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
             })
           }
 
-          let treeData = prevState.draggingTreeData || prevState.treeData
-
           // If copying is enabled, a drop outside leaves behind a copy in the
           //  source tree
-          if (shouldCopy) {
-            treeData = changeNodeAtPath({
-              treeData: prevState.treeData, // use treeData unaltered by the drag operation
-              path,
-              newNode: ({ node: copyNode }: { node: TreeItem }) => ({
-                ...copyNode,
-              }), // create a shallow copy of the node
-              getNodeKey: mergedProps.getNodeKey!,
-            })
-          }
+          const treeData = shouldCopy
+            ? changeNodeAtPath({
+                treeData: prevState.treeData, // use treeData unaltered by the drag operation
+                path,
+                newNode: ({ node: copyNode }: { node: TreeItem }) => ({
+                  ...copyNode,
+                }), // create a shallow copy of the node
+                getNodeKey: mergedProps.getNodeKey!,
+              })
+            : prevState.draggingTreeData || prevState.treeData
 
           // Store callbacks in refs to be called after state update
           pendingOnChangeRef.current = treeData
@@ -585,6 +569,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
           return {
             ...prevState,
+            treeData,
             draggingTreeData: undefined,
             draggedNode: undefined,
             draggedMinimumTreeIndex: undefined,
@@ -927,27 +912,23 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
   // Effect: Call onDragStateChanged when dragging state changes
   useEffect(() => {
-    if (prevDraggingRef.current !== state.dragging) {
-      prevDraggingRef.current = state.dragging
-      if (mergedProps.onDragStateChanged) {
-        mergedProps.onDragStateChanged({
-          isDragging: state.dragging,
-          draggedNode: state.draggedNode,
-        })
-      }
+    if (prevDraggingRef.current === state.dragging) {
+      return
+    }
+
+    prevDraggingRef.current = state.dragging
+    if (mergedProps.onDragStateChanged) {
+      mergedProps.onDragStateChanged({
+        isDragging: state.dragging,
+        draggedNode: state.draggedNode,
+      })
     }
   }, [state.dragging, state.draggedNode, mergedProps])
 
   // Render row function
   const renderRow = useCallback(
     (
-      row: {
-        node: TreeItem
-        parentNode: TreeItem | null
-        path: number[]
-        lowerSiblingCounts: number[]
-        treeIndex: number
-      },
+      row: FlatDataItem,
       {
         listIndex,
         getPrevRow,
@@ -957,16 +938,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         swapLength,
       }: {
         listIndex: number
-        getPrevRow: () =>
-          | {
-              node: TreeItem
-              parentNode: TreeItem | null
-              path: number[]
-              lowerSiblingCounts: number[]
-              treeIndex: number
-            }
-          | undefined
-        matchKeys: Record<number, number>
+        getPrevRow: () => FlatDataItem | undefined
+        matchKeys: Record<TreeKey, number>
         swapFrom: number | undefined
         swapDepth: number | undefined
         swapLength: number | undefined
@@ -986,7 +959,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       const TreeNodeRenderer = treeNodeRenderer
       const NodeContentRenderer = nodeContentRenderer
       const nodeKey = path.at(-1)
-      const isSearchMatch = nodeKey !== undefined && nodeKey in matchKeys
+      const isSearchMatch =
+        nodeKey !== undefined && Object.hasOwn(matchKeys, nodeKey)
       const isSearchFocus =
         isSearchMatch && matchKeys[nodeKey] === searchFocusOffset
       const callbackParams = {
@@ -1115,7 +1089,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
   // Get indices for rows that match the search conditions
   const matchKeys = useMemo(() => {
-    const keys: Record<number, number> = {}
+    const keys: Record<TreeKey, number> = {}
     for (const [i, { path }] of searchMatches.entries()) {
       const lastKey = path.at(-1)
       if (lastKey !== undefined) {
@@ -1141,6 +1115,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     const Placeholder = treePlaceholderRenderer
     const PlaceholderContent = placeholderRenderer
     list = (
+      // eslint-disable-next-line react-hooks/static-components
       <Placeholder treeId={treeId} drop={drop}>
         <PlaceholderContent />
       </Placeholder>

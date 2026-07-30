@@ -1,4 +1,3 @@
-
 # React Sortable Tree
 
 ![NPM version](https://img.shields.io/npm/v/@nosferatu500/react-sortable-tree.svg?style=flat)
@@ -37,10 +36,7 @@ export function ExampleTree() {
 
   return (
     <div style={{ height: 400 }}>
-      <SortableTree
-        treeData={treeData}
-        onChange={setTreeData}
-      />
+      <SortableTree treeData={treeData} onChange={setTreeData} />
     </div>
   )
 }
@@ -58,65 +54,65 @@ All props are typed in `ReactSortableTreeProps` (see `src/react-sortable-tree.ts
 
 ### Required props
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `treeData` | `TreeItem[]` | Array of tree nodes with `{ title?, subtitle?, expanded?, children?, ...custom }` |
-| `onChange` | `(treeData: TreeItem[]) => void` | Called on every tree data change |
+| Prop       | Type                             | Description                                                                       |
+| ---------- | -------------------------------- | --------------------------------------------------------------------------------- |
+| `treeData` | `TreeItem[]`                     | Array of tree nodes with `{ title?, subtitle?, expanded?, children?, ...custom }` |
+| `onChange` | `(treeData: TreeItem[]) => void` | Called on every tree data change                                                  |
 
 ### Appearance & layout
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `rowHeight` | `number \| ((treeIndex, node, path) => number)` | `62` | Height of each row in pixels |
-| `rowDirection` | `'ltr' \| 'rtl'` | `'ltr'` | Layout direction |
-| `scaffoldBlockPxWidth` | `number` | `44` | Width of indent per level |
-| `slideRegionSize` | `number` | `100` | Size of the drag slide region |
-| `style` | `CSSProperties` | - | Styles for the outer container |
-| `innerStyle` | `CSSProperties` | - | Styles for the virtual list |
-| `className` | `string` | - | Class name for the outer container |
+| Prop                   | Type                                            | Default | Description                        |
+| ---------------------- | ----------------------------------------------- | ------- | ---------------------------------- |
+| `rowHeight`            | `number \| ((treeIndex, node, path) => number)` | `62`    | Height of each row in pixels       |
+| `rowDirection`         | `'ltr' \| 'rtl'`                                | `'ltr'` | Layout direction                   |
+| `scaffoldBlockPxWidth` | `number`                                        | `44`    | Width of indent per level          |
+| `slideRegionSize`      | `number`                                        | `100`   | Size of the drag slide region      |
+| `style`                | `CSSProperties`                                 | -       | Styles for the outer container     |
+| `innerStyle`           | `CSSProperties`                                 | -       | Styles for the virtual list        |
+| `className`            | `string`                                        | -       | Class name for the outer container |
 
 ### Theming & custom renderers
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `theme` | `ThemeProps` | Theme object (see [Theming](#theming) section) |
-| `nodeContentRenderer` | `ComponentType` | Custom component for node content |
-| `treeNodeRenderer` | `ComponentType` | Custom component for the entire tree row |
-| `placeholderRenderer` | `ComponentType` | Custom component for empty tree state |
+| Prop                  | Type            | Description                                    |
+| --------------------- | --------------- | ---------------------------------------------- |
+| `theme`               | `ThemeProps`    | Theme object (see [Theming](#theming) section) |
+| `nodeContentRenderer` | `ComponentType` | Custom component for node content              |
+| `treeNodeRenderer`    | `ComponentType` | Custom component for the entire tree row       |
+| `placeholderRenderer` | `ComponentType` | Custom component for empty tree state          |
 
 ### Drag & drop
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `canDrag` | `boolean \| ((params) => boolean)` | `true` | Whether nodes can be dragged |
-| `canDrop` | `(params) => boolean` | - | Validate if a drop is allowed |
-| `canNodeHaveChildren` | `(node) => boolean` | `() => true` | Whether a node can have children |
-| `maxDepth` | `number` | - | Maximum nesting depth |
-| `shouldCopyOnOutsideDrop` | `boolean \| ((params) => boolean)` | `false` | Copy node when dropped outside |
-| `dndType` | `string` | - | Custom drag type for multi-tree setups |
-| `onMoveNode` | `(params) => void` | - | Called after a node is moved |
-| `onDragStateChanged` | `(params) => void` | - | Called when drag state changes |
+| Prop                      | Type                               | Default      | Description                            |
+| ------------------------- | ---------------------------------- | ------------ | -------------------------------------- |
+| `canDrag`                 | `boolean \| ((params) => boolean)` | `true`       | Whether nodes can be dragged           |
+| `canDrop`                 | `(params) => boolean`              | -            | Validate if a drop is allowed          |
+| `canNodeHaveChildren`     | `(node) => boolean`                | `() => true` | Whether a node can have children       |
+| `maxDepth`                | `number`                           | -            | Maximum nesting depth                  |
+| `shouldCopyOnOutsideDrop` | `boolean \| ((params) => boolean)` | `false`      | Copy node when dropped outside         |
+| `dndType`                 | `string`                           | -            | Custom drag type for multi-tree setups |
+| `onMoveNode`              | `(params) => void`                 | -            | Called after a node is moved           |
+| `onDragStateChanged`      | `(params) => void`                 | -            | Called when drag state changes         |
 
 ### Search
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `searchQuery` | `string` | Search query string |
-| `searchMethod` | `(params) => boolean` | Custom search matching function |
-| `searchFocusOffset` | `number` | Index of the focused match |
-| `searchFinishCallback` | `(matches) => void` | Called when search completes |
-| `onlyExpandSearchedNodes` | `boolean` | Collapse non-matching paths |
+| Prop                      | Type                  | Description                     |
+| ------------------------- | --------------------- | ------------------------------- |
+| `searchQuery`             | `string`              | Search query string             |
+| `searchMethod`            | `(params) => boolean` | Custom search matching function |
+| `searchFocusOffset`       | `number`              | Index of the focused match      |
+| `searchFinishCallback`    | `(matches) => void`   | Called when search completes    |
+| `onlyExpandSearchedNodes` | `boolean`             | Collapse non-matching paths     |
 
 ### Other
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `generateNodeProps` | `(params) => object` | Add custom props to each node |
-| `getNodeKey` | `(node) => string \| number` | Generate stable node keys |
-| `onVisibilityToggle` | `(params) => void` | Called when node expands/collapses |
-| `loadCollapsedLazyChildren` | `boolean` | Load lazy children before expanding |
-| `virtuaRef` | `RefObject<VListHandle>` | Direct access to the virtual list |
-| `dragDropManager` | `object` | External react-dnd manager |
+| Prop                        | Type                         | Description                         |
+| --------------------------- | ---------------------------- | ----------------------------------- |
+| `generateNodeProps`         | `(params) => object`         | Add custom props to each node       |
+| `getNodeKey`                | `(node) => string \| number` | Generate stable node keys           |
+| `onVisibilityToggle`        | `(params) => void`           | Called when node expands/collapses  |
+| `loadCollapsedLazyChildren` | `boolean`                    | Load lazy children before expanding |
+| `virtuaRef`                 | `RefObject<VListHandle>`     | Direct access to the virtual list   |
+| `dragDropManager`           | `object`                     | External react-dnd manager          |
 
 ## Theming
 
@@ -140,7 +136,7 @@ Override these CSS variables on the `.rst__tree` class or a parent element:
   --rst-bg-landing: lightblue;
   --rst-bg-cancel: #e6a8ad;
   --rst-text-color: #333;
-  --rst-icon-color: #6DB3F2;
+  --rst-icon-color: #6db3f2;
   --rst-button-bg: #fff;
   --rst-button-border: #989898;
 }
@@ -171,14 +167,19 @@ The library includes a File Explorer theme example in the Storybook demos:
 
 ```tsx
 import { SortableTree } from '@nosferatu500/react-sortable-tree'
-import { fileExplorerTheme, FILE_EXPLORER_THEME_CLASS } from './themes/file-explorer'
+import {
+  fileExplorerTheme,
+  FILE_EXPLORER_THEME_CLASS,
+} from './themes/file-explorer'
 
 function FileTree() {
   const [treeData, setTreeData] = useState([
-    { title: 'src', isDirectory: true, expanded: true, children: [
-      { title: 'index.ts' },
-      { title: 'App.tsx' },
-    ]},
+    {
+      title: 'src',
+      isDirectory: true,
+      expanded: true,
+      children: [{ title: 'index.ts' }, { title: 'App.tsx' }],
+    },
     { title: 'package.json' },
   ])
 

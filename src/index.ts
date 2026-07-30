@@ -10,3 +10,9 @@ export {
   SortableTree,
   SortableTreeWithoutDndContext,
 } from './react-sortable-tree'
+
+export type {
+  CanDropParams,
+  GenerateNodePropsParams,
+  ReactSortableTreeProps,
+} from './react-sortable-tree'

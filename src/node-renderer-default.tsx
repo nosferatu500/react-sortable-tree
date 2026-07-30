@@ -40,6 +40,9 @@ export interface NodeRendererProps {
   canDrop?: boolean
 }
 
+const NO_BUTTONS: React.ReactNode[] = []
+const NO_STYLE: React.CSSProperties = {}
+
 const renderToggleSection = (
   node: TreeItem,
   isDragging: boolean,
@@ -88,8 +91,9 @@ const renderHandle = (
     return (
       <div className="rst__loadingHandle">
         <div className="rst__loadingCircle">
-          {Array.from({ length: 12 }).map((_, index) => (
+          {Array.from({ length: 12 }, (_, index) => (
             <div
+              // oxlint-disable-next-line react/no-array-index-key
               key={index}
               className={classnames(
                 'rst__loadingCirclePoint',
@@ -114,9 +118,9 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   isSearchFocus = false,
   canDrag = false,
   toggleChildrenVisibility = undefined,
-  buttons = [],
+  buttons = NO_BUTTONS,
   className = '',
-  style = {},
+  style = NO_STYLE,
   parentNode: _parentNode = undefined,
   draggedNode = undefined,
   canDrop = false,
@@ -147,10 +151,10 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   const isDraggedDescendant = draggedNode && isDescendant(draggedNode, node)
   const isLandingPadActive = !didDrop && isDragging
 
-  let buttonStyle = { left: -0.5 * scaffoldBlockPxWidth, right: 0 }
-  if (rowDirection === 'rtl') {
-    buttonStyle = { right: -0.5 * scaffoldBlockPxWidth, left: 0 }
-  }
+  const buttonStyle =
+    rowDirection === 'rtl'
+      ? { right: -0.5 * scaffoldBlockPxWidth, left: 0 }
+      : { left: -0.5 * scaffoldBlockPxWidth, right: 0 }
 
   return (
     <div style={{ height: '100%' }} {...otherProps}>
@@ -220,6 +224,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
 
             <div className="rst__rowToolbar">
               {buttons?.map((btn, index) => (
+                // oxlint-disable-next-line react/no-array-index-key
                 <div key={index} className="rst__toolbarButton">
                   {btn}
                 </div>
