@@ -109,18 +109,5 @@
     "react-dnd": "^16.0.0",
     "react-dnd-html5-backend": "^16.0.0",
     "virtua": "^0.50.0"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not ie <= 11",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
   }
 }

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2024",
+    "target": "ES2025",
     "outDir": "lib",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": ["dom", "dom.iterable", "es2025"],
     "declaration": true,
     "declarationDir": "lib",
     "rootDir": "src",

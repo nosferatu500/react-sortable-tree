@@ -124,6 +124,7 @@ export default defineConfig({
   entry: 'src/index.ts',
   outDir: 'lib',
   format: 'esm',
+  target: 'es2025',
   sourcemap: true,
   clean: true,
   dts: true,

@@ -39,12 +39,12 @@ export default defineConfig(
     ],
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
-      ecmaVersion: 2024,
+      ecmaVersion: 2025,
       sourceType: 'module',
       globals: {
         ...globals.browser,
         ...globals.node,
-        ...globals.es2021,
+        ...globals.es2025,
       },
       parserOptions: {
         projectService: true,
@@ -106,11 +106,11 @@ export default defineConfig(
     extends: [js.configs.recommended],
     files: ['*.{js,mjs,cjs}'],
     languageOptions: {
-      ecmaVersion: 2024,
+      ecmaVersion: 2025,
       sourceType: 'module',
       globals: {
         ...globals.node,
-        ...globals.es2021,
+        ...globals.es2025,
       },
     },
   },
