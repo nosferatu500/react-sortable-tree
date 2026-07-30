@@ -6,15 +6,23 @@ import {
   SearchData,
   TreeIndex,
   TreeItem,
+  TreeKey,
   TreeNode,
   TreePath,
+  TreePathInput,
 } from '../types'
 
-const STOP_WALK = Number.NEGATIVE_INFINITY
+const STOP_WALK = -Infinity
 
+/**
+ * A single row as produced by `walk` / `getFlatDataFromTree`. This mirrors
+ * `WalkInfo` exactly — it is the same object, so it must declare `treeIndex`
+ * too, or callers see a shape that is narrower than what they actually get.
+ */
 export interface FlatDataItem extends TreeNode {
-  path: Array<string | number>
+  path: TreeKey[]
   lowerSiblingCounts: number[]
+  treeIndex: number
   parentNode?: TreeItem
 }
 
@@ -297,30 +305,30 @@ const mapDescendants = ({
   }
 }
 
-export const getVisibleNodeCount = ({ treeData }: FullTree): number => {
-  const traverse = (node: TreeItem): number => {
-    if (
-      !node.children ||
-      node.expanded !== true ||
-      typeof node.children === 'function'
-    ) {
-      return 1
-    }
-
-    return (
-      1 +
-      node.children.reduce(
-        (total: number, currentNode: TreeItem) => total + traverse(currentNode),
-        0
-      )
-    )
+const countVisibleNodes = (node: TreeItem): number => {
+  if (
+    !node.children ||
+    node.expanded !== true ||
+    typeof node.children === 'function'
+  ) {
+    return 1
   }
 
-  return treeData.reduce(
-    (total, currentNode) => total + traverse(currentNode),
-    0
+  return (
+    1 +
+    node.children.reduce(
+      (total: number, currentNode: TreeItem) =>
+        total + countVisibleNodes(currentNode),
+      0
+    )
   )
 }
+
+export const getVisibleNodeCount = ({ treeData }: FullTree): number =>
+  treeData.reduce(
+    (total, currentNode) => total + countVisibleNodes(currentNode),
+    0
+  )
 
 export const getVisibleNodeInfoAtIndex = ({
   treeData,
@@ -464,7 +472,7 @@ const applyNewNode = (
 
 const findAndUpdateNode = (
   root: PseudoRoot,
-  path: number[],
+  path: TreeKey[],
   newNode: NewNodeArg,
   getNodeKey: GetNodeKeyFunction,
   ignoreCollapsed: boolean
@@ -506,7 +514,7 @@ export const changeNodeAtPath = ({
   getNodeKey,
   ignoreCollapsed = true,
 }: FullTree &
-  TreePath & {
+  TreePathInput & {
     newNode: NewNodeArg
     getNodeKey: GetNodeKeyFunction
     ignoreCollapsed?: boolean
@@ -525,7 +533,7 @@ export const changeNodeAtPath = ({
 }
 
 type TreePathParams = FullTree &
-  TreePath & {
+  TreePathInput & {
     getNodeKey: GetNodeKeyFunction
     ignoreCollapsed?: boolean
   }
@@ -687,10 +695,10 @@ export const addNodeUnderParent = ({
     return indexCounter
   }
 
+  // eslint-disable-next-line unicorn/no-declarations-before-early-exit
   const nextTreeData = produce(treeData, (draft) => {
     findAndInsert(draft, 0)
   })
-
   if (!found) {
     throw new Error('No node found with the given key.')
   }
@@ -980,7 +988,7 @@ export const getTreeFromFlatData = <T extends Record<string, unknown>>({
 }: {
   flatData: T[]
   getKey?: (node: T) => string
-  getParentKey?: (node: T) => string
+  getParentKey?: (node: T) => string | null
   rootKey?: string | null
 }): T[] => {
   if (!flatData) {
@@ -988,10 +996,12 @@ export const getTreeFromFlatData = <T extends Record<string, unknown>>({
   }
 
   const childrenToParents = Object.groupBy(flatData, (child) =>
-    getParentKey(child)
+    String(getParentKey(child))
   )
 
-  if (rootKey === null || !childrenToParents[rootKey]) {
+  const rootGroupKey = String(rootKey)
+  const rootRows = childrenToParents[rootGroupKey]
+  if (!rootRows) {
     return []
   }
 
@@ -1008,7 +1018,7 @@ export const getTreeFromFlatData = <T extends Record<string, unknown>>({
     return { ...parent }
   }
 
-  return childrenToParents[rootKey].map((child) => trav(child))
+  return rootRows.map((child) => trav(child))
 }
 
 export const isDescendant = (older: TreeItem, younger: TreeItem): boolean => {

@@ -16,6 +16,12 @@ export interface TreePath {
   path: number[]
 }
 
+export type TreeKey = string | number
+
+export interface TreePathInput {
+  path: TreeKey[]
+}
+
 export interface TreeIndex {
   treeIndex: number
 }
@@ -33,7 +39,7 @@ export interface SearchData extends NodeData {
 export interface GetTreeItemChildren {
   done: (children: TreeItem[]) => void
   node: TreeItem
-  path: number[]
+  path: TreeKey[]
   lowerSiblingCounts: number[]
   treeIndex: number
 }

@@ -63,6 +63,7 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
         if (typeof ref === 'function') {
           ref(handle)
         } else {
+          // eslint-disable-next-line react-hooks/immutability
           ref.current = handle
         }
       }
@@ -78,8 +79,8 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    refs // Pass the array directly to avoid regeneration on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
+    refs
   )
 }
 
@@ -179,7 +180,7 @@ export const wrapPlaceholder = (
 
 const getBlocksOffset = (
   dropTargetProps: DropTargetProps,
-  monitor: DropTargetMonitor,
+  monitor: DropTargetMonitor<DragItem, DropResult>,
   treeId: string,
   componentRef: React.RefObject<HTMLElement | null>
 ): { blocksOffset: number; dragSourceInitialDepth: number } => {
@@ -217,7 +218,7 @@ const getBlocksOffset = (
 
 const getTargetDepth = (
   dropTargetProps: DropTargetProps,
-  monitor: DropTargetMonitor,
+  monitor: DropTargetMonitor<DragItem, DropResult>,
   componentRef: React.RefObject<HTMLElement | null>,
   canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
@@ -261,7 +262,7 @@ const getTargetDepth = (
 
 const canDrop = (
   dropTargetProps: DropTargetProps,
-  monitor: DropTargetMonitor,
+  monitor: DropTargetMonitor<DragItem, DropResult>,
   canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
   maxDepth: number | undefined,

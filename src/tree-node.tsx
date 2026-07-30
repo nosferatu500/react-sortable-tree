@@ -1,13 +1,9 @@
 import React, { Children, JSX, ReactNode, cloneElement } from 'react'
 import { ConnectDropTarget } from 'react-dnd'
-import { TreeItem, TreeNode, TreePath } from './types'
+import { TreeItem } from './types'
 import { classnames } from './utils/classnames'
+import { type FlatDataItem } from './utils/tree-data-utils'
 import './tree-node.css'
-
-export interface FlatDataItem extends TreeNode, TreePath {
-  lowerSiblingCounts: number[]
-  parentNode: TreeItem
-}
 
 export interface TreeRendererProps {
   treeIndex: number
@@ -19,8 +15,7 @@ export interface TreeRendererProps {
   lowerSiblingCounts: number[]
   rowDirection: 'ltr' | 'rtl' | string | undefined
   rowHeight:
-    | number
-    | ((treeIndex: number, node: TreeItem, path: number[]) => number)
+    number | ((treeIndex: number, node: TreeItem, path: number[]) => number)
 
   listIndex: number
   children: JSX.Element[]
@@ -138,8 +133,7 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
     if (treeIndex !== listIndex && i === swapDepth) {
       // This row has been shifted, and is at the depth of
       // the line pointing to the new destination
-      let highlightLineClass = ''
-
+      let highlightLineClass: string
       if (listIndex === swapFrom! + swapLength! - 1) {
         // This block is on the bottom (target) line
         // This block points at the target block (where the row will go when released)
@@ -182,10 +176,10 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
       ? { right: scaffoldBlockPxWidth * scaffoldBlockCount }
       : { left: scaffoldBlockPxWidth * scaffoldBlockCount }
 
-  let calculatedRowHeight = rowHeight
-  if (typeof rowHeight === 'function') {
-    calculatedRowHeight = rowHeight(treeIndex, node, path)
-  }
+  const calculatedRowHeight =
+    typeof rowHeight === 'function'
+      ? rowHeight(treeIndex, node, path)
+      : rowHeight
 
   return (
     <div

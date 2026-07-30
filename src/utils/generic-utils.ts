@@ -1,9 +1,9 @@
-export const slideRows = (
-  rows: unknown[],
+export const slideRows = <T>(
+  rows: T[],
   fromIndex: number,
   toIndex: number,
   count = 1
-): unknown[] => {
+): T[] => {
   const movedItems = rows.slice(fromIndex, fromIndex + count)
   const rowsWithoutMoved = rows.toSpliced(fromIndex, count)
 
