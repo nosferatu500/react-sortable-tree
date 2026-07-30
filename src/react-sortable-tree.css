@@ -1,3 +1,93 @@
+/* Public theming API.
+ *
+ * These are declared with @property so the browser type-checks them: a consumer
+ * passing an invalid value (`--rst-row-height: red`) now falls back to the
+ * initial value instead of silently collapsing the layout. The declarations also
+ * document the expected type of every knob in one place.
+ *
+ * Dimensions accept <length-percentage> rather than <length> so percentage-based
+ * row heights keep working. */
+@property --rst-row-height {
+  syntax: '<length-percentage>';
+  inherits: true;
+  initial-value: 62px;
+}
+@property --rst-block-width {
+  syntax: '<length-percentage>';
+  inherits: true;
+  initial-value: 44px;
+}
+@property --rst-handle-width {
+  syntax: '<length-percentage>';
+  inherits: true;
+  initial-value: 44px;
+}
+@property --rst-line-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #000;
+}
+@property --rst-line-highlight {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #36c2f6;
+}
+@property --rst-line-highlight-arrow {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: white;
+}
+@property --rst-primary-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #36c2f6;
+}
+@property --rst-focus-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fc6421;
+}
+@property --rst-match-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0080ff;
+}
+@property --rst-bg-landing {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: lightblue;
+}
+@property --rst-bg-cancel {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e6a8ad;
+}
+@property --rst-border-cancel {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e6a8ad;
+}
+@property --rst-text-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #333;
+}
+@property --rst-icon-color {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6db3f2;
+}
+@property --rst-button-bg {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fff;
+}
+@property --rst-button-border {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #989898;
+}
+
 .rst__tree {
   /* Dimensions */
   --rst-row-height: 62px;
@@ -6,7 +96,8 @@
 
   /* Colors */
   --rst-line-color: #000;
-  --rst-line-highlight: #36c2f6;
+  /* Defaults to the primary colour so re-theming one value propagates. */
+  --rst-line-highlight: var(--rst-primary-color);
   --rst-line-highlight-arrow: white;
 
   --rst-primary-color: #36c2f6;
@@ -15,7 +106,7 @@
 
   --rst-bg-landing: lightblue;
   --rst-bg-cancel: #e6a8ad;
-  --rst-border-cancel: #e6a8ad;
+  --rst-border-cancel: var(--rst-bg-cancel);
 
   --rst-text-color: #333;
 

@@ -148,95 +148,71 @@
   animation: pointFade 800ms infinite ease-in-out both;
 }
 
+/* The 12 spinner dots are positioned and phased from a single index rather than
+   twelve hand-written rule pairs.
+
+   - rotation: index x 30deg  (0deg .. 330deg)
+   - delay:    phase x -133.333ms
+
+   Dots opposite each other in the ring (n and n+6) fade together, so the phase
+   counts 6..1 and repeats. The original wrote dot 1 as -800ms and dot 7 as 0ms,
+   which are the same phase of an 800ms loop. It also styled a 13th dot that is
+   never rendered. */
+.rst__loadingCirclePoint {
+  transform: rotate(calc(var(--rst-point-index) * 30deg));
+}
+
+.rst__loadingCirclePoint::before {
+  animation-delay: calc(var(--rst-point-phase) * -133.333ms);
+}
+
 .rst__loadingCirclePoint:nth-of-type(1) {
-  transform: rotate(0deg);
+  --rst-point-index: 0;
+  --rst-point-phase: 6;
 }
-
-.rst__loadingCirclePoint:nth-of-type(7) {
-  transform: rotate(180deg);
-}
-
-.rst__loadingCirclePoint:nth-of-type(1)::before,
-.rst__loadingCirclePoint:nth-of-type(7)::before {
-  animation-delay: -800ms;
-}
-
 .rst__loadingCirclePoint:nth-of-type(2) {
-  transform: rotate(30deg);
+  --rst-point-index: 1;
+  --rst-point-phase: 5;
 }
-
-.rst__loadingCirclePoint:nth-of-type(8) {
-  transform: rotate(210deg);
-}
-
-.rst__loadingCirclePoint:nth-of-type(2)::before,
-.rst__loadingCirclePoint:nth-of-type(8)::before {
-  animation-delay: -666ms;
-}
-
 .rst__loadingCirclePoint:nth-of-type(3) {
-  transform: rotate(60deg);
+  --rst-point-index: 2;
+  --rst-point-phase: 4;
 }
-
-.rst__loadingCirclePoint:nth-of-type(9) {
-  transform: rotate(240deg);
-}
-
-.rst__loadingCirclePoint:nth-of-type(3)::before,
-.rst__loadingCirclePoint:nth-of-type(9)::before {
-  animation-delay: -533ms;
-}
-
 .rst__loadingCirclePoint:nth-of-type(4) {
-  transform: rotate(90deg);
+  --rst-point-index: 3;
+  --rst-point-phase: 3;
 }
-
-.rst__loadingCirclePoint:nth-of-type(10) {
-  transform: rotate(270deg);
-}
-
-.rst__loadingCirclePoint:nth-of-type(4)::before,
-.rst__loadingCirclePoint:nth-of-type(10)::before {
-  animation-delay: -400ms;
-}
-
 .rst__loadingCirclePoint:nth-of-type(5) {
-  transform: rotate(120deg);
+  --rst-point-index: 4;
+  --rst-point-phase: 2;
 }
-
-.rst__loadingCirclePoint:nth-of-type(11) {
-  transform: rotate(300deg);
-}
-
-.rst__loadingCirclePoint:nth-of-type(5)::before,
-.rst__loadingCirclePoint:nth-of-type(11)::before {
-  animation-delay: -266ms;
-}
-
 .rst__loadingCirclePoint:nth-of-type(6) {
-  transform: rotate(150deg);
+  --rst-point-index: 5;
+  --rst-point-phase: 1;
 }
-
-.rst__loadingCirclePoint:nth-of-type(12) {
-  transform: rotate(330deg);
-}
-
-.rst__loadingCirclePoint:nth-of-type(6)::before,
-.rst__loadingCirclePoint:nth-of-type(12)::before {
-  animation-delay: -133ms;
-}
-
 .rst__loadingCirclePoint:nth-of-type(7) {
-  transform: rotate(180deg);
+  --rst-point-index: 6;
+  --rst-point-phase: 6;
 }
-
-.rst__loadingCirclePoint:nth-of-type(13) {
-  transform: rotate(360deg);
+.rst__loadingCirclePoint:nth-of-type(8) {
+  --rst-point-index: 7;
+  --rst-point-phase: 5;
 }
-
-.rst__loadingCirclePoint:nth-of-type(7)::before,
-.rst__loadingCirclePoint:nth-of-type(13)::before {
-  animation-delay: 0ms;
+.rst__loadingCirclePoint:nth-of-type(9) {
+  --rst-point-index: 8;
+  --rst-point-phase: 4;
+}
+.rst__loadingCirclePoint:nth-of-type(10) {
+  --rst-point-index: 9;
+  --rst-point-phase: 3;
+}
+.rst__loadingCirclePoint:nth-of-type(11) {
+  --rst-point-index: 10;
+  --rst-point-phase: 2;
+}
+.rst__loadingCirclePoint:nth-of-type(12) {
+  --rst-point-index: 11;
+  --rst-point-phase: 1;
 }
 
 .rst__rowTitle {

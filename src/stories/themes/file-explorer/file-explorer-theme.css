@@ -32,20 +32,20 @@
   color: var(--rst-fe-text-color);
 }
 
-/* Disable default tree structure lines */
-.rst__file-explorer-theme .rst__lineBlock,
-.rst__file-explorer-theme .rst__lineHalfHorizontalRight,
-.rst__file-explorer-theme .rst__lineFullVertical,
-.rst__file-explorer-theme .rst__lineHalfVerticalTop,
-.rst__file-explorer-theme .rst__lineHalfVerticalBottom,
-.rst__file-explorer-theme .rst__lineChildren {
-  display: none;
-}
-
-/* Hide default highlight lines */
-.rst__file-explorer-theme .rst__highlightLineVertical,
-.rst__file-explorer-theme .rst__highlightBottomLeftCorner,
-.rst__file-explorer-theme .rst__highlightTopLeftCorner {
+/* Disable the default tree structure lines and highlight lines.
+   :is() keeps the theme prefix in one place instead of repeating it per class. */
+.rst__file-explorer-theme
+  :is(
+    .rst__lineBlock,
+    .rst__lineHalfHorizontalRight,
+    .rst__lineFullVertical,
+    .rst__lineHalfVerticalTop,
+    .rst__lineHalfVerticalBottom,
+    .rst__lineChildren,
+    .rst__highlightLineVertical,
+    .rst__highlightBottomLeftCorner,
+    .rst__highlightTopLeftCorner
+  ) {
   display: none;
 }
 
