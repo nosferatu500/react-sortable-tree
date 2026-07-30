@@ -19,7 +19,7 @@
   position: relative;
 }
 
-.rst__row>* {
+.rst__row > * {
   box-sizing: border-box;
 }
 
@@ -127,8 +127,14 @@
 }
 
 @keyframes pointFade {
-  0%, 19.999%, 100% { opacity: 0; }
-  20% { opacity: 1; }
+  0%,
+  19.999%,
+  100% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
 }
 
 .rst__loadingCirclePoint::before {
@@ -279,11 +285,12 @@
   background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCI+PGNpcmNsZSBjeD0iOSIgY3k9IjkiIHI9IjgiIGZpbGw9IiNGRkYiLz48ZyBzdHJva2U9IiM5ODk4OTgiIHN0cm9rZS13aWR0aD0iMS45IiA+PHBhdGggZD0iTTQuNSA5aDkiLz48cGF0aCBkPSJNOSA0LjV2OSIvPjwvZz4KPC9zdmc+');
 }
 
-
 .rst__collapseButton:focus,
 .rst__expandButton:focus {
   outline: none;
-  box-shadow: 0 0 0 1px #000, 0 0 1px 3px var(--rst-primary-color);
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 1px 3px var(--rst-primary-color);
 }
 
 /**

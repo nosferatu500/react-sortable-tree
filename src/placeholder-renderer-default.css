@@ -9,7 +9,7 @@
 }
 
 .rst__placeholder,
-.rst__placeholder>* {
+.rst__placeholder > * {
   box-sizing: border-box;
 }
 

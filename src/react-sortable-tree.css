@@ -1,30 +1,30 @@
 .rst__tree {
-    /* Dimensions */
-    --rst-row-height: 62px;
-    --rst-block-width: 44px;
-    --rst-handle-width: 44px;
+  /* Dimensions */
+  --rst-row-height: 62px;
+  --rst-block-width: 44px;
+  --rst-handle-width: 44px;
 
-    /* Colors */
-    --rst-line-color: #000;
-    --rst-line-highlight: #36c2f6;
-    --rst-line-highlight-arrow: white;
+  /* Colors */
+  --rst-line-color: #000;
+  --rst-line-highlight: #36c2f6;
+  --rst-line-highlight-arrow: white;
 
-    --rst-primary-color: #36c2f6;
-    --rst-focus-color: #fc6421;
-    --rst-match-color: #0080ff;
+  --rst-primary-color: #36c2f6;
+  --rst-focus-color: #fc6421;
+  --rst-match-color: #0080ff;
 
-    --rst-bg-landing: lightblue;
-    --rst-bg-cancel: #e6a8ad;
-    --rst-border-cancel: #e6a8ad;
+  --rst-bg-landing: lightblue;
+  --rst-bg-cancel: #e6a8ad;
+  --rst-border-cancel: #e6a8ad;
 
-    --rst-text-color: #333;
+  --rst-text-color: #333;
 
-    --rst-icon-color: #6DB3F2;
-    
-    --rst-button-bg: #fff;
-    --rst-button-border: #989898;
+  --rst-icon-color: #6db3f2;
 
-    /* Layout */
-    display: block;
-    height: 100%;
+  --rst-button-bg: #fff;
+  --rst-button-border: #989898;
+
+  /* Layout */
+  display: block;
+  height: 100%;
 }
