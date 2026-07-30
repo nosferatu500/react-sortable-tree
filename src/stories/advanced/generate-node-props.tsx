@@ -1,7 +1,12 @@
 import React, { useState } from 'react'
-import { SortableTree, changeNodeAtPath } from '../../../src'
+import {
+  SortableTree,
+  changeNodeAtPath,
+  type GetNodeKeyFunction,
+  type TreeItem,
+} from '../../../src'
 
-const data = [
+const data: TreeItem[] = [
   { id: 1, position: 'Goalkeeper' },
   { id: 2, position: 'Wing-back' },
   {
@@ -13,10 +18,10 @@ const data = [
 
 const TEAM_COLORS = ['Red', 'Black', 'Green', 'Blue']
 
-const GenerateNodeProps: React.FC = () => {
-  const [treeData, setTreeData] = useState<any>(data)
+const getNodeKey: GetNodeKeyFunction = ({ node }) => Number(node.id)
 
-  const getNodeKey = ({ node: { id } }: any) => id
+const GenerateNodeProps: React.FC = () => {
+  const [treeData, setTreeData] = useState<TreeItem[]>(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>
@@ -25,16 +30,10 @@ const GenerateNodeProps: React.FC = () => {
         onChange={setTreeData}
         getNodeKey={getNodeKey}
         generateNodeProps={({ node, path }) => {
-          const rootLevelIndex =
-            treeData.reduce((acc: any, n: any, index: number) => {
-              if (acc !== null) {
-                return acc
-              }
-              if (path[0] === n.id) {
-                return index
-              }
-              return null
-            }, null) || 0
+          const rootLevelIndex = Math.max(
+            0,
+            treeData.findIndex((n) => path[0] === n.id)
+          )
           const playerColor = TEAM_COLORS[rootLevelIndex]
 
           return {
@@ -46,7 +45,7 @@ const GenerateNodeProps: React.FC = () => {
                   : 'none',
             },
             title: `${playerColor} ${
-              path.length === 1 ? 'Captain' : node.position
+              path.length === 1 ? 'Captain' : String(node.position)
             }`,
             onClick: () => {
               setTreeData(

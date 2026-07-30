@@ -1,21 +1,18 @@
-module.exports = {
-  "stories": ["../src/**/*.stories.tsx"],
+/** @type {import('@storybook/react-vite').StorybookConfig} */
 
-  "addons": [
-    "@storybook/addon-links",
-    "@storybook/addon-webpack5-compiler-swc",
-    "@chromatic-com/storybook",
-    "@storybook/addon-docs"
-  ],
+export default {
+  stories: ['../src/**/*.stories.tsx'],
+
+  addons: ['@storybook/addon-links', '@storybook/addon-docs'],
 
   framework: {
-    name: "@storybook/react-webpack5",
-    options: {}
+    name: '@storybook/react-vite',
+    options: {},
   },
 
   docs: {},
 
   typescript: {
-    reactDocgen: "react-docgen-typescript"
-  }
-};
+    reactDocgen: 'react-docgen-typescript',
+  },
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type TreeItem } from '../../../src'
 
 const data = [
   {
@@ -37,12 +37,12 @@ const data = [
 ]
 
 const ChildlessNodes: React.FC = () => {
-  const [treeData, setTreeData] = useState(data)
+  const [treeData, setTreeData] = useState<TreeItem[]>(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>
       <SortableTree
-        canNodeHaveChildren={(node: any) => !node.isPerson}
+        canNodeHaveChildren={(node) => !node.isPerson}
         treeData={treeData}
         onChange={setTreeData}
       />

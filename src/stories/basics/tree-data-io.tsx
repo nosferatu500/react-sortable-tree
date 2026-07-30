@@ -3,19 +3,25 @@ import {
   SortableTree,
   getFlatDataFromTree,
   getTreeFromFlatData,
+  type TreeItem,
 } from '../../../src'
 
 const initialData = [
   { id: '1', name: 'N1', parent: null },
   { id: '2', name: 'N2', parent: null },
-  { id: '3', name: 'N3', parent: 2 },
-  { id: '4', name: 'N4', parent: 3 },
+  { id: '3', name: 'N3', parent: '2' },
+  { id: '4', name: 'N4', parent: '3' },
 ]
 
 const TreeDataIO: React.FC = () => {
-  const [treeData, setTreeData] = useState(
+  const [treeData, setTreeData] = useState<TreeItem[]>(
     getTreeFromFlatData({
-      flatData: initialData.map((node) => ({ ...node, title: node.name })),
+      flatData: initialData.map(({ id, name, parent }) => ({
+        id,
+        name,
+        parent,
+        title: name,
+      })),
       getKey: (node) => node.id, // resolve a node's key
       getParentKey: (node) => node.parent, // resolve a node's parent's key
       rootKey: null, // The value of the parent key when there is no parent (i.e., at root level)
@@ -24,15 +30,16 @@ const TreeDataIO: React.FC = () => {
 
   const flatData = getFlatDataFromTree({
     treeData,
-    getNodeKey: ({ node }) => node.id, // This ensures your "id" properties are exported in the path
+    getNodeKey: ({ node }) => String(node.id), // This ensures your "id" properties are exported in the path
     ignoreCollapsed: false, // Makes sure you traverse every node in the tree, not just the visible ones
   }).map(({ node, path }) => ({
-    id: node.id,
-    name: node.name,
+    // Custom fields come off TreeItem's index signature as `unknown`.
+    id: String(node.id),
+    name: String(node.name),
 
     // The last entry in the path is this node's key
     // The second to last entry (accessed here) is the parent node's key
-    parent: path.length > 1 ? path.at(-2) : null,
+    parent: path.length > 1 ? String(path.at(-2)) : null,
   }))
 
   return (

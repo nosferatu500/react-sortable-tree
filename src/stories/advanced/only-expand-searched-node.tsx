@@ -1,59 +1,60 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type SearchData, type TreeItem } from '../../../src'
 
-const OnlyExpandSearchedNodes: React.FC = () => {
-  const title = 'Hay'
+const title = 'Hay'
 
-  // For generating a haystack (you probably won't need to do this)
-  const getStack = (left: number, hasNeedle: any = false): any => {
-    if (left === 0) {
-      return hasNeedle ? { title: 'Needle' } : { title }
-    }
-
-    return {
-      title,
-      children: [
-        {
-          title,
-          children: [getStack(left - 1, hasNeedle && left % 2), { title }],
-        },
-        { title },
-        {
-          title,
-          children: [
-            { title },
-            getStack(left - 1, hasNeedle && (left + 1) % 2),
-          ],
-        },
-      ],
-    }
+// For generating a haystack (you probably won't need to do this)
+const getStack = (
+  left: number,
+  hasNeedle: boolean | number = false
+): TreeItem => {
+  if (left === 0) {
+    return hasNeedle ? { title: 'Needle' } : { title }
   }
 
+  return {
+    title,
+    children: [
+      {
+        title,
+        children: [getStack(left - 1, hasNeedle && left % 2), { title }],
+      },
+      { title },
+      {
+        title,
+        children: [{ title }, getStack(left - 1, hasNeedle && (left + 1) % 2)],
+      },
+    ],
+  }
+}
+
+// Case insensitive search of `node.title`
+const customSearchMethod = ({ node, searchQuery }: SearchData) =>
+  Boolean(searchQuery) &&
+  String(node.title ?? '')
+    .toLowerCase()
+    .includes(searchQuery.toLowerCase())
+
+const OnlyExpandSearchedNodes: React.FC = () => {
   const [searchString, setSearchString] = useState('')
   const [searchFocusIndex, setSearchFocusIndex] = useState(0)
   const [searchFoundCount, setSearchFoundCount] = useState(0)
-  const [treeData, setTreeData] = useState([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     {
       title: 'Haystack',
       children: [getStack(3, true), getStack(3), { title }, getStack(2, true)],
     },
   ])
 
-  // Case insensitive search of `node.title`
-  const customSearchMethod = ({ node, searchQuery }: any) =>
-    searchQuery && node.title.toLowerCase().includes(searchQuery.toLowerCase())
-
+  // searchFocusIndex is always a number, so the previous `=== null` guards
+  // here were dead branches.
   const selectPrevMatch = () =>
     setSearchFocusIndex(
-      searchFocusIndex === null
-        ? searchFoundCount - 1
-        : (searchFoundCount + searchFocusIndex - 1) % searchFoundCount
+      (searchFoundCount + searchFocusIndex - 1) % searchFoundCount
     )
 
   const selectNextMatch = () =>
-    setSearchFocusIndex(
-      searchFocusIndex === null ? 0 : (searchFocusIndex + 1) % searchFoundCount
-    )
+    setSearchFocusIndex((searchFocusIndex + 1) % searchFoundCount)
 
   return (
     <div>

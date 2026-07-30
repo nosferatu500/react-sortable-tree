@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type CanDropParams, type TreeItem } from '../../../src'
 
 const data = [
   {
@@ -30,25 +30,32 @@ const data = [
   },
 ]
 
-const CanDrop: React.FC = () => {
-  const [treeData, setTreeData] = useState(data)
+// This tree's `getNodeKey` returns the string `id`, so the paths handed to
+// `canDrop` hold those ids. They are typed as a numeric path, so stringify
+// before comparing against the ids below.
+const canDrop = ({
+  node,
+  nextParent,
+  prevPath,
+  nextPath,
+}: CanDropParams): boolean => {
+  const prevKeys = prevPath.map(String)
+  const nextKeys = nextPath.map(String)
 
-  const canDrop = ({ node, nextParent, prevPath, nextPath }: any) => {
-    if (prevPath.includes('trap') && !nextPath.includes('trap')) {
-      return false
-    }
-
-    if (node.isTwin && nextParent && nextParent.isTwin) {
-      return false
-    }
-
-    const noGrandkidsDepth = nextPath.indexOf('no-grandkids')
-    if (noGrandkidsDepth !== -1 && nextPath.length - noGrandkidsDepth > 2) {
-      return false
-    }
-
-    return true
+  if (prevKeys.includes('trap') && !nextKeys.includes('trap')) {
+    return false
   }
+
+  if (node.isTwin && nextParent?.isTwin) {
+    return false
+  }
+
+  const noGrandkidsDepth = nextKeys.indexOf('no-grandkids')
+  return noGrandkidsDepth === -1 || nextKeys.length - noGrandkidsDepth <= 2
+}
+
+const CanDrop: React.FC = () => {
+  const [treeData, setTreeData] = useState<TreeItem[]>(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>
@@ -56,7 +63,7 @@ const CanDrop: React.FC = () => {
         treeData={treeData}
         canDrop={canDrop}
         // Need to set getNodeKey to get meaningful ids in paths
-        getNodeKey={({ node }: any) => node.id}
+        getNodeKey={({ node }) => String(node.id)}
         onChange={setTreeData}
       />
     </div>

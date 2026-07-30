@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type TreeItem } from '../../../src'
 
 const rtlData = [
   {
@@ -19,7 +19,7 @@ const rtlData = [
 ]
 
 const RTLSupport: React.FC = () => {
-  const [treeData, setTreeData] = useState(rtlData)
+  const [treeData, setTreeData] = useState<TreeItem[]>(rtlData)
   const [direction, setDirection] = useState<'ltr' | 'rtl'>('rtl')
 
   return (

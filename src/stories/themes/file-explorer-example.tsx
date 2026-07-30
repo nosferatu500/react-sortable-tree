@@ -4,7 +4,7 @@ import {
   fileExplorerTheme,
   FILE_EXPLORER_THEME_CLASS,
   FILE_EXPLORER_DARK_CLASS,
-} from '../themes/file-explorer'
+} from './file-explorer'
 
 const initialTreeData: TreeItem[] = [
   {
@@ -72,6 +72,28 @@ const initialTreeData: TreeItem[] = [
   { title: 'README.md' },
   { title: '.gitignore' },
 ]
+
+// Rendered verbatim in the story as a usage snippet. The `{...}` braces are
+// literal JSX being shown to the reader, not interpolations — hence the
+// disabled rule.
+/* eslint-disable unicorn/no-incorrect-template-string-interpolation */
+const USAGE_SAMPLE = `import { fileExplorerTheme, FILE_EXPLORER_THEME_CLASS } from './themes/file-explorer'
+
+<div className={FILE_EXPLORER_THEME_CLASS}>
+  <SortableTree
+    treeData={treeData}
+    onChange={setTreeData}
+    theme={fileExplorerTheme}
+    rowHeight={28}
+    // Only folders can have children
+    canNodeHaveChildren={(node) => node.isDirectory === true}
+    // Only allow dropping into folders
+    canDrop={({ nextParent }) =>
+      !nextParent || nextParent.isDirectory === true
+    }
+  />
+</div>`
+/* eslint-enable unicorn/no-incorrect-template-string-interpolation */
 
 const FileExplorer: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
@@ -184,22 +206,7 @@ const FileExplorer: React.FC = () => {
             overflow: 'auto',
             fontSize: 12,
           }}>
-          {`import { fileExplorerTheme, FILE_EXPLORER_THEME_CLASS } from './themes/file-explorer'
-
-<div className={FILE_EXPLORER_THEME_CLASS}>
-  <SortableTree
-    treeData={treeData}
-    onChange={setTreeData}
-    theme={fileExplorerTheme}
-    rowHeight={28}
-    // Only folders can have children
-    canNodeHaveChildren={(node) => node.isDirectory === true}
-    // Only allow dropping into folders
-    canDrop={({ nextParent }) =>
-      !nextParent || nextParent.isDirectory === true
-    }
-  />
-</div>`}
+          {USAGE_SAMPLE}
         </pre>
       </div>
     </div>

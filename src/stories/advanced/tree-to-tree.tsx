@@ -1,12 +1,12 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type TreeItem } from '../../../src'
 
 const TreeToTree: React.FC = () => {
-  const [treeData1, setTreeData1] = useState([
+  const [treeData1, setTreeData1] = useState<TreeItem[]>([
     { title: 'node1', children: [{ title: 'Child node' }] },
     { title: 'node2' },
   ])
-  const [treeData2, setTreeData2] = useState([
+  const [treeData2, setTreeData2] = useState<TreeItem[]>([
     { title: 'node3' },
     { title: 'node4' },
   ])

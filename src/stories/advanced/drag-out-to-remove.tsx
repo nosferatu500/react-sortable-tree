@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { DndProvider, useDrop } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
+import {
+  SortableTreeWithoutDndContext as SortableTree,
+  type TreeItem,
+} from '../../../src'
 
 // -------------------------
 // Create an drop target component that can receive the nodes
@@ -10,15 +13,28 @@ import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
 // This type must be assigned to the tree via the `dndType` prop as well
 const trashAreaType = 'yourNodeType'
 
+// Shape the tree puts into the drag layer. Declaring it lets useDrop type
+// `item`, instead of it arriving as `unknown` and blocking the spread below.
+type TreeDragItem = {
+  node: TreeItem
+  path: number[]
+  treeIndex: number
+  treeId: string
+}
+
 const TrashAreaComponent = ({ children }: { children: React.ReactNode }) => {
-  const [{ isOver }, drop] = useDrop(() => ({
+  const [{ isOver }, drop] = useDrop<
+    TreeDragItem,
+    TreeDragItem | undefined,
+    { isOver: boolean }
+  >(() => ({
     accept: trashAreaType,
     drop: (item, monitor) => {
       if (monitor.didDrop()) {
         return undefined
       }
 
-      return { ...monitor.getItem(), treeId: 'trash' }
+      return { ...item, treeId: 'trash' }
     },
     collect: (monitor) => ({
       isOver: monitor.isOver({ shallow: true }),
@@ -27,7 +43,9 @@ const TrashAreaComponent = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div
-      ref={drop}
+      // react-dnd's connectors are callable refs but aren't structurally a
+      // React.Ref, so they need a cast — same as src/node-renderer-default.tsx.
+      ref={drop as unknown as React.Ref<HTMLDivElement>}
       style={{
         height: '100vh',
         padding: 50,
@@ -39,7 +57,7 @@ const TrashAreaComponent = ({ children }: { children: React.ReactNode }) => {
 }
 
 const DragOutToRemove: React.FC = () => {
-  const [treeData, setTreeData] = useState([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     { title: '1' },
     { title: '2' },
     { title: '3' },

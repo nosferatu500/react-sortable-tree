@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type TreeItem } from '../../index'
 
 const darkModeStyles = `
   /* --- Global Variables Override for Dark Theme --- */
@@ -80,7 +80,7 @@ const darkModeStyles = `
 
 const DarkMode: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
-  const [treeData, setTreeData] = useState([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     {
       title: 'Dark Mode Ready',
       subtitle: 'The text should be light grey now',

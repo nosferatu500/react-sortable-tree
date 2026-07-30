@@ -1,8 +1,8 @@
 import React, { JSX } from 'react'
 import { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
+import { TreeItem, NodeData } from '../../../types'
 import { classnames } from '../../../utils/classnames'
 import { isDescendant } from '../../../utils/tree-data-utils'
-import { TreeItem, NodeData } from '../../../types'
 
 export interface FileExplorerNodeRendererProps {
   node: TreeItem
@@ -40,6 +40,51 @@ export interface FileExplorerNodeRendererProps {
 }
 
 // SVG Icons
+// Hoisted so the defaults are referentially stable across renders.
+const NO_BUTTONS: React.ReactNode[] = []
+const NO_STYLE: React.CSSProperties = {}
+
+// Extract a file extension from the title, when the node is a file and the
+// title is a plain string.
+// `nodeTitle` may also be a render function, so this takes `unknown` and only
+// acts on the plain-string case.
+const getFileExtension = (
+  nodeTitle: unknown,
+  isFolder: boolean
+): string | undefined => {
+  if (isFolder || typeof nodeTitle !== 'string') {
+    return undefined
+  }
+
+  const parts = nodeTitle.split('.')
+  return parts.length > 1 ? parts.at(-1) : undefined
+}
+
+const getRowClassName = ({
+  isLandingPadActive,
+  canDrop,
+  isSearchMatch,
+  isSearchFocus,
+  rowDirectionClass,
+  className,
+}: {
+  isLandingPadActive: boolean
+  canDrop: boolean
+  isSearchMatch: boolean
+  isSearchFocus: boolean
+  rowDirectionClass: string | undefined
+  className: string | undefined
+}) =>
+  classnames(
+    'rst__fe-row',
+    isLandingPadActive ? 'rst__fe-rowLandingPad' : '',
+    isLandingPadActive && !canDrop ? 'rst__fe-rowCancelPad' : '',
+    isSearchMatch ? 'rst__fe-rowSearchMatch' : '',
+    isSearchFocus ? 'rst__fe-rowSearchFocus' : '',
+    rowDirectionClass ?? '',
+    className ?? ''
+  )
+
 const ChevronRightIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
     <path
@@ -159,9 +204,9 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
   isSearchFocus = false,
   canDrag = false,
   toggleChildrenVisibility = undefined,
-  buttons = [],
+  buttons = NO_BUTTONS,
   className = '',
-  style = {},
+  style = NO_STYLE,
   parentNode: _parentNode = undefined,
   draggedNode = undefined,
   canDrop = false,
@@ -185,18 +230,7 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
   const hasChildren =
     node.children &&
     (node.children.length > 0 || typeof node.children === 'function')
-  const isFolder = hasChildren || node.isDirectory
-
-  // Extract file extension from title if it's a string
-  const getExtension = () => {
-    if (typeof nodeTitle === 'string' && !isFolder) {
-      const parts = nodeTitle.split('.')
-      if (parts.length > 1) {
-        return parts.at(-1)
-      }
-    }
-    return undefined
-  }
+  const isFolder = Boolean(hasChildren || node.isDirectory)
 
   const isDraggedDescendant = draggedNode && isDescendant(draggedNode, node)
   const isLandingPadActive = !didDrop && isDragging
@@ -209,36 +243,42 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
 
   const nodeContent = (
     <div
-      className={classnames(
-        'rst__fe-row',
-        isLandingPadActive ? 'rst__fe-rowLandingPad' : '',
-        isLandingPadActive && !canDrop ? 'rst__fe-rowCancelPad' : '',
-        isSearchMatch ? 'rst__fe-rowSearchMatch' : '',
-        isSearchFocus ? 'rst__fe-rowSearchFocus' : '',
-        rowDirectionClass ?? '',
-        className ?? ''
-      )}
+      className={getRowClassName({
+        isLandingPadActive,
+        canDrop,
+        isSearchMatch,
+        isSearchFocus,
+        rowDirectionClass,
+        className,
+      })}
       style={{
         opacity: isDraggedDescendant ? 0.5 : 1,
         ...style,
       }}>
       {/* Expand/Collapse Chevron */}
-      <span
+      <button
+        type="button"
         className={classnames(
           'rst__fe-chevron',
           hasChildren ? 'rst__fe-chevronVisible' : ''
         )}
+        // Hidden from assistive tech when there is nothing to expand, so the
+        // toolbar isn't littered with unusable controls.
+        aria-hidden={!hasChildren}
+        tabIndex={hasChildren ? 0 : -1}
+        aria-expanded={hasChildren ? node.expanded === true : undefined}
+        aria-label={hasChildren ? 'Toggle children' : undefined}
         onClick={handleToggle}>
         {hasChildren &&
           (node.expanded ? <ChevronDownIcon /> : <ChevronRightIcon />)}
-      </span>
+      </button>
 
       {/* File/Folder Icon */}
       <span className="rst__fe-icon">
         {isFolder ? (
           <FolderIcon expanded={node.expanded} />
         ) : (
-          <FileIcon extension={getExtension()} />
+          <FileIcon extension={getFileExtension(nodeTitle, isFolder)} />
         )}
       </span>
 
@@ -253,6 +293,9 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
       {buttons && buttons.length > 0 && (
         <span className="rst__fe-toolbar">
           {buttons.map((btn, index) => (
+            // Caller-supplied nodes with no stable identity available, so the
+            // index is the only usable key.
+            // oxlint-disable-next-line react/no-array-index-key
             <span key={index} className="rst__fe-toolbarButton">
               {btn}
             </span>
@@ -264,7 +307,11 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
 
   // Wrap with drag source if draggable
   const draggableContent = canDrag ? (
-    <div ref={connectDragSource} style={{ height: '100%' }}>
+    <div
+      // react-dnd's connectors are callable refs but aren't structurally a
+      // React.Ref, so they need a cast — same as src/node-renderer-default.tsx.
+      ref={connectDragSource as unknown as React.Ref<HTMLDivElement>}
+      style={{ height: '100%' }}>
       {connectDragPreview(nodeContent)}
     </div>
   ) : (

@@ -2,7 +2,10 @@ import React, { useState } from 'react'
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { TouchBackend } from 'react-dnd-touch-backend'
-import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
+import {
+  SortableTreeWithoutDndContext as SortableTree,
+  type TreeItem,
+} from '../../../src'
 
 // https://stackoverflow.com/a/4819886/1601953
 const isTouchDevice = !!(
@@ -11,7 +14,7 @@ const isTouchDevice = !!(
 const dndBackend = isTouchDevice ? TouchBackend : HTML5Backend
 
 const TouchSupport: React.FC = () => {
-  const [treeData, setTreeData] = useState([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     { title: 'Chicken', expanded: true, children: [{ title: 'Egg' }] },
   ])
 

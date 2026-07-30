@@ -1,7 +1,12 @@
 import React, { useState } from 'react'
-import { SortableTree, changeNodeAtPath } from '../../../src'
+import {
+  SortableTree,
+  changeNodeAtPath,
+  defaultGetNodeKey,
+  type TreeItem,
+} from '../../../src'
 
-const data = [
+const data: TreeItem[] = [
   { name: 'IT Manager' },
   {
     name: 'Regional Manager',
@@ -11,9 +16,7 @@ const data = [
 ]
 
 const ModifyNodes: React.FC = () => {
-  const [treeData, setTreeData] = useState<any>(data)
-
-  const getNodeKey = ({ treeIndex }: { treeIndex: number }) => treeIndex
+  const [treeData, setTreeData] = useState<TreeItem[]>(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>
@@ -24,7 +27,9 @@ const ModifyNodes: React.FC = () => {
           title: (
             <input
               style={{ fontSize: '1.1rem' }}
-              value={node.name}
+              // Custom fields come off TreeItem's index signature as
+              // `unknown`, so coerce before handing to a controlled input.
+              value={String(node.name ?? '')}
               onChange={(event) => {
                 const name = event.target.value
 
@@ -32,7 +37,7 @@ const ModifyNodes: React.FC = () => {
                   changeNodeAtPath({
                     treeData,
                     path,
-                    getNodeKey,
+                    getNodeKey: defaultGetNodeKey,
                     newNode: { ...node, name },
                   })
                 )

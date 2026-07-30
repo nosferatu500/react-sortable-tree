@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
 import { DndProvider, useDrag } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { SortableTreeWithoutDndContext as SortableTree } from '../../../src'
+import {
+  SortableTreeWithoutDndContext as SortableTree,
+  type TreeItem,
+} from '../../../src'
 
 // -------------------------
 // Create an drag source component that can be dragged into the tree
@@ -24,7 +27,9 @@ const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
 
   return (
     <div
-      ref={drag}
+      // react-dnd's connectors are callable refs but aren't structurally a
+      // React.Ref, so they need a cast — same as src/node-renderer-default.tsx.
+      ref={drag as unknown as React.Ref<HTMLDivElement>}
       style={{
         display: 'inline-block',
         padding: '3px 5px',
@@ -39,7 +44,7 @@ const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
 }
 
 const ExternalNode: React.FC = () => {
-  const [treeData, setTreeData] = useState([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     { title: 'Mama Rabbit' },
     { title: 'Papa Rabbit' },
   ])

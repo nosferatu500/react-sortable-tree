@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type TreeItem } from '../../../src'
 // In your own app, you would need to use import styles once in the app
 // import 'react-sortable-tree/styles.css';
 
@@ -8,7 +8,7 @@ const data = [
 ]
 
 const Barebones: React.FC = () => {
-  const [treeData, setTreeData] = useState(data)
+  const [treeData, setTreeData] = useState<TreeItem[]>(data)
 
   return (
     <div style={{ height: 300, width: 700 }}>

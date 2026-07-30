@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-webpack5'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import AddRemoveExample from './add-remove'
 import BarebonesExample from './barebones'
 import CallbacksExample from './callbacks'
@@ -7,8 +7,6 @@ import ModifyNodesExample from './modify-nodes'
 import RowDirectionExample from './rtl-support'
 import SearchExample from './search'
 import TreeDataIOExample from './tree-data-io'
-import DarkModeExample from './dark-mode'
-import FileExplorerExample from './file-explorer'
 
 const meta: Meta<typeof BarebonesExample> = {
   title: 'Basics',
@@ -49,12 +47,4 @@ export const Callbacks: Story = {
 
 export const RowDirectionSupport: Story = {
   render: () => <RowDirectionExample />,
-}
-
-export const DarkModeTheme: Story = {
-  render: () => <DarkModeExample />,
-}
-
-export const FileExplorerTheme: Story = {
-  render: () => <FileExplorerExample />,
 }

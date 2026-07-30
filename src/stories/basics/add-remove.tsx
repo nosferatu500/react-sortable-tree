@@ -2,7 +2,9 @@ import React, { useState } from 'react'
 import {
   SortableTree,
   addNodeUnderParent,
+  defaultGetNodeKey,
   removeNodeAtPath,
+  type TreeItem,
 } from '../../../src'
 
 const firstNames = [
@@ -56,16 +58,15 @@ const firstNames = [
   'Simon',
 ]
 
+const getRandomName = () =>
+  firstNames[Math.floor(Math.random() * firstNames.length)]
+
 const AddRemove: React.FC = () => {
-  const [treeData, setTreeData] = useState<any>([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     { title: 'Peter Olofsson' },
     { title: 'Karl Johansson' },
   ])
   const [addAsFirstChild, setAddAsFirstChild] = useState(false)
-
-  const getNodeKey = ({ treeIndex }: { treeIndex: number }) => treeIndex
-  const getRandomName = () =>
-    firstNames[Math.floor(Math.random() * firstNames.length)]
 
   return (
     <div>
@@ -76,16 +77,19 @@ const AddRemove: React.FC = () => {
           generateNodeProps={({ node, path }) => ({
             buttons: [
               <button
+                key="add-child"
                 onClick={() => {
                   setTreeData(
                     addNodeUnderParent({
                       treeData,
                       parentKey: path.at(-1),
                       expandParent: true,
-                      getNodeKey,
+                      getNodeKey: defaultGetNodeKey,
                       newNode: {
+                        // `title` is a ReactNode, so it has to be coerced
+                        // before string operations.
                         title: `${getRandomName()} ${
-                          node.title.split(' ')[0]
+                          String(node.title ?? '').split(' ', 1)[0]
                         }sson`,
                       },
                       addAsFirstChild,
@@ -95,12 +99,13 @@ const AddRemove: React.FC = () => {
                 Add Child
               </button>,
               <button
+                key="remove"
                 onClick={() => {
                   setTreeData(
                     removeNodeAtPath({
                       treeData,
                       path,
-                      getNodeKey,
+                      getNodeKey: defaultGetNodeKey,
                     })
                   )
                 }}>
@@ -111,12 +116,12 @@ const AddRemove: React.FC = () => {
         />
       </div>
       <button
+        type="button"
         onClick={() => {
-          setTreeData(
-            treeData.concat({
-              title: `${getRandomName()} ${getRandomName()}sson`,
-            })
-          )
+          setTreeData([
+            ...treeData,
+            { title: `${getRandomName()} ${getRandomName()}sson` },
+          ])
         }}>
         Add more
       </button>

@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react-webpack5'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import BarebonesExampleNoContext from './barebones-no-context'
 import ChildlessNodes from './childless-nodes'
 import DragOutToRemoveExample from './drag-out-to-remove'

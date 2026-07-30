@@ -1,18 +1,22 @@
 import React, { useState } from 'react'
-import { SortableTree } from '../../../src'
+import { SortableTree, type TreeItem, type TreeKey } from '../../../src'
+
+const recordCall = (name: string, args: unknown) => {
+  console.log(`${name} called with arguments:`, args)
+}
 
 const Callbacks: React.FC = () => {
-  const [treeData, setTreeData] = useState([
+  const [treeData, setTreeData] = useState<TreeItem[]>([
     { title: 'A', expanded: true, children: [{ title: 'B' }] },
     { title: 'C' },
   ])
-  const [lastMovePrevPath, setLlastMovePrevPath] = useState<any>(null)
-  const [lastMoveNextPath, setLastMoveNextPath] = useState<any>(null)
-  const [lastMoveNode, setLastMoveNode] = useState<any>(null)
-
-  const recordCall = (name: string, args: any) => {
-    console.log(`${name} called with arguments:`, args)
-  }
+  const [lastMovePrevPath, setLastMovePrevPath] = useState<TreeKey[] | null>(
+    null
+  )
+  const [lastMoveNextPath, setLastMoveNextPath] = useState<TreeKey[] | null>(
+    null
+  )
+  const [lastMoveNode, setLastMoveNode] = useState<TreeItem | null>(null)
 
   return (
     <div>
@@ -27,8 +31,9 @@ const Callbacks: React.FC = () => {
           onMoveNode={(args) => {
             recordCall('onMoveNode', args)
             const { prevPath, nextPath, node } = args
-            setLlastMovePrevPath(prevPath)
-            setLastMoveNextPath(nextPath)
+            setLastMovePrevPath(prevPath)
+            // `nextPath` is optional on the callback params.
+            setLastMoveNextPath(nextPath ?? null)
             setLastMoveNode(node)
           }}
           onDragStateChanged={(args) => recordCall('onDragStateChanged', args)}
@@ -36,8 +41,8 @@ const Callbacks: React.FC = () => {
       </div>
       {lastMoveNode && (
         <div>
-          Node &quot;{lastMoveNode.title}&quot; moved from path [
-          {lastMovePrevPath.join(',')}] to path [{lastMoveNextPath.join(',')}
+          Node &quot;{String(lastMoveNode.title)}&quot; moved from path [
+          {lastMovePrevPath?.join(',')}] to path [{lastMoveNextPath?.join(',')}
           ].
         </div>
       )}
