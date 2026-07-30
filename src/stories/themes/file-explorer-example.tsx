@@ -1,5 +1,10 @@
 import React, { useState } from 'react'
-import { SortableTree, TreeItem } from '../../index'
+import {
+  SortableTree,
+  TreeItem,
+  defaultGetNodeKey,
+  removeNodeAtPath,
+} from '../../index'
 import {
   fileExplorerTheme,
   FILE_EXPLORER_THEME_CLASS,
@@ -161,13 +166,22 @@ const FileExplorer: React.FC = () => {
             canDrop={({ nextParent }) =>
               !nextParent || nextParent.isDirectory === true
             }
-            generateNodeProps={({ node }) => ({
+            generateNodeProps={({ node, path }) => ({
               buttons: [
                 <button
                   key="delete"
                   onClick={(e) => {
                     e.stopPropagation()
-                    alert(`Delete: ${node.title}`)
+                    // This tree does not set `getNodeKey`, so paths are
+                    // treeIndex-based and must be resolved with the same
+                    // default the tree itself uses.
+                    setTreeData(
+                      removeNodeAtPath({
+                        treeData,
+                        path,
+                        getNodeKey: defaultGetNodeKey,
+                      })
+                    )
                   }}
                   style={{
                     background: 'none',
@@ -177,7 +191,9 @@ const FileExplorer: React.FC = () => {
                     fontSize: 12,
                     color: isDark ? '#ccc' : '#666',
                   }}
-                  title="Delete">
+                  // The glyph alone is not a usable label, so name the target.
+                  aria-label={`Delete ${String(node.title ?? '')}`}
+                  title={`Delete ${String(node.title ?? '')}`}>
                   ×
                 </button>,
               ],
