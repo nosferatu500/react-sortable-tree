@@ -3,6 +3,7 @@ import AddRemoveExample from './add-remove'
 import BarebonesExample from './barebones'
 import CallbacksExample from './callbacks'
 import CanDropExample from './can-drop'
+import LazyChildrenExample from './lazy-children'
 import ModifyNodesExample from './modify-nodes'
 import RowDirectionExample from './rtl-support'
 import SearchExample from './search'
@@ -47,4 +48,8 @@ export const Callbacks: Story = {
 
 export const RowDirectionSupport: Story = {
   render: () => <RowDirectionExample />,
+}
+
+export const LazyChildren: Story = {
+  render: () => <LazyChildrenExample />,
 }

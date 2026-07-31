@@ -97,6 +97,7 @@ const OnlyExpandSearchedNodes: React.FC = () => {
 
       <div style={{ height: 300, width: 700 }}>
         <SortableTree
+          aria-label="Searchable haystack"
           treeData={treeData}
           onChange={setTreeData}
           //

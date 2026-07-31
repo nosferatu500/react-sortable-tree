@@ -86,6 +86,7 @@ const USAGE_SAMPLE = `import { fileExplorerTheme, FILE_EXPLORER_THEME_CLASS } fr
 
 <div className={FILE_EXPLORER_THEME_CLASS}>
   <SortableTree
+    aria-label="Project files"
     treeData={treeData}
     onChange={setTreeData}
     theme={fileExplorerTheme}
@@ -158,6 +159,7 @@ const FileExplorer: React.FC = () => {
         }}>
         <div style={{ height: 500 }}>
           <SortableTree
+            aria-label="Project files"
             treeData={treeData}
             onChange={setTreeData}
             theme={fileExplorerTheme}

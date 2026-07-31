@@ -46,7 +46,11 @@ const TreeDataIO: React.FC = () => {
     <div>
       ↓treeData for this tree was generated from flat data similar to DB rows↓
       <div style={{ height: 300, width: 700 }}>
-        <SortableTree treeData={treeData} onChange={setTreeData} />
+        <SortableTree
+          aria-label="Tree data source"
+          treeData={treeData}
+          onChange={setTreeData}
+        />
       </div>
       <hr />
       ↓This flat data is generated from the modified tree data↓

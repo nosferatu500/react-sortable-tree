@@ -14,7 +14,11 @@ const BarebonesNoContext: React.FC = () => {
   return (
     <div style={{ height: 300, width: 700 }}>
       <DndProvider backend={HTML5Backend}>
-        <SortableTree treeData={treeData} onChange={setTreeData} />
+        <SortableTree
+          aria-label="Tree inside an existing dnd context"
+          treeData={treeData}
+          onChange={setTreeData}
+        />
       </DndProvider>
     </div>
   )

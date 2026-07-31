@@ -70,6 +70,7 @@ const DragOutToRemove: React.FC = () => {
         <TrashAreaComponent>
           <div style={{ height: 300, width: 700 }}>
             <SortableTree
+              aria-label="Tree you can drag nodes out of"
               treeData={treeData}
               onChange={setTreeData}
               dndType={trashAreaType}

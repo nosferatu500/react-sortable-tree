@@ -4,6 +4,7 @@ import ChildlessNodes from './childless-nodes'
 import DragOutToRemoveExample from './drag-out-to-remove'
 import ExternalNodeExample from './external-node'
 import GenerateNodePropsExample from './generate-node-props'
+import LargeTreeExample from './large-tree'
 import OnlyExpandSearchedNodesExample from './only-expand-searched-node'
 import TouchSupportExample from './touch-support'
 import TreeToTreeExample from './tree-to-tree'
@@ -47,4 +48,8 @@ export const PreventSomeNodesFromHavingChildren: Story = {
 
 export const MinimalImplementationWithoutDndContext: Story = {
   render: () => <BarebonesExampleNoContext />,
+}
+
+export const LargeTree: Story = {
+  render: () => <LargeTreeExample />,
 }

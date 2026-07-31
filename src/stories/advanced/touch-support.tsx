@@ -26,7 +26,11 @@ const TouchSupport: React.FC = () => {
         </span>
 
         <div style={{ height: 300, width: 700 }}>
-          <SortableTree treeData={treeData} onChange={setTreeData} />
+          <SortableTree
+            aria-label="Touch-draggable tree"
+            treeData={treeData}
+            onChange={setTreeData}
+          />
         </div>
       </div>
     </DndProvider>

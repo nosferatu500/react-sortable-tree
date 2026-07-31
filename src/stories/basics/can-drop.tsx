@@ -60,6 +60,7 @@ const CanDrop: React.FC = () => {
   return (
     <div style={{ height: 300, width: 700 }}>
       <SortableTree
+        aria-label="Tree with restricted drops"
         treeData={treeData}
         canDrop={canDrop}
         // Need to set getNodeKey to get meaningful ids in paths

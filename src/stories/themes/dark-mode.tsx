@@ -142,7 +142,11 @@ const DarkMode: React.FC = () => {
       </div>
 
       <div style={{ height: 400 }}>
-        <SortableTree treeData={treeData} onChange={setTreeData} />
+        <SortableTree
+          aria-label="Dark mode tree"
+          treeData={treeData}
+          onChange={setTreeData}
+        />
       </div>
     </div>
   )

@@ -42,6 +42,7 @@ const ChildlessNodes: React.FC = () => {
   return (
     <div style={{ height: 300, width: 700 }}>
       <SortableTree
+        aria-label="Departments and people"
         canNodeHaveChildren={(node) => !node.isPerson}
         treeData={treeData}
         onChange={setTreeData}

@@ -21,6 +21,7 @@ const ModifyNodes: React.FC = () => {
   return (
     <div style={{ height: 300, width: 700 }}>
       <SortableTree
+        aria-label="Renameable tree"
         treeData={treeData}
         onChange={setTreeData}
         generateNodeProps={({ node, path }) => ({

@@ -54,6 +54,7 @@ const ExternalNode: React.FC = () => {
       <div>
         <div style={{ height: 300, width: 700 }}>
           <SortableTree
+            aria-label="Drop target tree"
             treeData={treeData}
             onChange={setTreeData}
             dndType={externalNodeType}

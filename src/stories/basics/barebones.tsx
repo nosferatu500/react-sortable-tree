@@ -14,7 +14,11 @@ const Barebones: React.FC = () => {
 
   return (
     <div style={{ height: 300, width: 700 }}>
-      <SortableTree treeData={treeData} onChange={setTreeData} />
+      <SortableTree
+        aria-label="Food chain"
+        treeData={treeData}
+        onChange={setTreeData}
+      />
     </div>
   )
 }

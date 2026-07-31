@@ -23,6 +23,7 @@ const Callbacks: React.FC = () => {
       Open your console to see callback parameter info
       <div style={{ height: 300, width: 700 }}>
         <SortableTree
+          aria-label="Tree with callbacks"
           treeData={treeData}
           onChange={setTreeData}
           // Need to set getNodeKey to get meaningful ids in paths

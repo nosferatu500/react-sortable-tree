@@ -72,6 +72,7 @@ const AddRemove: React.FC = () => {
     <div>
       <div style={{ height: 300, width: 700 }}>
         <SortableTree
+          aria-label="Editable tree"
           treeData={treeData}
           onChange={setTreeData}
           generateNodeProps={({ node, path }) => ({

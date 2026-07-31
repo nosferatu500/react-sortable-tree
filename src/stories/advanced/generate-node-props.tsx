@@ -26,6 +26,7 @@ const GenerateNodeProps: React.FC = () => {
   return (
     <div style={{ height: 300, width: 700 }}>
       <SortableTree
+        aria-label="Team line-up"
         treeData={treeData}
         onChange={setTreeData}
         getNodeKey={getNodeKey}

@@ -43,6 +43,7 @@ const RTLSupport: React.FC = () => {
 
       <div style={{ height: 400, border: '1px solid #ccc' }}>
         <SortableTree
+          aria-label="Bidirectional tree"
           rowDirection={direction}
           treeData={treeData}
           onChange={setTreeData}
