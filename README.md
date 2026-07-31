@@ -8,6 +8,44 @@
 
 Drag-and-drop sortable representation of hierarchical data for React 19 with virtualized rendering powered by [`virtua`](https://github.com/inokawa/virtua) and [`react-dnd`](https://react-dnd.github.io/react-dnd/). [Storybook demos](https://nosferatu500.github.io/react-sortable-tree/) cover both basic and advanced scenarios.
 
+## Why this fork
+
+This is a maintained fork of [`react-sortable-tree`](https://www.npmjs.com/package/react-sortable-tree)
+by Chris Fritz, carrying its full git history. Upstream's last release was
+**v2.8.0 in August 2020**, targeting React 16; this fork started in June 2021 to add
+React 17 support and has been maintained since. The comparison below is against that
+last upstream release. The component API is recognisably the same; everything underneath
+has been rebuilt.
+
+|                      | original v2.8.0 (Aug 2020)                         | this fork v6                                                   |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| Maintenance          | no releases since 2020                             | actively maintained                                            |
+| React                | 16                                                 | 19 (incl. React Compiler)                                      |
+| Components           | class components                                   | function components + hooks                                    |
+| TypeScript           | none bundled — needed `@types/react-sortable-tree` | written in TS, `.d.ts` shipped                                 |
+| Accessibility        | one `aria-label`, no keyboard support              | full ARIA tree pattern + [keyboard navigation](#accessibility) |
+| Virtualization       | `react-virtualized`                                | `virtua`                                                       |
+| `react-dnd`          | 11                                                 | 16                                                             |
+| Runtime dependencies | 7                                                  | 3                                                              |
+| Module format        | CJS + ESM                                          | ESM only                                                       |
+| Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                   |
+| Tests                | Jest                                               | Vitest, 164 tests                                              |
+
+Dropped along the way: `prop-types`, `lodash.isequal`, `react-lifecycles-compat`,
+`react-dnd-scrollzone`, and (in v6) `immer`.
+
+Beyond the table, v6 rewrote the tree-mutation internals — `changeNodeAtPath` is ~70×
+faster and a drag hover ~6.5× cheaper on a 10k-node tree — and stopped remounting every
+row on each parent render. Two long-standing correctness bugs were fixed in the process.
+See [CHANGELOG.md](./CHANGELOG.md) for measurements and [MODERNIZATION.md](./MODERNIZATION.md)
+for what is still planned.
+
+**Migrating from the original?** You still import a stylesheet, just from the scoped
+name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is
+that `SortableTree` is a named export rather than the default. Props tied to the old
+`react-virtualized` list no longer exist; `virtuaRef` exposes the virtual list instead.
+The per-version migration notes in [CHANGELOG.md](./CHANGELOG.md) cover the rest.
+
 ## Getting started
 
 Install the package together with its peer dependencies:
@@ -75,7 +113,6 @@ All props are typed in `ReactSortableTreeProps` (see `src/react-sortable-tree.ts
 | `rowHeight`            | `number \| ((treeIndex, node, path) => number)` | `62`    | Height of each row in pixels       |
 | `rowDirection`         | `'ltr' \| 'rtl'`                                | `'ltr'` | Layout direction                   |
 | `scaffoldBlockPxWidth` | `number`                                        | `44`    | Width of indent per level          |
-| `slideRegionSize`      | `number`                                        | `100`   | Size of the drag slide region      |
 | `style`                | `CSSProperties`                                 | -       | Styles for the outer container     |
 | `innerStyle`           | `CSSProperties`                                 | -       | Styles for the virtual list        |
 | `className`            | `string`                                        | -       | Class name for the outer container |
@@ -237,7 +274,6 @@ type ThemeProps = {
   style?: React.CSSProperties
   innerStyle?: React.CSSProperties
   scaffoldBlockPxWidth?: number
-  slideRegionSize?: number
   treeNodeRenderer?: React.ComponentType
   nodeContentRenderer?: React.ComponentType
   placeholderRenderer?: React.ComponentType
@@ -302,7 +338,6 @@ To create a custom theme:
 export const myTheme = {
   nodeContentRenderer: MyCustomNodeRenderer,
   scaffoldBlockPxWidth: 24,
-  slideRegionSize: 50,
 }
 ```
 

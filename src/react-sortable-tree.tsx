@@ -116,7 +116,6 @@ type ThemeProps = {
   style?: React.CSSProperties
   innerStyle?: React.CSSProperties
   scaffoldBlockPxWidth?: number
-  slideRegionSize?: number
   treeNodeRenderer?: AnyRenderer
   nodeContentRenderer?: AnyRenderer
   placeholderRenderer?: AnyRenderer
@@ -133,7 +132,6 @@ export type ReactSortableTreeProps = {
   className?: string
   virtuaRef?: React.RefObject<VListHandle>
   innerStyle?: React.CSSProperties
-  slideRegionSize?: number
   scaffoldBlockPxWidth?: number
   maxDepth?: number
   searchMethod?: (params: SearchParams) => boolean

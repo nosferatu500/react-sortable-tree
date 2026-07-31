@@ -55,6 +55,28 @@
 
 - `sideEffects` narrowed from `true` to `["**/*.css"]`, since the JS is now pure.
 
+#### `slideRegionSize` removed
+
+- **The `slideRegionSize` prop is gone**, from both `ReactSortableTreeProps` and
+  `ThemeProps`. It configured the auto-scroll region of `react-dnd-scrollzone`, which was
+  removed back in v5 — since then nothing has read it, so passing it has had no effect
+  for a whole major version while still appearing in the types and the documented prop
+  table.
+- If you pass it, delete it. TypeScript will point at every call site; there is no
+  behaviour to replace, because there was none.
+
+#### Package metadata
+
+- **`engines.node` relaxed from `>=24.11` to `>=22`.** The old range was the repo's own
+  development requirement leaking into a constraint on every install, and would fail on
+  LTS-pinned CI. The published code's real floor is `Object.groupBy` (Node 21), so 22 is
+  the oldest LTS that qualifies. The development requirement is now expressed as
+  `devEngines` instead, which warns contributors without blocking consumers.
+- `CHANGELOG.md` is now included in the published tarball.
+- `author` is the current maintainer, with Chris Fritz credited under `contributors` as
+  the original author; the LICENSE carries both copyright lines.
+- Expanded `keywords` and a more descriptive `description`.
+
 #### `immer` is no longer a dependency
 
 - Tree mutations use hand-rolled structural sharing instead of `produce()`. Behaviour is

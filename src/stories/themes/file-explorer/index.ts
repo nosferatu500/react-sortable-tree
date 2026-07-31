@@ -34,7 +34,6 @@ import './file-explorer-theme.css'
 export const fileExplorerTheme = {
   nodeContentRenderer: FileExplorerNodeRenderer,
   scaffoldBlockPxWidth: 20,
-  slideRegionSize: 50,
 }
 
 // CSS class names for the theme wrapper

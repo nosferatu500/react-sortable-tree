@@ -1,7 +1,7 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
   "version": "6.0.0",
-  "description": "Drag-and-drop sortable component for nested data and hierarchies",
+  "description": "Accessible drag-and-drop sortable tree for React 19, with virtualized rendering and first-class TypeScript types",
   "homepage": "https://nosferatu500.github.io/react-sortable-tree",
   "type": "module",
   "main": "./lib/index.js",
@@ -34,13 +34,21 @@
     "deploy-storybook": "gh-pages -d storybook-static"
   },
   "files": [
-    "lib"
+    "lib",
+    "CHANGELOG.md"
   ],
   "sideEffects": [
     "**/*.css"
   ],
   "engines": {
-    "node": ">=24.11"
+    "node": ">=22"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=24.11",
+      "onFail": "warn"
+    }
   },
   "prettier": {
     "semi": false,
@@ -57,16 +65,28 @@
   "keywords": [
     "react",
     "react-component",
+    "react19",
+    "tree",
+    "treeview",
     "sortable-tree",
-    "virtual-tree"
+    "virtual-tree",
+    "virtualized",
+    "drag-and-drop",
+    "dnd",
+    "sortable",
+    "nested",
+    "hierarchy",
+    "accessibility",
+    "a11y",
+    "typescript"
   ],
   "publishConfig": {
     "access": "public"
   },
+  "author": "Vitalii Shvetsov",
   "contributors": [
-    "Vitalii Shvetsov"
+    "Chris Fritz (original author of react-sortable-tree)"
   ],
-  "author": "Chris Fritz",
   "license": "MIT",
   "bugs": "https://github.com/nosferatu500/react-sortable-tree/issues",
   "devDependencies": {
