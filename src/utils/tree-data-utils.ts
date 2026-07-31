@@ -1,4 +1,3 @@
-import { original, produce } from 'immer'
 import {
   FullTree,
   GetNodeKeyFunction,
@@ -121,20 +120,43 @@ const getNodeDataAtTreeIndexOrNextIndex = ({
   return { nextIndex: childIndex }
 }
 
+/**
+ * Descendants below `node`, excluding the node itself.
+ *
+ * Positional rather than object arguments: this recurses once per node and is
+ * itself called in loops from `findChildByKey`, `findInsertAtDepth` and
+ * `addNodeUnderParent`, so an options object per call is pure allocation
+ * churn — it measured ~30% on `getVisibleNodeCount` alone.
+ */
+const countDescendants = (node: TreeItem, ignoreCollapsed: boolean): number => {
+  const { children } = node
+  if (
+    !children ||
+    typeof children === 'function' ||
+    (ignoreCollapsed && node.expanded !== true)
+  ) {
+    return 0
+  }
+
+  let total = 0
+  for (const child of children) {
+    total += 1 + countDescendants(child, ignoreCollapsed)
+  }
+  return total
+}
+
+/**
+ * Number of descendants below `node`, excluding the node itself.
+ *
+ * Routing this through `getNodeDataAtTreeIndexOrNextIndex` with
+ * `targetIndex: -1` also works and is what v5 did, but that builds a fresh
+ * `path` and `lowerSiblingCounts` array at every level only to discard them.
+ */
 export const getDescendantCount = ({
   node,
   ignoreCollapsed = true,
-}: TreeNode & { ignoreCollapsed?: boolean }): number => {
-  return (
-    getNodeDataAtTreeIndexOrNextIndex({
-      getNodeKey: () => 0,
-      ignoreCollapsed,
-      node,
-      currentIndex: 0,
-      targetIndex: -1,
-    }).nextIndex! - 1
-  )
-}
+}: TreeNode & { ignoreCollapsed?: boolean }): number =>
+  countDescendants(node, ignoreCollapsed)
 
 type WalkDescendantsParams = {
   callback: NodeCallback
@@ -305,30 +327,8 @@ const mapDescendants = ({
   }
 }
 
-const countVisibleNodes = (node: TreeItem): number => {
-  if (
-    !node.children ||
-    node.expanded !== true ||
-    typeof node.children === 'function'
-  ) {
-    return 1
-  }
-
-  return (
-    1 +
-    node.children.reduce(
-      (total: number, currentNode: TreeItem) =>
-        total + countVisibleNodes(currentNode),
-      0
-    )
-  )
-}
-
 export const getVisibleNodeCount = ({ treeData }: FullTree): number =>
-  treeData.reduce(
-    (total, currentNode) => total + countVisibleNodes(currentNode),
-    0
-  )
+  treeData.reduce((total, node) => total + 1 + countDescendants(node, true), 0)
 
 export const getVisibleNodeInfoAtIndex = ({
   treeData,
@@ -431,8 +431,6 @@ type NewNodeArg =
   | null
   | undefined
 
-type PseudoRoot = { children: TreeItem[] }
-
 const findChildByKey = (
   children: TreeItem[],
   key: string | number,
@@ -446,7 +444,7 @@ const findChildByKey = (
     if (getNodeKey({ node: child, treeIndex: childIndex }) === key) {
       return { foundIndex: j, treeIndex: childIndex }
     }
-    treeIndex += 1 + getDescendantCount({ node: child, ignoreCollapsed })
+    treeIndex += 1 + countDescendants(child, ignoreCollapsed)
   }
   return { foundIndex: -1, treeIndex }
 }
@@ -456,55 +454,67 @@ const applyNewNode = (
   foundIndex: number,
   treeIndex: number,
   newNode: NewNodeArg
-): void => {
+): TreeItem[] => {
   const targetNode = children[foundIndex]
   const result =
     typeof newNode === 'function'
       ? newNode({ node: targetNode, treeIndex })
       : newNode
 
-  if (result === undefined || result === null) {
-    children.splice(foundIndex, 1)
-  } else {
-    children[foundIndex] = result
-  }
+  return result === undefined || result === null
+    ? children.toSpliced(foundIndex, 1)
+    : children.with(foundIndex, result)
 }
 
-const findAndUpdateNode = (
-  root: PseudoRoot,
+/**
+ * Rebuilds `siblings` with the node at `path[depthIndex...]` replaced by
+ * `newNode` (or removed, if it resolves to null/undefined).
+ *
+ * Only the nodes along the path are cloned; every other subtree is carried over
+ * by reference, so consumers keep the structural sharing they had under immer.
+ */
+const updateAtPath = (
+  siblings: TreeItem[],
   path: TreeKey[],
+  depthIndex: number,
+  startTreeIndex: number,
   newNode: NewNodeArg,
   getNodeKey: GetNodeKeyFunction,
   ignoreCollapsed: boolean
-): void => {
-  let node = root as PseudoRoot & TreeItem
-  let currentTreeIndex = -1
+): TreeItem[] => {
+  const { foundIndex, treeIndex } = findChildByKey(
+    siblings,
+    path[depthIndex],
+    startTreeIndex,
+    getNodeKey,
+    ignoreCollapsed
+  )
 
-  for (const [i, key] of path.entries()) {
-    if (!node.children) {
-      throw new Error('Path referenced children of node with no children.')
-    }
+  if (foundIndex === -1) {
+    throw new Error('No node found at the given path.')
+  }
 
-    const { foundIndex, treeIndex } = findChildByKey(
-      node.children,
-      key,
-      currentTreeIndex,
+  if (depthIndex === path.length - 1) {
+    return applyNewNode(siblings, foundIndex, treeIndex, newNode)
+  }
+
+  const child = siblings[foundIndex]
+  if (!child.children || typeof child.children === 'function') {
+    throw new Error('Path referenced children of node with no children.')
+  }
+
+  return siblings.with(foundIndex, {
+    ...child,
+    children: updateAtPath(
+      child.children,
+      path,
+      depthIndex + 1,
+      treeIndex,
+      newNode,
       getNodeKey,
       ignoreCollapsed
-    )
-
-    if (foundIndex === -1) {
-      throw new Error('No node found at the given path.')
-    }
-
-    currentTreeIndex = treeIndex
-
-    if (i === path.length - 1) {
-      applyNewNode(node.children, foundIndex, currentTreeIndex, newNode)
-    } else {
-      node = node.children[foundIndex] as PseudoRoot & TreeItem
-    }
-  }
+    ),
+  })
 }
 
 export const changeNodeAtPath = ({
@@ -520,16 +530,20 @@ export const changeNodeAtPath = ({
     ignoreCollapsed?: boolean
   }): TreeItem[] => {
   if (!treeData || treeData.length === 0) return []
+  // An empty path addresses the pseudo-root, which has nothing to replace.
+  // `dragHover` relies on this: dropping at the top level yields an empty
+  // parent path, and that must be a no-op rather than an error.
+  if (path.length === 0) return treeData
 
-  return produce(treeData, (draft) => {
-    findAndUpdateNode(
-      { children: draft },
-      path,
-      newNode,
-      getNodeKey,
-      ignoreCollapsed
-    )
-  })
+  return updateAtPath(
+    treeData,
+    path,
+    0,
+    -1,
+    newNode,
+    getNodeKey,
+    ignoreCollapsed
+  )
 }
 
 type TreePathParams = FullTree &
@@ -569,8 +583,7 @@ export const removeNode = ({
       getNodeKey,
       ignoreCollapsed,
       newNode: ({ node, treeIndex }: { node: TreeItem; treeIndex: number }) => {
-        removedNode = original(node) || node
-
+        removedNode = node
         removedTreeIndex = treeIndex
 
         return undefined
@@ -602,7 +615,7 @@ export const getNodeAtPath = ({
       getNodeKey,
       ignoreCollapsed,
       newNode: ({ node, treeIndex }: { node: TreeItem; treeIndex: number }) => {
-        foundNodeInfo = { node: original(node) || node, treeIndex }
+        foundNodeInfo = { node, treeIndex }
         return node
       },
     })
@@ -642,63 +655,77 @@ export const addNodeUnderParent = ({
   let insertedTreeIndex = -1
   let found = false
 
-  const insertIntoParentNode = (node: TreeItem, nodeIndex: number): boolean => {
-    if (expandParent) node.expanded = true
+  /** Returns a copy of `node` with `newNode` added to its children. */
+  const insertIntoParentNode = (
+    node: TreeItem,
+    nodeIndex: number
+  ): TreeItem => {
+    const expanded = expandParent ? { expanded: true } : undefined
+
     if (!node.children) {
-      node.children = [newNode]
       insertedTreeIndex = nodeIndex + 1
-      return true
+      return { ...node, ...expanded, children: [newNode] }
     }
     if (typeof node.children === 'function') {
       throw new TypeError('Cannot add to children defined by a function')
     }
+
     let childIndexOffset = nodeIndex + 1
     if (!addAsFirstChild) {
       for (const child of node.children) {
-        childIndexOffset +=
-          1 + getDescendantCount({ node: child, ignoreCollapsed })
+        childIndexOffset += 1 + countDescendants(child, ignoreCollapsed)
       }
     }
     insertedTreeIndex = childIndexOffset
-    if (addAsFirstChild) {
-      node.children.unshift(newNode)
-    } else {
-      node.children.push(newNode)
+
+    return {
+      ...node,
+      ...expanded,
+      children: addAsFirstChild
+        ? [newNode, ...node.children]
+        : [...node.children, newNode],
     }
-    return true
   }
 
+  /**
+   * Returns `nodes` with the parent replaced, or the same array untouched when
+   * the parent is not in this branch — so unvisited subtrees keep their identity.
+   */
   const findAndInsert = (
     nodes: TreeItem[],
     currentTreeIndex: number
-  ): number => {
+  ): TreeItem[] => {
     let indexCounter = currentTreeIndex
-    for (const node of nodes) {
-      const key = getNodeKey({ node, treeIndex: indexCounter })
-      if (key === parentKey) {
+
+    for (const [i, node] of nodes.entries()) {
+      if (getNodeKey({ node, treeIndex: indexCounter }) === parentKey) {
         found = true
-        insertIntoParentNode(node, indexCounter)
-        return -1
+        return nodes.with(i, insertIntoParentNode(node, indexCounter))
       }
-      const descendants = getDescendantCount({ node, ignoreCollapsed })
-      const nextIndex = indexCounter + 1 + descendants
+
+      const nextIndex =
+        indexCounter + 1 + countDescendants(node, ignoreCollapsed)
+
       if (
         node.children &&
         typeof node.children !== 'function' &&
         (node.expanded || !ignoreCollapsed)
       ) {
-        const result = findAndInsert(node.children, indexCounter + 1)
-        if (result === -1) return -1
+        const newChildren = findAndInsert(node.children, indexCounter + 1)
+        if (found) {
+          return nodes.with(i, { ...node, children: newChildren })
+        }
       }
+
       indexCounter = nextIndex
     }
-    return indexCounter
+
+    return nodes
   }
 
+  // `findAndInsert` sets `found` as a side effect, so it has to run first.
   // eslint-disable-next-line unicorn/no-declarations-before-early-exit
-  const nextTreeData = produce(treeData, (draft) => {
-    findAndInsert(draft, 0)
-  })
+  const nextTreeData = findAndInsert(treeData, 0)
   if (!found) {
     throw new Error('No node found with the given key.')
   }
@@ -811,7 +838,7 @@ const findInsertAtDepth = (params: AddNodeAtDepthParams): AddNodeResult => {
       insertIndex = i
       break
     }
-    childIndex += 1 + getDescendantCount({ node: child, ignoreCollapsed })
+    childIndex += 1 + countDescendants(child, ignoreCollapsed)
   }
 
   if (insertIndex === undefined) {
@@ -860,6 +887,12 @@ const traverseChildrenForInsert = (
 
     const mapResult = addNodeAtDepthAndIndex({
       ...params,
+      // Children are never the pseudo-root. Spreading `params` would otherwise
+      // carry `isPseudoRoot: true` down the whole recursion, which suppresses
+      // both the path segment and the parent node at every level — leaving
+      // insertNode to report `path: [newKey]` and `parentNode: null` for every
+      // nested insert.
+      isPseudoRoot: false,
       isLastChild: isLastChild && i === children.length - 1,
       node: child,
       currentIndex: childIndex,

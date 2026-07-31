@@ -615,12 +615,12 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           getNodeKey: mergedProps.getNodeKey!,
         })
 
-        const rows = getFlatDataFromTree({
-          ignoreCollapsed: true,
-          getNodeKey: mergedProps.getNodeKey!,
-          treeData: addedResult.treeData,
-        })
-        const expandedParentPath = rows[addedResult.treeIndex].path
+        // `insertNode` already knows where it put the node, so take the path
+        // from there. This used to re-flatten the entire tree just to read
+        // `rows[addedResult.treeIndex].path` — a full traversal on every
+        // mousemove. (Only viable since insertNode stopped reporting a bogus
+        // single-segment path for nested inserts.)
+        const expandedParentPath = addedResult.path
 
         return {
           ...prevState,
