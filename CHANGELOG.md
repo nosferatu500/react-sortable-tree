@@ -55,6 +55,56 @@
 
 - `sideEffects` narrowed from `true` to `["**/*.css"]`, since the JS is now pure.
 
+#### `immer` is no longer a dependency
+
+- Tree mutations use hand-rolled structural sharing instead of `produce()`. Behaviour is
+  unchanged — inputs are still never mutated and untouched branches still keep object
+  identity — but the package now has three runtime dependencies instead of four.
+- If you were relying on `immer` being installed transitively, add it to your own
+  dependencies.
+
+### Fixed
+
+- **`insertNode` reported the wrong `path` and `parentNode` for any nested insert.**
+  It returned `path: [newNodeKey]` and `parentNode: null` no matter where the node
+  actually landed, because the recursion carried its `isPseudoRoot` flag into every
+  child. Since `moveNode` forwards these values, **`onMoveNode` reported the wrong
+  `nextPath` and `nextParentNode` for every drop below the root level.**
+
+- **`changeNodeAtPath` handed a revoked Immer draft to function `newNode` callbacks.**
+  Retaining that node past the call — to inspect the replaced node, or push it onto an
+  undo stack — threw `TypeError: Cannot perform 'get' on a proxy that has been revoked`.
+  Callbacks now receive a plain object.
+
+### Performance
+
+Measured on a 10,200-node tree, before/after in one interleaved process:
+
+| operation                             | v5        | v6       | change  |
+| ------------------------------------- | --------- | -------- | ------- |
+| `changeNodeAtPath`                    | 4.048 ms  | 0.058 ms | 70× faster |
+| `addNodeUnderParent`                  | 19.346 ms | 0.377 ms | 51× faster |
+| `getDescendantCount`                  | 0.0128 ms | 0.0023 ms | 5.6× faster |
+| `insertNode`                          | 0.235 ms  | 0.060 ms | 3.9× faster |
+| **one drag-hover event (end to end)** | **5.481 ms** | **0.845 ms** | **6.5× faster** |
+
+The last row is the work done on every mousemove during a drag: 33% of a 60 fps frame
+budget in v5, 5% in v6. Behind it:
+
+- `changeNodeAtPath` no longer resolves the target path inside an Immer draft, which had
+  been forcing a proxy for every sibling subtree instead of just the path being written.
+- `getDescendantCount` is a direct recursive count instead of a traversal that allocated
+  a `path` and `lowerSiblingCounts` array per level only to discard them.
+- `dragHover` takes the inserted node's path from `insertNode`'s return value instead of
+  re-flattening the entire tree on every mousemove to read one row.
+
+### Testing
+
+- Vitest added — `npm test` and `npm run test:watch`.
+- `src/utils/tree-data-utils.test.ts` covers every export of the tree-data module (83
+  tests), including no-mutation and structural-sharing invariants. Both bugs above were
+  found by these tests.
+
 ### Migration Guide
 
 #### From v5.x to v6.x
