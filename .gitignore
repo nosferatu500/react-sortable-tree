@@ -21,6 +21,13 @@ build
 style.css
 style.css.map
 
+# Benchmark artifacts (results.json, RESULTS.md and footprint.json are kept)
+benchmark/dist
+benchmark/vendor
+benchmark/sizes.json
+benchmark/.footprint
+benchmark/.sizework
+
 # Error files
 yarn-error.log
 

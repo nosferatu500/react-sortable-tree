@@ -1,0 +1,10 @@
+{
+  "name": "rst-benchmark-compat19",
+  "private": true,
+  "description": "Does the original react-sortable-tree run on React 19 at all? Installed with --legacy-peer-deps to get past its React 16 peer range.",
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-sortable-tree": "2.8.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "rst-benchmark",
+  "private": true,
+  "type": "module",
+  "description": "Cross-library performance benchmark: this fork vs react-sortable-tree vs @minoru/react-dnd-treeview",
+  "scripts": {
+    "setup": "cd .. && npm run build && npm pack --pack-destination benchmark/vendor",
+    "bench": "node build.mjs && node run.mjs && node report.mjs",
+    "build": "node build.mjs",
+    "report": "node report.mjs",
+    "footprint": "node footprint.mjs"
+  },
+  "dependencies": {
+    "@minoru/react-dnd-treeview": "3.5.4",
+    "@nosferatu500/react-sortable-tree": "file:./vendor/nosferatu500-react-sortable-tree-6.0.0.tgz",
+    "react": "^19.2.8",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0",
+    "puppeteer-core": "^24.28.0"
+  }
+}

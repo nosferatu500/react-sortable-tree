@@ -1,0 +1,292 @@
+{
+  "meta": {
+    "date": "2026-07-31T07:17:17.994Z",
+    "node": "v26.5.0",
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memoryGB": 32,
+    "runs": 5,
+    "scrollSteps": 40,
+    "sizes": [100, 1000, 10000]
+  },
+  "libraries": {
+    "fork": {
+      "label": "@nosferatu500/react-sortable-tree (this fork)",
+      "version": "6.0.0",
+      "react": "19.2.8"
+    },
+    "original": {
+      "label": "react-sortable-tree (original)",
+      "version": "2.8.0",
+      "react": "16.14.0"
+    },
+    "minoru": {
+      "label": "@minoru/react-dnd-treeview",
+      "version": "3.5.4",
+      "react": "19.2.8"
+    }
+  },
+  "bundles": {
+    "fork": {
+      "package": "@nosferatu500/react-sortable-tree",
+      "libraryOnly": {
+        "raw": 41501,
+        "gzip": 15696,
+        "brotli": 13995
+      },
+      "withDndStack": {
+        "raw": 90980,
+        "gzip": 28665,
+        "brotli": 25510
+      },
+      "injectedCss": null,
+      "stylesheet": {
+        "raw": 12247,
+        "gzip": 2592,
+        "brotli": 2233
+      }
+    },
+    "minoru": {
+      "package": "@minoru/react-dnd-treeview",
+      "libraryOnly": {
+        "raw": 163931,
+        "gzip": 53430,
+        "brotli": 47650
+      },
+      "withDndStack": {
+        "raw": 213203,
+        "gzip": 65989,
+        "brotli": 58333
+      },
+      "injectedCss": null,
+      "stylesheet": null
+    },
+    "original": {
+      "package": "react-sortable-tree",
+      "libraryOnly": {
+        "raw": 186305,
+        "gzip": 47552,
+        "brotli": 40266
+      },
+      "withDndStack": {
+        "raw": 281471,
+        "gzip": 66523,
+        "brotli": 55732
+      },
+      "injectedCss": null,
+      "stylesheet": {
+        "raw": 14888,
+        "gzip": 3257,
+        "brotli": 2754
+      }
+    }
+  },
+  "originalOnReact19": {
+    "mounted": false,
+    "error": "Uncaught Error: A React Element from an older version of React was rendered. This is not supported. It can happen if:\n- Multiple copies of the \"react\" package is used.\n- A library pre-bundled an old copy of \"react\" or \"react/jsx-runtime\".\n- A compiler tries to \"inline\" JSX instead of using the runtime.",
+    "rows": 0,
+    "consoleErrors": [
+      "Error: A React Element from an older version of React was rendered. This is not supported. It can happen if:\n- Multiple copies of the \"react\" package is used.\n- A library pre-bundled an old copy of \"react\" or \"react/jsx-runtime\".\n- A compiler tries to \"inline\" JSX instead of using the runtime."
+    ]
+  },
+  "results": [
+    {
+      "lib": "fork",
+      "size": 100,
+      "mountCpuMs": 4.550000000000011,
+      "mountProcessCpuMs": 6.8700000000000045,
+      "mountFlushMs": 0.6000000238418579,
+      "mountPaintedMs": 11.899999976158142,
+      "collapseCpuMs": 3.299000000000035,
+      "expandCpuMs": 2.5860000000000127,
+      "expandFlushMs": 1.5,
+      "domNodes": 177,
+      "renderedRows": 13,
+      "listeners": 253,
+      "layoutObjects": 345,
+      "heapMB": 2.9655609130859375,
+      "scrollCpuMs": 70.16200000000003,
+      "scrollWallMs": 341.7999999523163,
+      "frameMedianMs": 8.300000000000068,
+      "frameP95Ms": 9,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "fork",
+      "size": 1000,
+      "mountCpuMs": 4.43300000000005,
+      "mountProcessCpuMs": 8.549999999999955,
+      "mountFlushMs": 1,
+      "mountPaintedMs": 12.199999928474426,
+      "collapseCpuMs": 2.8919999999999675,
+      "expandCpuMs": 2.7019999999999413,
+      "expandFlushMs": 1.600000023841858,
+      "domNodes": 175,
+      "renderedRows": 13,
+      "listeners": 251,
+      "layoutObjects": 343,
+      "heapMB": 3.4733619689941406,
+      "scrollCpuMs": 111.10300000000007,
+      "scrollWallMs": 341.89999997615814,
+      "frameMedianMs": 8.300000000000068,
+      "frameP95Ms": 8.900000000000091,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "fork",
+      "size": 10000,
+      "mountCpuMs": 7.668999999999983,
+      "mountProcessCpuMs": 12.507000000000005,
+      "mountFlushMs": 3.5999999046325684,
+      "mountPaintedMs": 10.899999976158142,
+      "collapseCpuMs": 4.162000000000035,
+      "expandCpuMs": 5.779999999999973,
+      "expandFlushMs": 2.5999999046325684,
+      "domNodes": 175,
+      "renderedRows": 13,
+      "listeners": 251,
+      "layoutObjects": 343,
+      "heapMB": 8.01605224609375,
+      "scrollCpuMs": 102.46499999999992,
+      "scrollWallMs": 341.6999999284744,
+      "frameMedianMs": 8.300000000000182,
+      "frameP95Ms": 9,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "original",
+      "size": 100,
+      "mountCpuMs": 4.761999999999944,
+      "mountProcessCpuMs": 6.4669999999999845,
+      "mountFlushMs": 3.5,
+      "mountPaintedMs": 4.300000071525574,
+      "collapseCpuMs": 2.475999999999999,
+      "expandCpuMs": 2.185000000000059,
+      "expandFlushMs": 1.5,
+      "domNodes": 253,
+      "renderedRows": 20,
+      "listeners": 199,
+      "layoutObjects": 412,
+      "heapMB": 3.2420806884765625,
+      "scrollCpuMs": 60.38499999999999,
+      "scrollWallMs": 341.60000002384186,
+      "frameMedianMs": 8.300000000000068,
+      "frameP95Ms": 9.199999999999932,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "original",
+      "size": 1000,
+      "mountCpuMs": 4.495999999999981,
+      "mountProcessCpuMs": 5.5769999999998845,
+      "mountFlushMs": 3.600000023841858,
+      "mountPaintedMs": 4.399999976158142,
+      "collapseCpuMs": 2.20799999999997,
+      "expandCpuMs": 2.316999999999979,
+      "expandFlushMs": 1.600000023841858,
+      "domNodes": 251,
+      "renderedRows": 20,
+      "listeners": 197,
+      "layoutObjects": 410,
+      "heapMB": 3.8604049682617188,
+      "scrollCpuMs": 134.033,
+      "scrollWallMs": 341.7000000476837,
+      "frameMedianMs": 8.300000000000068,
+      "frameP95Ms": 9,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "original",
+      "size": 10000,
+      "mountCpuMs": 9.086000000000013,
+      "mountProcessCpuMs": 11.332999999999856,
+      "mountFlushMs": 7.899999976158142,
+      "mountPaintedMs": 8.699999928474426,
+      "collapseCpuMs": 4.813000000000045,
+      "expandCpuMs": 4.475999999999999,
+      "expandFlushMs": 3.899999976158142,
+      "domNodes": 251,
+      "renderedRows": 20,
+      "listeners": 197,
+      "layoutObjects": 410,
+      "heapMB": 6.154773712158203,
+      "scrollCpuMs": 115.494,
+      "scrollWallMs": 341.39999997615814,
+      "frameMedianMs": 8.300000000000182,
+      "frameP95Ms": 8.400000000000091,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "minoru",
+      "size": 100,
+      "mountCpuMs": 7.221000000000004,
+      "mountProcessCpuMs": 10.617000000000019,
+      "mountFlushMs": 6.600000023841858,
+      "mountPaintedMs": 7.299999952316284,
+      "collapseCpuMs": 3.3290000000000077,
+      "expandCpuMs": 3.388999999999953,
+      "expandFlushMs": 2.399999976158142,
+      "domNodes": 322,
+      "renderedRows": 100,
+      "listeners": 993,
+      "layoutObjects": 632,
+      "heapMB": 4.032924652099609,
+      "scrollCpuMs": 18.107999999999976,
+      "scrollWallMs": 342.5,
+      "frameMedianMs": 8.300000000000068,
+      "frameP95Ms": 9.099999999999909,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "minoru",
+      "size": 1000,
+      "mountCpuMs": 63.5590000000002,
+      "mountProcessCpuMs": 120.8760000000002,
+      "mountFlushMs": 61.39999997615814,
+      "mountPaintedMs": 62.799999952316284,
+      "collapseCpuMs": 24.299999999999955,
+      "expandCpuMs": 23.427999999999997,
+      "expandFlushMs": 22.699999928474426,
+      "domNodes": 3022,
+      "renderedRows": 1000,
+      "listeners": 8193,
+      "layoutObjects": 6032,
+      "heapMB": 16.135108947753906,
+      "scrollCpuMs": 26.881000000000085,
+      "scrollWallMs": 342.1999999284744,
+      "frameMedianMs": 8.300000000000125,
+      "frameP95Ms": 9.099999999999909,
+      "framesOver50ms": 0,
+      "errors": 0
+    },
+    {
+      "lib": "minoru",
+      "size": 10000,
+      "mountCpuMs": 2503.986000000001,
+      "mountProcessCpuMs": 2937.950999999999,
+      "mountFlushMs": 2508.5,
+      "mountPaintedMs": 2520.2000000476837,
+      "collapseCpuMs": 991.7000000000007,
+      "expandCpuMs": 546.7220000000016,
+      "expandFlushMs": 537,
+      "domNodes": 30022,
+      "renderedRows": 10000,
+      "listeners": 80193,
+      "layoutObjects": 60032,
+      "heapMB": 135.7284278869629,
+      "scrollCpuMs": 52.388999999999214,
+      "scrollWallMs": 337.6999999284744,
+      "frameMedianMs": 8.300000000001091,
+      "frameP95Ms": 8.5,
+      "framesOver50ms": 0,
+      "errors": 0
+    }
+  ]
+}

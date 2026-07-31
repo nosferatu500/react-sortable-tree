@@ -1,0 +1,10 @@
+{
+  "name": "rst-benchmark-legacy",
+  "private": true,
+  "description": "React 16 workspace, the newest React the original react-sortable-tree supports",
+  "dependencies": {
+    "react": "16.14.0",
+    "react-dom": "16.14.0",
+    "react-sortable-tree": "2.8.0"
+  }
+}

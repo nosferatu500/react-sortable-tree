@@ -1,0 +1,14 @@
+{
+  "fork": {
+    "packages": 13,
+    "diskKB": 5200
+  },
+  "original": {
+    "packages": 30,
+    "diskKB": 13196
+  },
+  "minoru": {
+    "packages": 20,
+    "diskKB": 14984
+  }
+}

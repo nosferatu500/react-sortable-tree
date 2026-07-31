@@ -46,6 +46,90 @@ that `SortableTree` is a named export rather than the default. Props tied to the
 `react-virtualized` list no longer exist; `virtuaRef` exposes the virtual list instead.
 The per-version migration notes in [CHANGELOG.md](./CHANGELOG.md) cover the rest.
 
+## Benchmarks
+
+Measured against the original release and against
+[`@minoru/react-dnd-treeview`](https://github.com/minop1205/react-dnd-treeview), the
+other actively maintained `react-dnd` tree for React. Same tree, same 600×900 viewport,
+same 62px rows, same `react-dnd` HTML5 backend, real Chrome. The harness, the exact
+method and its known asymmetries live in [benchmark/](./benchmark/) — `npm run bench`
+reproduces every number below into
+[benchmark/results.json](./benchmark/results.json).
+
+The original is benchmarked on React 16.14, the newest React its peer range allows;
+the other two on React 19.2.
+
+### Shipping cost
+
+|                                                           | this fork v6.0.0 | react-sortable-tree v2.8.0 | @minoru/react-dnd-treeview v3.5.4 |
+| --------------------------------------------------------- | ---------------- | -------------------------- | --------------------------------- |
+| JS, minified + gzipped (library alone)                    | **15.3 kB**      | 46.4 kB                    | 52.2 kB                           |
+| JS, minified + gzipped (with `react-dnd` + HTML5 backend) | **28.0 kB**      | 65.0 kB                    | 64.4 kB                           |
+| Stylesheet, gzipped                                       | 2.5 kB           | 3.2 kB                     | none (headless)                   |
+| npm packages installed                                    | **13**           | 30                         | 20                                |
+| `node_modules` on disk                                    | **5.1 MB**       | 12.9 MB                    | 14.6 MB                           |
+| React versions supported                                  | 19               | 16 only                    | 18, 19                            |
+
+### Runtime
+
+Main-thread CPU time, median of 5 runs. A "group" is 1/10th of the tree, so expanding one
+at 10,000 nodes reveals 999 rows.
+
+| Nodes  | Library             | Mount CPU  | Expand a group | Scroll top→bottom CPU | DOM elements | Event listeners | JS heap    |
+| ------ | ------------------- | ---------- | -------------- | --------------------- | ------------ | --------------- | ---------- |
+| 100    | this fork           | **4.6 ms** | 2.6 ms         | 70.2 ms               | **177**      | 253             | **3.0 MB** |
+| 100    | react-sortable-tree | 4.8 ms     | **2.2 ms**     | 60.4 ms               | 253          | **199**         | 3.2 MB     |
+| 100    | @minoru             | 7.2 ms     | 3.4 ms         | **18.1 ms**           | 322          | 993             | 4.0 MB     |
+| 1,000  | this fork           | **4.4 ms** | 2.7 ms         | 111 ms                | **175**      | 251             | **3.5 MB** |
+| 1,000  | react-sortable-tree | 4.5 ms     | **2.3 ms**     | 134 ms                | 251          | **197**         | 3.9 MB     |
+| 1,000  | @minoru             | 63.6 ms    | 23.4 ms        | **26.9 ms**           | 3,022        | 8,193           | 16.1 MB    |
+| 10,000 | this fork           | **7.7 ms** | 5.8 ms         | 102 ms                | **175**      | 251             | 8.0 MB     |
+| 10,000 | react-sortable-tree | 9.1 ms     | **4.5 ms**     | 115 ms                | 251          | **197**         | **6.2 MB** |
+| 10,000 | @minoru             | 2,504 ms   | 547 ms         | **52.4 ms**           | 30,022       | 80,193          | 135.7 MB   |
+
+Time until rows are actually on screen, which includes waiting for a display frame:
+
+| Nodes  | this fork | react-sortable-tree | @minoru/react-dnd-treeview |
+| ------ | --------- | ------------------- | -------------------------- |
+| 100    | 11.9 ms   | **4.3 ms**          | 7.3 ms                     |
+| 1,000  | 12.2 ms   | **4.4 ms**          | 62.8 ms                    |
+| 10,000 | 10.9 ms   | **8.7 ms**          | 2,520 ms                   |
+
+### Reading the results
+
+**Where this fork wins.** A third of the bytes of either alternative, less than half the
+install footprint, and a flat cost curve: mounting 10,000 nodes takes 7.7 ms because only
+13 rows are ever in the DOM. Against `@minoru` at 10,000 nodes that is ~325× less mount
+CPU, ~95× cheaper expands, ~170× fewer DOM elements and ~17× less heap. It is also the
+only one of the three implementing the ARIA tree pattern — `role="treeitem"` with
+`aria-level`/`aria-setsize`/`aria-posinset`/`aria-expanded`, a roving tabindex and arrow-key
+navigation. The original exposes rows as `react-virtualized` grid cells (`role="gridcell"`
+inside `role="grid"`), `@minoru` as `<li role="listitem">`; in neither are rows focusable.
+
+**Where this fork loses.** Rows appear roughly one frame later than the original at small
+sizes (11.9 ms vs 4.3 ms at 100 nodes) because `virtua` measures its viewport from a
+ResizeObserver before it can fill it. At 10,000 nodes it holds more heap than the original
+(8.0 MB vs 6.2 MB) and keeps slightly more event listeners per viewport. Scrolling costs
+real CPU — ~102 ms to sweep the whole tree, against `@minoru`'s ~52 ms, because rows are
+re-rendered as they come into view instead of already existing. And it is React 19 only:
+`@minoru` still supports React 18, and both modern libraries are ESM-only.
+
+**When to pick `@minoru/react-dnd-treeview` instead.** It is the right call for small
+trees where you want full markup control: it ships no CSS, animates expand/collapse with
+`framer-motion`, bundles multi-backend touch support, and supports React 18. Scrolling is
+cheaper because nothing re-renders. The cost is that everything is in the DOM — at 10,000
+nodes that is 30,022 elements, 80,193 listeners, 136 MB of heap and a 2.5 second mount that
+blocks the main thread. Even 1,000 nodes take 63.6 ms to mount, past the frame budget. It
+also has no built-in search, no ARIA tree semantics and no keyboard navigation.
+
+**The original v2.8.0** is a reasonable choice only if you are pinned to React 16. It
+remains competitive on runtime — this is a fork of it, and virtualization is doing the work
+in both — but it was last published in August 2020, ships no TypeScript types, and pulls in
+30 packages.
+
+**Drag and drop is pointer-only in all three.** None of them supports keyboard-driven
+reordering; this fork adds keyboard navigation and focus management, not keyboard dragging.
+
 ## Getting started
 
 Install the package together with its peer dependencies:
