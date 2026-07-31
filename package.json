@@ -17,9 +17,11 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prebuild": "npm run typecheck",
     "build": "tsdown",
-    "check:exports": "publint --strict && attw --pack . --ignore-rules cjs-resolves-to-esm",
+    "check:exports": "publint --strict && attw --pack . --ignore-rules cjs-resolves-to-esm --exclude-entrypoints style.css",
     "lint": "npm run lint:oxlint && npm run lint:eslint",
     "lint:oxlint": "oxlint src",
     "lint:eslint": "eslint 'src/**/*.{ts,tsx}' --cache",
@@ -100,7 +102,8 @@
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
-    "vite": "^8.1.5"
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -109,7 +112,6 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "immer": "^11.1.0",
     "react-dnd": "^16.0.0",
     "react-dnd-html5-backend": "^16.0.0",
     "virtua": "^0.50.0"
