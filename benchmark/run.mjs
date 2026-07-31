@@ -23,7 +23,11 @@ const here = dirname(fileURLToPath(import.meta.url))
 const dist = join(here, 'dist')
 
 const SIZES = [100, 1000, 10_000]
-const RUNS = 5
+// 5 was too few: mount and expand differ between the two react-sortable-tree
+// builds by a few tenths of a millisecond, and which one "won" flipped between
+// otherwise identical benchmark runs. 11 stabilises the medians enough that the
+// separation test in report.mjs gives the same answer twice in a row.
+const RUNS = 11
 const SCROLL_STEPS = 40
 const CHROME =
   process.env.CHROME_PATH ??
@@ -192,9 +196,29 @@ async function runLibrary(browser, port, library) {
     }
 
     const frames = samples.flatMap((s) => s.scroll.value?.frames ?? [])
+
+    /**
+     * Median plus the observed range, for the metrics the README compares
+     * libraries on. Without the spread there is no way to tell a real win from
+     * run-to-run noise — several cross-library gaps here are well under a
+     * millisecond, which is inside what these numbers wobble by.
+     */
+    const spread = (values) => ({
+      median: median(values),
+      min: Math.min(...values),
+      max: Math.max(...values),
+    })
+
     const row = {
       lib: library.id,
       size,
+      spread: {
+        mountCpuMs: spread(samples.map((s) => s.mount.cpuMs)),
+        expandCpuMs: spread(samples.map((s) => s.expand.cpuMs)),
+        scrollCpuMs: spread(samples.map((s) => s.scroll.cpuMs)),
+        mountPaintedMs: spread(samples.map((s) => s.mount.value.painted)),
+        heapMB: spread(samples.map((s) => s.heap / 1024 / 1024)),
+      },
       mountCpuMs: median(samples.map((s) => s.mount.cpuMs)),
       mountProcessCpuMs: median(samples.map((s) => s.mount.processCpuMs)),
       mountFlushMs: median(samples.map((s) => s.mount.value.flush)),

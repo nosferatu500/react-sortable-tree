@@ -20,7 +20,7 @@ const TARGETS = [
     id: 'fork',
     // react-dnd and its backend are both dependencies and peers here, so the
     // tarball alone pulls them in.
-    specs: ['./vendor/nosferatu500-react-sortable-tree-6.0.0.tgz'],
+    specs: ['./vendor/fork.tgz'],
   },
   { id: 'original', specs: ['react-sortable-tree@2.8.0'] },
   {

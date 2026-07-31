@@ -13,28 +13,30 @@
 
 | Nodes | Library | Mount CPU | Expand a group | Scroll top→bottom CPU | DOM elements | Event listeners | JS heap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 100 | this fork | 4.6 ms | 2.6 ms | 70.2 ms | 177 | 253 | 3.0 MB |
-| 100 | react-sortable-tree | 4.8 ms | 2.2 ms | 60.4 ms | 253 | 199 | 3.2 MB |
-| 100 | @minoru | 7.2 ms | 3.4 ms | 18.1 ms | 322 | 993 | 4.0 MB |
-| 1,000 | this fork | 4.4 ms | 2.7 ms | 111 ms | 175 | 251 | 3.5 MB |
-| 1,000 | react-sortable-tree | 4.5 ms | 2.3 ms | 134 ms | 251 | 197 | 3.9 MB |
-| 1,000 | @minoru | 63.6 ms | 23.4 ms | 26.9 ms | 3,022 | 8,193 | 16.1 MB |
-| 10,000 | this fork | 7.7 ms | 5.8 ms | 102 ms | 175 | 251 | 8.0 MB |
-| 10,000 | react-sortable-tree | 9.1 ms | 4.5 ms | 115 ms | 251 | 197 | 6.2 MB |
-| 10,000 | @minoru | 2,504 ms | 547 ms | 52.4 ms | 30,022 | 80,193 | 135.7 MB |
+| 100 | this fork | 4.4 ms | 2.3 ms | 68.3 ms | **177** | 253 | 3.1 MB |
+| 100 | react-sortable-tree | 5.5 ms | 2.5 ms | 69.8 ms | 253 | **199** | 3.4 MB |
+| 100 | @minoru | 7.4 ms | 3.3 ms | **17.9 ms** | 322 | 993 | 4.1 MB |
+| 1,000 | this fork | 4.9 ms | 2.4 ms | 112 ms | **175** | 251 | 3.6 MB |
+| 1,000 | react-sortable-tree | 4.6 ms | 1.7 ms | 124 ms | 251 | **197** | 4.0 MB |
+| 1,000 | @minoru | 64.3 ms | 23.8 ms | **26.5 ms** | 3,022 | 8,193 | 16.2 MB |
+| 10,000 | this fork | 8.1 ms | 7.2 ms | 104 ms | **175** | 251 | 8.1 MB |
+| 10,000 | react-sortable-tree | 10.1 ms | 4.8 ms | 113 ms | 251 | **197** | **6.3 MB** |
+| 10,000 | @minoru | 2,437 ms | 567 ms | **48.7 ms** | 30,022 | 80,193 | 135.8 MB |
+
+Scroll smoothness: p95 frame time ranged 8.4–9.3 ms across every library and size, and no run dropped a single frame. Scroll CPU above is therefore headroom consumed, not jank observed.
 
 ### First paint
 
 | Nodes | this fork | react-sortable-tree | @minoru/react-dnd-treeview |
 | --- | --- | --- | --- |
-| 100 | 11.9 ms | 4.3 ms | 7.3 ms |
-| 1,000 | 12.2 ms | 4.4 ms | 62.8 ms |
-| 10,000 | 10.9 ms | 8.7 ms | 2,520 ms |
+| 100 | 12.2 ms | 4.8 ms | 7.5 ms |
+| 1,000 | 11.9 ms | **4.2 ms** | 61.0 ms |
+| 10,000 | 11.6 ms | 9.6 ms | 2,453 ms |
 
 ### Environment
 
 Apple M4, 10 cores, 32 GB, macOS.
-Node v26.5.0. Median of 5 runs after a discarded warm-up.
+Node v26.5.0. Median of 11 runs after a discarded warm-up.
 React 19.2.8 for this fork and @minoru,
 React 16.14.0 for the original.
 

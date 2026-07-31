@@ -28,6 +28,8 @@
     "lint:fix": "oxlint src --fix && eslint 'src/**/*.{ts,tsx}' --cache --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "bench:setup": "npm run build && node benchmark/pack-fork.mjs && npm --prefix benchmark install && npm --prefix benchmark/legacy install && npm --prefix benchmark/compat19 install --legacy-peer-deps",
+    "bench": "npm --prefix benchmark run footprint && npm --prefix benchmark run bench",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "prepublishOnly": "npm run build && npm run check:exports",

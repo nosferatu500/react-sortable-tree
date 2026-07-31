@@ -15,15 +15,26 @@ the `compat19` page rather than assumed.
 
 ## Running it
 
+From the repository root:
+
 ```sh
-npm run setup    # build the fork and pack it into vendor/
-npm install
-cd legacy && npm install && cd ..
-cd compat19 && npm install --legacy-peer-deps && cd ..
-npm run bench    # build.mjs + run.mjs
-node report.mjs  # results.json -> RESULTS.md
-node footprint.mjs   # install size, writes footprint.json
+npm run bench:setup   # build + pack the fork, install all three workspaces
+npm run bench         # footprint + build + run + report
 ```
+
+Or step by step from this directory, once the workspaces are installed:
+
+```sh
+node pack-fork.mjs   # rebuild the fork into vendor/fork.tgz
+node build.mjs       # harness bundles + bundle-size measurement
+node run.mjs         # drive Chrome, write results.json
+node footprint.mjs   # install size, writes footprint.json
+node report.mjs      # results.json + footprint.json -> RESULTS.md
+```
+
+`footprint.mjs` has to run before `report.mjs`, which reads its output.
+`pack-fork.mjs` normalises the tarball to `vendor/fork.tgz` so the `file:`
+dependency does not have to be edited on every version bump.
 
 `CHROME_PATH` overrides the browser location; it defaults to Google Chrome on
 macOS. `debug.mjs <id>` and `probe.mjs <id> <nodes>` dump the rendered DOM and
@@ -32,7 +43,7 @@ every DevTools counter for one page, which is how the harness was validated.
 ## What is measured
 
 Each library renders 10 expanded groups sharing the node budget, so 10,000 nodes
-means 10 groups of 999 children. Scenarios, per size, median of 5 runs after a
+means 10 groups of 999 children. Scenarios, per size, median of 11 runs after a
 discarded warm-up:
 
 - **Mount** — create the root and render the whole tree.
@@ -65,6 +76,19 @@ stays responsive.
 keeps the React 19 harnesses comparable with the React 16 legacy root, which
 commits synchronously anyway.
 
+**Medians carry their range, and wins have to clear it.** `results.json` stores
+`min`/`max` alongside the median for every timing, and `report.mjs` only bolds a
+figure when the winner's slowest run still beat the runner-up's fastest run.
+This matters more than it sounds: at 5 runs, which of the two
+react-sortable-tree builds "won" mount and expand flipped between otherwise
+identical benchmark runs. 11 runs settles it — they tie, which is the expected
+answer for a library and its own fork.
+
+**Frame timings are recorded alongside scroll CPU.** Every library scrolled at
+full frame rate at every size here, so the scroll-CPU column measures headroom
+spent, not stutter a user would notice. Reporting the CPU number without the
+frame number would make a trade-off look like a defect.
+
 **First paint is reported separately.** `virtua` sizes its viewport from a
 ResizeObserver, so this fork's first commit contains no rows and they arrive one
 frame later; the other two emit their rows during the commit. Every library gets
@@ -91,6 +115,7 @@ Kept deliberately, and all of them flatter the other two libraries:
 
 | file                    | what                                                  |
 | ----------------------- | ----------------------------------------------------- |
+| `pack-fork.mjs`         | builds the fork and packs it to `vendor/fork.tgz`     |
 | `harness/bench-core.js` | shared, dependency-free browser-side primitives       |
 | `harness/*.jsx`         | React 19 adapters                                     |
 | `legacy/original.jsx`   | React 16 adapter, in its own workspace for resolution |

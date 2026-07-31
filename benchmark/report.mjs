@@ -90,30 +90,87 @@ lines.push('### Runtime')
 lines.push('')
 
 const COLUMNS = [
-  { head: 'Mount CPU', get: (r) => `${ms(r.mountCpuMs)} ms` },
-  { head: 'Expand a group', get: (r) => `${ms(r.expandCpuMs)} ms` },
-  { head: 'Scroll top→bottom CPU', get: (r) => `${ms(r.scrollCpuMs)} ms` },
-  { head: 'DOM elements', get: (r) => int(r.domNodes) },
-  { head: 'Event listeners', get: (r) => int(r.listeners) },
-  { head: 'JS heap', get: (r) => `${r.heapMB.toFixed(1)} MB` },
+  {
+    head: 'Mount CPU',
+    metric: 'mountCpuMs',
+    get: (r) => `${ms(r.mountCpuMs)} ms`,
+  },
+  {
+    head: 'Expand a group',
+    metric: 'expandCpuMs',
+    get: (r) => `${ms(r.expandCpuMs)} ms`,
+  },
+  {
+    head: 'Scroll top→bottom CPU',
+    metric: 'scrollCpuMs',
+    get: (r) => `${ms(r.scrollCpuMs)} ms`,
+  },
+  { head: 'DOM elements', exact: 'domNodes', get: (r) => int(r.domNodes) },
+  { head: 'Event listeners', exact: 'listeners', get: (r) => int(r.listeners) },
+  {
+    head: 'JS heap',
+    metric: 'heapMB',
+    get: (r) => `${r.heapMB.toFixed(1)} MB`,
+  },
 ]
+
+/**
+ * Bold a timing only when the winner's *worst* run still beats the runner-up's
+ * *best* run. Several cross-library gaps here are a few tenths of a
+ * millisecond and the ranges sit on top of each other, so comparing medians
+ * alone would advertise noise as a win.
+ */
+const decisiveWinner = (rowsForSize, metric) => {
+  const entries = rowsForSize
+    .map((r) => ({ lib: r.lib, s: r.spread?.[metric] }))
+    .filter((e) => e.s)
+  if (entries.length < 2) return null
+  const [first, second] = [...entries].sort((a, b) => a.s.median - b.s.median)
+  return first.s.max < second.s.min ? first.lib : null
+}
+
+/** Counts that do not vary between runs can just be compared directly. */
+const exactWinner = (rowsForSize, key) => {
+  const min = Math.min(...rowsForSize.map((r) => r[key]))
+  const winners = rowsForSize.filter((r) => r[key] === min)
+  return winners.length === 1 ? winners[0].lib : null
+}
 
 lines.push(row(['Nodes', 'Library', ...COLUMNS.map((c) => c.head)]))
 lines.push(rule(2 + COLUMNS.length))
 for (const size of report.meta.sizes) {
-  for (const id of ORDER) {
-    const result = report.results.find((r) => r.lib === id && r.size === size)
+  const rowsForSize = ORDER.map((id) =>
+    report.results.find((r) => r.lib === id && r.size === size)
+  )
+  const winners = COLUMNS.map((c) =>
+    c.exact
+      ? exactWinner(rowsForSize, c.exact)
+      : decisiveWinner(rowsForSize, c.metric)
+  )
+  for (const result of rowsForSize) {
     lines.push(
       row([
         int(size),
-        TITLES[id]
+        TITLES[result.lib]
           .replace('@minoru/react-dnd-treeview', '@minoru')
           .split(' v')[0],
-        ...COLUMNS.map((c) => c.get(result)),
+        ...COLUMNS.map((c, i) => {
+          const text = c.get(result)
+          return winners[i] === result.lib ? best(text) : text
+        }),
       ])
     )
   }
 }
+
+lines.push('')
+const p95s = report.results.map((r) => r.frameP95Ms).filter((v) => v != null)
+const dropped = report.results.reduce((n, r) => n + (r.framesOver50ms ?? 0), 0)
+lines.push(
+  `Scroll smoothness: p95 frame time ranged ${Math.min(...p95s).toFixed(1)}–${Math.max(...p95s).toFixed(1)} ms` +
+    ` across every library and size, and ${dropped === 0 ? 'no run dropped a single frame' : `${dropped} frames exceeded 50 ms`}.` +
+    ' Scroll CPU above is therefore headroom consumed, not jank observed.'
+)
 
 lines.push('')
 lines.push('### First paint')
@@ -121,12 +178,16 @@ lines.push('')
 lines.push(row(['Nodes', ...ORDER.map((id) => TITLES[id].split(' v')[0])]))
 lines.push(rule(4))
 for (const size of report.meta.sizes) {
+  const rowsForSize = ORDER.map((id) =>
+    report.results.find((x) => x.lib === id && x.size === size)
+  )
+  const winner = decisiveWinner(rowsForSize, 'mountPaintedMs')
   lines.push(
     row([
       int(size),
-      ...ORDER.map((id) => {
-        const r = report.results.find((x) => x.lib === id && x.size === size)
-        return `${ms(r.mountPaintedMs)} ms`
+      ...rowsForSize.map((r) => {
+        const text = `${ms(r.mountPaintedMs)} ms`
+        return winner === r.lib ? best(text) : text
       }),
     ])
   )

@@ -1,13 +1,17 @@
 {
   "meta": {
-    "date": "2026-07-31T07:17:17.994Z",
+    "date": "2026-07-31T07:45:12.540Z",
     "node": "v26.5.0",
     "cpu": "Apple M4",
     "cores": 10,
     "memoryGB": 32,
-    "runs": 5,
+    "runs": 11,
     "scrollSteps": 40,
-    "sizes": [100, 1000, 10000]
+    "sizes": [
+      100,
+      1000,
+      10000
+    ]
   },
   "libraries": {
     "fork": {
@@ -93,21 +97,48 @@
     {
       "lib": "fork",
       "size": 100,
-      "mountCpuMs": 4.550000000000011,
-      "mountProcessCpuMs": 6.8700000000000045,
-      "mountFlushMs": 0.6000000238418579,
-      "mountPaintedMs": 11.899999976158142,
-      "collapseCpuMs": 3.299000000000035,
-      "expandCpuMs": 2.5860000000000127,
-      "expandFlushMs": 1.5,
+      "spread": {
+        "mountCpuMs": {
+          "median": 4.389999999999986,
+          "min": 3.7409999999999854,
+          "max": 5.376999999999953
+        },
+        "expandCpuMs": {
+          "median": 2.303000000000111,
+          "min": 1.9969999999999573,
+          "max": 2.9170000000000016
+        },
+        "scrollCpuMs": {
+          "median": 68.33199999999998,
+          "min": 53.331999999999994,
+          "max": 73.85199999999998
+        },
+        "mountPaintedMs": {
+          "median": 12.199999928474426,
+          "min": 11.600000023841858,
+          "max": 13.399999976158142
+        },
+        "heapMB": {
+          "median": 3.079631805419922,
+          "min": 2.8749351501464844,
+          "max": 3.2701377868652344
+        }
+      },
+      "mountCpuMs": 4.389999999999986,
+      "mountProcessCpuMs": 6.6199999999996635,
+      "mountFlushMs": 0.5999999046325684,
+      "mountPaintedMs": 12.199999928474426,
+      "collapseCpuMs": 2.444000000000017,
+      "expandCpuMs": 2.303000000000111,
+      "expandFlushMs": 1.2999999523162842,
       "domNodes": 177,
       "renderedRows": 13,
       "listeners": 253,
       "layoutObjects": 345,
-      "heapMB": 2.9655609130859375,
-      "scrollCpuMs": 70.16200000000003,
-      "scrollWallMs": 341.7999999523163,
-      "frameMedianMs": 8.300000000000068,
+      "heapMB": 3.079631805419922,
+      "scrollCpuMs": 68.33199999999998,
+      "scrollWallMs": 341.6999999284744,
+      "frameMedianMs": 8.300000000000182,
       "frameP95Ms": 9,
       "framesOver50ms": 0,
       "errors": 0
@@ -115,41 +146,95 @@
     {
       "lib": "fork",
       "size": 1000,
-      "mountCpuMs": 4.43300000000005,
-      "mountProcessCpuMs": 8.549999999999955,
-      "mountFlushMs": 1,
-      "mountPaintedMs": 12.199999928474426,
-      "collapseCpuMs": 2.8919999999999675,
-      "expandCpuMs": 2.7019999999999413,
-      "expandFlushMs": 1.600000023841858,
+      "spread": {
+        "mountCpuMs": {
+          "median": 4.866999999999962,
+          "min": 3.8450000000002547,
+          "max": 5.730000000000018
+        },
+        "expandCpuMs": {
+          "median": 2.4139999999999873,
+          "min": 1.7780000000001337,
+          "max": 2.7299999999999045
+        },
+        "scrollCpuMs": {
+          "median": 112.19100000000003,
+          "min": 103.78499999999985,
+          "max": 142.93799999999987
+        },
+        "mountPaintedMs": {
+          "median": 11.899999976158142,
+          "min": 5.800000071525574,
+          "max": 13.300000071525574
+        },
+        "heapMB": {
+          "median": 3.604320526123047,
+          "min": 3.3942794799804688,
+          "max": 3.76220703125
+        }
+      },
+      "mountCpuMs": 4.866999999999962,
+      "mountProcessCpuMs": 9.158999999999878,
+      "mountFlushMs": 0.8000000715255737,
+      "mountPaintedMs": 11.899999976158142,
+      "collapseCpuMs": 2.407000000000153,
+      "expandCpuMs": 2.4139999999999873,
+      "expandFlushMs": 1.5,
       "domNodes": 175,
       "renderedRows": 13,
       "listeners": 251,
       "layoutObjects": 343,
-      "heapMB": 3.4733619689941406,
-      "scrollCpuMs": 111.10300000000007,
-      "scrollWallMs": 341.89999997615814,
-      "frameMedianMs": 8.300000000000068,
-      "frameP95Ms": 8.900000000000091,
+      "heapMB": 3.604320526123047,
+      "scrollCpuMs": 112.19100000000003,
+      "scrollWallMs": 341.7000000476837,
+      "frameMedianMs": 8.300000000000182,
+      "frameP95Ms": 9.099999999999909,
       "framesOver50ms": 0,
       "errors": 0
     },
     {
       "lib": "fork",
       "size": 10000,
-      "mountCpuMs": 7.668999999999983,
-      "mountProcessCpuMs": 12.507000000000005,
-      "mountFlushMs": 3.5999999046325684,
-      "mountPaintedMs": 10.899999976158142,
-      "collapseCpuMs": 4.162000000000035,
-      "expandCpuMs": 5.779999999999973,
-      "expandFlushMs": 2.5999999046325684,
+      "spread": {
+        "mountCpuMs": {
+          "median": 8.134000000000015,
+          "min": 6.357999999999947,
+          "max": 12.294999999999987
+        },
+        "expandCpuMs": {
+          "median": 7.2309999999999945,
+          "min": 4.144999999999982,
+          "max": 9.023000000000138
+        },
+        "scrollCpuMs": {
+          "median": 104.25,
+          "min": 89.33899999999994,
+          "max": 185.85
+        },
+        "mountPaintedMs": {
+          "median": 11.600000023841858,
+          "min": 10.5,
+          "max": 18.899999976158142
+        },
+        "heapMB": {
+          "median": 8.107349395751953,
+          "min": 7.902194976806641,
+          "max": 8.272132873535156
+        }
+      },
+      "mountCpuMs": 8.134000000000015,
+      "mountProcessCpuMs": 13.644999999999982,
+      "mountFlushMs": 3.3000000715255737,
+      "mountPaintedMs": 11.600000023841858,
+      "collapseCpuMs": 3.634999999999991,
+      "expandCpuMs": 7.2309999999999945,
+      "expandFlushMs": 2.799999952316284,
       "domNodes": 175,
       "renderedRows": 13,
       "listeners": 251,
       "layoutObjects": 343,
-      "heapMB": 8.01605224609375,
-      "scrollCpuMs": 102.46499999999992,
+      "heapMB": 8.107349395751953,
+      "scrollCpuMs": 104.25,
       "scrollWallMs": 341.6999999284744,
       "frameMedianMs": 8.300000000000182,
       "frameP95Ms": 9,
@@ -159,132 +244,294 @@
     {
       "lib": "original",
       "size": 100,
-      "mountCpuMs": 4.761999999999944,
-      "mountProcessCpuMs": 6.4669999999999845,
-      "mountFlushMs": 3.5,
-      "mountPaintedMs": 4.300000071525574,
-      "collapseCpuMs": 2.475999999999999,
-      "expandCpuMs": 2.185000000000059,
+      "spread": {
+        "mountCpuMs": {
+          "median": 5.480000000000075,
+          "min": 3.649000000000001,
+          "max": 6.6410000000000196
+        },
+        "expandCpuMs": {
+          "median": 2.5020000000000095,
+          "min": 1.8339999999999463,
+          "max": 3.024000000000001
+        },
+        "scrollCpuMs": {
+          "median": 69.767,
+          "min": 51.23900000000003,
+          "max": 73.93399999999997
+        },
+        "mountPaintedMs": {
+          "median": 4.799999952316284,
+          "min": 3.299999952316284,
+          "max": 6.100000023841858
+        },
+        "heapMB": {
+          "median": 3.41192626953125,
+          "min": 2.9818458557128906,
+          "max": 3.6290283203125
+        }
+      },
+      "mountCpuMs": 5.480000000000075,
+      "mountProcessCpuMs": 8.478000000000065,
+      "mountFlushMs": 3.700000047683716,
+      "mountPaintedMs": 4.799999952316284,
+      "collapseCpuMs": 2.8230000000000075,
+      "expandCpuMs": 2.5020000000000095,
       "expandFlushMs": 1.5,
       "domNodes": 253,
       "renderedRows": 20,
       "listeners": 199,
       "layoutObjects": 412,
-      "heapMB": 3.2420806884765625,
-      "scrollCpuMs": 60.38499999999999,
+      "heapMB": 3.41192626953125,
+      "scrollCpuMs": 69.767,
       "scrollWallMs": 341.60000002384186,
-      "frameMedianMs": 8.300000000000068,
-      "frameP95Ms": 9.199999999999932,
+      "frameMedianMs": 8.300000000000182,
+      "frameP95Ms": 9.200000000000273,
       "framesOver50ms": 0,
       "errors": 0
     },
     {
       "lib": "original",
       "size": 1000,
-      "mountCpuMs": 4.495999999999981,
-      "mountProcessCpuMs": 5.5769999999998845,
-      "mountFlushMs": 3.600000023841858,
-      "mountPaintedMs": 4.399999976158142,
-      "collapseCpuMs": 2.20799999999997,
-      "expandCpuMs": 2.316999999999979,
-      "expandFlushMs": 1.600000023841858,
+      "spread": {
+        "mountCpuMs": {
+          "median": 4.551000000000045,
+          "min": 3.9560000000000173,
+          "max": 4.794000000000096
+        },
+        "expandCpuMs": {
+          "median": 1.747000000000071,
+          "min": 1.629000000000019,
+          "max": 2.84699999999998
+        },
+        "scrollCpuMs": {
+          "median": 124.15599999999995,
+          "min": 118.37000000000006,
+          "max": 131.1780000000001
+        },
+        "mountPaintedMs": {
+          "median": 4.200000047683716,
+          "min": 3.6999999284744263,
+          "max": 4.700000047683716
+        },
+        "heapMB": {
+          "median": 3.9648361206054688,
+          "min": 3.709766387939453,
+          "max": 4.222209930419922
+        }
+      },
+      "mountCpuMs": 4.551000000000045,
+      "mountProcessCpuMs": 6.153000000000247,
+      "mountFlushMs": 3.299999952316284,
+      "mountPaintedMs": 4.200000047683716,
+      "collapseCpuMs": 2.1440000000000055,
+      "expandCpuMs": 1.747000000000071,
+      "expandFlushMs": 1.3000000715255737,
       "domNodes": 251,
       "renderedRows": 20,
       "listeners": 197,
       "layoutObjects": 410,
-      "heapMB": 3.8604049682617188,
-      "scrollCpuMs": 134.033,
-      "scrollWallMs": 341.7000000476837,
-      "frameMedianMs": 8.300000000000068,
-      "frameP95Ms": 9,
+      "heapMB": 3.9648361206054688,
+      "scrollCpuMs": 124.15599999999995,
+      "scrollWallMs": 319.90000009536743,
+      "frameMedianMs": 8.099999999999909,
+      "frameP95Ms": 8.400000000000546,
       "framesOver50ms": 0,
       "errors": 0
     },
     {
       "lib": "original",
       "size": 10000,
-      "mountCpuMs": 9.086000000000013,
-      "mountProcessCpuMs": 11.332999999999856,
-      "mountFlushMs": 7.899999976158142,
-      "mountPaintedMs": 8.699999928474426,
-      "collapseCpuMs": 4.813000000000045,
-      "expandCpuMs": 4.475999999999999,
-      "expandFlushMs": 3.899999976158142,
+      "spread": {
+        "mountCpuMs": {
+          "median": 10.094999999999914,
+          "min": 9.079999999999927,
+          "max": 12.255000000000024
+        },
+        "expandCpuMs": {
+          "median": 4.773999999999887,
+          "min": 4.169999999999959,
+          "max": 5.336999999999989
+        },
+        "scrollCpuMs": {
+          "median": 113.40499999999997,
+          "min": 103.40599999999995,
+          "max": 116.95600000000013
+        },
+        "mountPaintedMs": {
+          "median": 9.600000023841858,
+          "min": 8.5,
+          "max": 14.099999904632568
+        },
+        "heapMB": {
+          "median": 6.256717681884766,
+          "min": 6.016120910644531,
+          "max": 6.5183868408203125
+        }
+      },
+      "mountCpuMs": 10.094999999999914,
+      "mountProcessCpuMs": 12.585000000000036,
+      "mountFlushMs": 8.799999952316284,
+      "mountPaintedMs": 9.600000023841858,
+      "collapseCpuMs": 4.79099999999994,
+      "expandCpuMs": 4.773999999999887,
+      "expandFlushMs": 3.700000047683716,
       "domNodes": 251,
       "renderedRows": 20,
       "listeners": 197,
       "layoutObjects": 410,
-      "heapMB": 6.154773712158203,
-      "scrollCpuMs": 115.494,
-      "scrollWallMs": 341.39999997615814,
-      "frameMedianMs": 8.300000000000182,
-      "frameP95Ms": 8.400000000000091,
+      "heapMB": 6.256717681884766,
+      "scrollCpuMs": 113.40499999999997,
+      "scrollWallMs": 311.2999999523163,
+      "frameMedianMs": 7.900000000000091,
+      "frameP95Ms": 8.399999999999977,
       "framesOver50ms": 0,
       "errors": 0
     },
     {
       "lib": "minoru",
       "size": 100,
-      "mountCpuMs": 7.221000000000004,
-      "mountProcessCpuMs": 10.617000000000019,
-      "mountFlushMs": 6.600000023841858,
-      "mountPaintedMs": 7.299999952316284,
-      "collapseCpuMs": 3.3290000000000077,
-      "expandCpuMs": 3.388999999999953,
-      "expandFlushMs": 2.399999976158142,
+      "spread": {
+        "mountCpuMs": {
+          "median": 7.44399999999996,
+          "min": 4.449000000000012,
+          "max": 8.344999999999999
+        },
+        "expandCpuMs": {
+          "median": 3.341000000000008,
+          "min": 3.152999999999963,
+          "max": 4.257000000000005
+        },
+        "scrollCpuMs": {
+          "median": 17.857,
+          "min": 13.652000000000015,
+          "max": 19.535999999999945
+        },
+        "mountPaintedMs": {
+          "median": 7.5,
+          "min": 4.399999976158142,
+          "max": 8.300000071525574
+        },
+        "heapMB": {
+          "median": 4.078990936279297,
+          "min": 3.9757232666015625,
+          "max": 4.187236785888672
+        }
+      },
+      "mountCpuMs": 7.44399999999996,
+      "mountProcessCpuMs": 11.106999999999971,
+      "mountFlushMs": 6.900000095367432,
+      "mountPaintedMs": 7.5,
+      "collapseCpuMs": 3.7860000000000014,
+      "expandCpuMs": 3.341000000000008,
+      "expandFlushMs": 2.3000000715255737,
       "domNodes": 322,
       "renderedRows": 100,
       "listeners": 993,
       "layoutObjects": 632,
-      "heapMB": 4.032924652099609,
-      "scrollCpuMs": 18.107999999999976,
-      "scrollWallMs": 342.5,
-      "frameMedianMs": 8.300000000000068,
-      "frameP95Ms": 9.099999999999909,
+      "heapMB": 4.078990936279297,
+      "scrollCpuMs": 17.857,
+      "scrollWallMs": 313.39999997615814,
+      "frameMedianMs": 7.900000000000091,
+      "frameP95Ms": 8.5,
       "framesOver50ms": 0,
       "errors": 0
     },
     {
       "lib": "minoru",
       "size": 1000,
-      "mountCpuMs": 63.5590000000002,
-      "mountProcessCpuMs": 120.8760000000002,
-      "mountFlushMs": 61.39999997615814,
-      "mountPaintedMs": 62.799999952316284,
-      "collapseCpuMs": 24.299999999999955,
-      "expandCpuMs": 23.427999999999997,
-      "expandFlushMs": 22.699999928474426,
+      "spread": {
+        "mountCpuMs": {
+          "median": 64.3420000000001,
+          "min": 61.567000000000036,
+          "max": 69.9380000000001
+        },
+        "expandCpuMs": {
+          "median": 23.7829999999999,
+          "min": 20.56899999999996,
+          "max": 28.160999999999945
+        },
+        "scrollCpuMs": {
+          "median": 26.454000000000065,
+          "min": 23.086000000000013,
+          "max": 34.122000000000014
+        },
+        "mountPaintedMs": {
+          "median": 61,
+          "min": 59.299999952316284,
+          "max": 67.19999992847443
+        },
+        "heapMB": {
+          "median": 16.21306610107422,
+          "min": 16.104278564453125,
+          "max": 16.322078704833984
+        }
+      },
+      "mountCpuMs": 64.3420000000001,
+      "mountProcessCpuMs": 127.1190000000006,
+      "mountFlushMs": 59.300000071525574,
+      "mountPaintedMs": 61,
+      "collapseCpuMs": 22.394000000000233,
+      "expandCpuMs": 23.7829999999999,
+      "expandFlushMs": 21.800000071525574,
       "domNodes": 3022,
       "renderedRows": 1000,
       "listeners": 8193,
       "layoutObjects": 6032,
-      "heapMB": 16.135108947753906,
-      "scrollCpuMs": 26.881000000000085,
-      "scrollWallMs": 342.1999999284744,
-      "frameMedianMs": 8.300000000000125,
-      "frameP95Ms": 9.099999999999909,
+      "heapMB": 16.21306610107422,
+      "scrollCpuMs": 26.454000000000065,
+      "scrollWallMs": 314.59999990463257,
+      "frameMedianMs": 8,
+      "frameP95Ms": 8.400000000000091,
       "framesOver50ms": 0,
       "errors": 0
     },
     {
       "lib": "minoru",
       "size": 10000,
-      "mountCpuMs": 2503.986000000001,
-      "mountProcessCpuMs": 2937.950999999999,
-      "mountFlushMs": 2508.5,
-      "mountPaintedMs": 2520.2000000476837,
-      "collapseCpuMs": 991.7000000000007,
-      "expandCpuMs": 546.7220000000016,
-      "expandFlushMs": 537,
+      "spread": {
+        "mountCpuMs": {
+          "median": 2437.1879999999946,
+          "min": 2290.9490000000005,
+          "max": 2587.0660000000007
+        },
+        "expandCpuMs": {
+          "median": 567.378999999999,
+          "min": 324.1790000000037,
+          "max": 779.278999999995
+        },
+        "scrollCpuMs": {
+          "median": 48.666000000004715,
+          "min": 34.61699999999837,
+          "max": 65.65499999999884
+        },
+        "mountPaintedMs": {
+          "median": 2453,
+          "min": 2308,
+          "max": 2600.4000000953674
+        },
+        "heapMB": {
+          "median": 135.75821685791016,
+          "min": 135.65083694458008,
+          "max": 135.85969924926758
+        }
+      },
+      "mountCpuMs": 2437.1879999999946,
+      "mountProcessCpuMs": 2869.2920000000013,
+      "mountFlushMs": 2439.5,
+      "mountPaintedMs": 2453,
+      "collapseCpuMs": 1013.7690000000075,
+      "expandCpuMs": 567.378999999999,
+      "expandFlushMs": 559.7999999523163,
       "domNodes": 30022,
       "renderedRows": 10000,
       "listeners": 80193,
       "layoutObjects": 60032,
-      "heapMB": 135.7284278869629,
-      "scrollCpuMs": 52.388999999999214,
-      "scrollWallMs": 337.6999999284744,
-      "frameMedianMs": 8.300000000001091,
-      "frameP95Ms": 8.5,
+      "heapMB": 135.75821685791016,
+      "scrollCpuMs": 48.666000000004715,
+      "scrollWallMs": 335.60000002384186,
+      "frameMedianMs": 8.30000000000291,
+      "frameP95Ms": 9.299999999995634,
       "framesOver50ms": 0,
       "errors": 0
     }
