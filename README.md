@@ -18,13 +18,22 @@ npm install @nosferatu500/react-sortable-tree react-dnd react-dnd-html5-backend
 yarn add @nosferatu500/react-sortable-tree react-dnd react-dnd-html5-backend
 ```
 
-The bundle is ESM-only and includes all styles via runtime injection (no separate CSS file is required).
+Then import the stylesheet once, anywhere in your app:
+
+```js
+import '@nosferatu500/react-sortable-tree/style.css'
+```
+
+The bundle is ESM-only. Styles ship as a real stylesheet rather than being injected at
+runtime, so they work with a strict Content-Security-Policy, are present in
+server-rendered HTML, and are minified and cached by your own build.
 
 ## Quick start
 
 ```tsx
 import { useState } from 'react'
 import { SortableTree, TreeItem } from '@nosferatu500/react-sortable-tree'
+import '@nosferatu500/react-sortable-tree/style.css'
 
 const initialData: TreeItem[] = [
   { title: 'Chicken', children: [{ title: 'Egg' }] },
@@ -140,6 +149,29 @@ Override these CSS variables on the `.rst__tree` class or a parent element:
   --rst-button-bg: #fff;
   --rst-button-border: #989898;
 }
+```
+
+Every variable is declared with `@property`, so an invalid value falls back to the
+default instead of collapsing the layout.
+
+### Overriding rules with `@layer`
+
+All of the component's rules live in a `rst` cascade layer. Unlayered CSS always beats
+layered CSS regardless of specificity, so your own rules win without `!important` or
+selector escalation:
+
+```css
+/* No .rst__tree prefix, no !important — this just wins. */
+.rst__row {
+  border-radius: 8px;
+}
+```
+
+If you use cascade layers yourself, order `rst` explicitly to place it relative to your
+own layers:
+
+```css
+@layer rst, components, utilities;
 ```
 
 ### Theme prop

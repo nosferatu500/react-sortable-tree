@@ -1,59 +1,18 @@
-import { readFile } from 'node:fs/promises'
-import path from 'node:path'
 import { defineConfig } from 'tsdown'
 
-const VIRTUAL_PREFIX = '\0rst-inject-css:'
-// The virtual id must not *end* in ".css", or @tsdown/css claims it and tries
-// to parse the JS we return as a stylesheet.
-const VIRTUAL_SUFFIX = '?inject'
-
 /**
- * Reproduces the runtime style injection that rollup-plugin-postcss did: each
- * `.css` import becomes a JS module that appends a <style> tag when imported.
- * This preserves the published contract that consumers never import a
- * stylesheet themselves.
+ * CSS is emitted as a real stylesheet (`lib/styles.css`) by @tsdown/css, which
+ * is installed purely to claim the `.css` imports in src/ — no configuration of
+ * its own is needed.
  *
- * CSS imports are rewritten to a virtual, non-".css" id so that neither
- * tsdown's css-guard nor @tsdown/css (lightningcss) claims them and tries to
- * emit a separate stylesheet.
+ * v5 instead rewrote each `.css` import into a JS module that appended a <style>
+ * tag at import time. That was dropped in v6: it forced ~14 kB of stylesheet
+ * into every consumer's JS bundle even when they only imported a tree utility,
+ * required `style-src 'unsafe-inline'` under a strict CSP, emitted nothing
+ * during SSR (so server HTML flashed unstyled at hydration), and gave consumers
+ * no deterministic way to win the cascade. Consumers now import
+ * `@nosferatu500/react-sortable-tree/styles.css` themselves.
  */
-function injectCssPlugin() {
-  return {
-    name: 'rst:inject-css',
-    resolveId: {
-      filter: { id: /\.css$/ },
-      handler(source: string, importer: string | undefined) {
-        const resolved = importer
-          ? path.resolve(path.dirname(importer), source)
-          : path.resolve(source)
-        return VIRTUAL_PREFIX + resolved + VIRTUAL_SUFFIX
-      },
-    },
-    load: {
-      // Matches the prefix without embedding the NUL byte in the pattern
-      // itself, which would be a control character in a regex.
-      filter: { id: /rst-inject-css:/ },
-      async handler(id: string) {
-        const file = id.slice(
-          VIRTUAL_PREFIX.length,
-          id.length - VIRTUAL_SUFFIX.length
-        )
-        const css = await readFile(file, 'utf8')
-        return {
-          code: [
-            `if (typeof document !== 'undefined') {`,
-            `  const style = document.createElement('style')`,
-            `  style.appendChild(document.createTextNode(${JSON.stringify(css)}))`,
-            `  document.head.appendChild(style)`,
-            `}`,
-            '',
-          ].join('\n'),
-          moduleType: 'js' as const,
-        }
-      },
-    },
-  }
-}
 
 /**
  * Runs babel-plugin-react-compiler over the TypeScript sources.
@@ -119,5 +78,5 @@ export default defineConfig({
   // already unambiguous ESM because package.json sets "type": "module", and it
   // keeps the paths in the "exports" map stable.
   outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
-  plugins: [injectCssPlugin(), reactCompilerPlugin()],
+  plugins: [reactCompilerPlugin()],
 })

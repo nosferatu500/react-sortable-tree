@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { SortableTree, type TreeItem } from '../../../src'
-// In your own app, you would need to use import styles once in the app
-// import 'react-sortable-tree/styles.css';
+// In your own app, import the stylesheet once, anywhere:
+// import '@nosferatu500/react-sortable-tree/style.css'
+// (These stories import the component from source, so Vite picks the CSS up
+// through the per-component imports in src/.)
 
 const data = [
   { title: 'Chicken', expanded: true, children: [{ title: 'Egg' }] },

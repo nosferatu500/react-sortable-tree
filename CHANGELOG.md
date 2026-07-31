@@ -21,18 +21,66 @@
 - Consumers do not need to configure anything. If your app also runs React Compiler,
   it will simply skip this package's already-compiled code.
 
+#### CSS is a real stylesheet again — you must import it
+
+- **Runtime style injection is gone.** v5 appended four `<style>` elements at import
+  time; v6 emits `lib/style.css` and consumers import it themselves:
+
+  ```js
+  import '@nosferatu500/react-sortable-tree/style.css'
+  ```
+
+  This restores the v4 import path, so projects upgrading from v4 keep the same line.
+
+- **Why:** injection put ~14 kB of stylesheet into every consumer's JS bundle — even
+  for consumers who only imported a tree utility and never rendered the component —
+  required `style-src 'unsafe-inline'` under a strict CSP with no way to supply a
+  nonce, emitted nothing during SSR (so server-rendered HTML flashed unstyled at
+  hydration), and left override order dependent on bundler module evaluation order.
+
+- **Measured effect** on a minified consumer bundle (peers external):
+
+  | consumer                           | v5      | v6      |
+  | ---------------------------------- | ------- | ------- |
+  | imports only `getTreeFromFlatData` | 18.0 kB | 3.6 kB  |
+  | imports `SortableTree`             | 43.7 kB | 29.2 kB |
+
+  plus a separately cached 12.2 kB stylesheet that your own build minifies.
+
+- **All component rules are now in a `rst` cascade layer.** Unlayered CSS beats layered
+  CSS regardless of specificity, so overrides no longer need `!important` or selector
+  escalation. Order it against your own layers with `@layer rst, components;` if you use
+  layers. The `@property` declarations remain unlayered — they are global registrations,
+  not cascade participants.
+
+- `sideEffects` narrowed from `true` to `["**/*.css"]`, since the JS is now pure.
+
 ### Migration Guide
 
 #### From v5.x to v6.x
 
-1. **Update React** to 19.0.0 or higher. There are no other required changes — the
-   component API is unchanged from v5.
+1. **Update React** to 19.0.0 or higher. The component API is unchanged from v5.
 
    ```sh
    npm install react@^19 react-dom@^19
    ```
 
-2. **If you were building this package from source** and relied on `build:compiler`,
+2. **Import the stylesheet.** This is the only required code change:
+
+   ```js
+   // v5 — styles injected themselves, nothing to import
+   import { SortableTree } from '@nosferatu500/react-sortable-tree'
+
+   // v6
+   import { SortableTree } from '@nosferatu500/react-sortable-tree'
+   import '@nosferatu500/react-sortable-tree/style.css'
+   ```
+
+   If you have CSS overriding the component, you can now delete any `!important` or
+   `.rst__tree .rst__row`-style specificity hacks — unlayered rules beat the `rst`
+   layer on their own.
+
+3. **If you were building this package from source** and relied on `build:compiler`,
    use `build` instead:
 
    ```sh
