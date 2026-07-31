@@ -21,6 +21,6 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "tsdown.config.ts"],
+  "include": ["src", "tsdown.config.ts", "vitest.config.ts", "vitest.setup.ts"],
   "exclude": ["node_modules", "lib"]
 }

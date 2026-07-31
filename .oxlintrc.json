@@ -36,5 +36,13 @@
     ],
     "react/no-array-index-key": "warn"
   },
+  "overrides": [
+    {
+      "files": ["src/**/*.test.ts", "src/**/*.test.tsx", "vitest.setup.ts"],
+      "rules": {
+        "unicorn/consistent-function-scoping": "off"
+      }
+    }
+  ],
   "ignorePatterns": ["lib", "storybook-static", "node_modules"]
 }

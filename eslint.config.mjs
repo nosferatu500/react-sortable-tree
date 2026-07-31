@@ -151,6 +151,20 @@ export default defineConfig(
     },
   },
 
+  // Test files.
+  {
+    files: ['src/**/*.test.{ts,tsx}', 'vitest.setup.ts'],
+    rules: {
+      // Test-local components are deliberate: hoisting them would share one
+      // component identity across tests, which is exactly what several of
+      // these tests are measuring.
+      'unicorn/consistent-function-scoping': 'off',
+      // Harnesses for different scenarios legitimately look alike.
+      'sonarjs/no-identical-functions': 'off',
+      'no-console': 'off',
+    },
+  },
+
   // Storybook Specifics
   ...storybookPlugin.configs['flat/recommended'],
 

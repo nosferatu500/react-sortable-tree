@@ -100,10 +100,17 @@ budget in v5, 5% in v6. Behind it:
 
 ### Testing
 
-- Vitest added — `npm test` and `npm run test:watch`.
-- `src/utils/tree-data-utils.test.ts` covers every export of the tree-data module (83
-  tests), including no-mutation and structural-sharing invariants. Both bugs above were
-  found by these tests.
+The project had no tests before v6. It now has **137**, run with `npm test` (or
+`npm run test:watch`):
+
+- `src/utils/tree-data-utils.test.ts` (83) — every export of the tree-data module,
+  including no-mutation and structural-sharing invariants. Both bugs above were found by
+  these tests.
+- `src/react-sortable-tree.test.tsx` (42) — component behaviour under
+  `@testing-library/react` + jsdom: rendering, expand/collapse, search, every callback
+  contract, custom renderers, theme precedence, lazy children, controlled updates.
+- `src/utils/dnd-manager.test.tsx` (12) — real drags driven through react-dnd's
+  `TestBackend`: begin/hover/drop/cancel, `canDrop` enforcement, and subtree integrity.
 
 ### Migration Guide
 
