@@ -334,7 +334,7 @@ type LazyChildrenConfig = Pick<
 
 const isThenable = (
   value: unknown
-): value is PromiseLike<TreeItem[] | undefined | void> =>
+): value is PromiseLike<TreeItem[] | undefined> =>
   typeof value === 'object' &&
   value !== null &&
   typeof (value as PromiseLike<unknown>).then === 'function'
@@ -355,7 +355,7 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
         return
       }
 
-      // Append the loaded data, whichever way the loader delivered it
+      // Append the loaded data
       const applyChildren = (childrenArray: TreeItem[]) =>
         props.onChange(
           changeNodeAtPath({
@@ -380,9 +380,6 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
         path,
         lowerSiblingCounts,
         treeIndex,
-
-        // Deprecated callback form, still supported
-        done: applyChildren,
       })
 
       if (Array.isArray(result)) {
@@ -392,8 +389,10 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
         // visible in the console and catchable by the consumer, whereas
         // silently dropping it would leave the node stuck on its spinner with
         // no diagnostic at all.
-        // Resolving to nothing means the loader used `done` instead
         void result.then((childrenArray) =>
+          // A loader that resolves to nothing is a typeless caller's mistake.
+          // Leave the node pending rather than writing `children: undefined`,
+          // which would drop both the loader and anything already there.
           childrenArray ? applyChildren(childrenArray) : undefined
         )
       }

@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { at, childAt, childrenOf } from '../test-helpers'
-import type {
-  GetTreeItemChildrenFn,
-  TreeIndex,
-  TreeItem,
-  TreeNode,
-} from '../types'
+import type { TreeIndex, TreeItem, TreeNode } from '../types'
 import { defaultGetNodeKey } from './default-handlers'
 import {
   addNodeUnderParent,
@@ -76,7 +71,7 @@ describe('getDescendantCount', () => {
     const node: TreeItem = {
       title: 'lazy',
       expanded: true,
-      children: (() => {}) as GetTreeItemChildrenFn,
+      children: () => [],
     }
     expect(getDescendantCount({ node })).toBe(0)
   })
@@ -126,7 +121,7 @@ describe('getVisibleNodeCount', () => {
       {
         title: 'lazy',
         expanded: true,
-        children: (() => {}) as GetTreeItemChildrenFn,
+        children: () => [],
       },
     ]
     expect(getVisibleNodeCount({ treeData })).toBe(1)
@@ -659,7 +654,7 @@ describe('addNodeUnderParent', () => {
       {
         id: 'lazy',
         expanded: true,
-        children: (() => {}) as GetTreeItemChildrenFn,
+        children: () => [],
       },
     ]
     expect(() =>
@@ -929,7 +924,7 @@ describe('isDescendant', () => {
 
   it('is false for childless and function-children nodes', () => {
     expect(isDescendant({ title: 'x' }, { title: 'y' })).toBe(false)
-    const lazy: TreeItem = { children: (() => {}) as GetTreeItemChildrenFn }
+    const lazy: TreeItem = { children: () => [] }
     expect(isDescendant(lazy, { title: 'y' })).toBe(false)
   })
 })
@@ -943,7 +938,7 @@ describe('getDepth', () => {
   })
 
   it('counts function children as one level', () => {
-    expect(getDepth({ children: (() => {}) as GetTreeItemChildrenFn })).toBe(1)
+    expect(getDepth({ children: () => [] })).toBe(1)
   })
 })
 

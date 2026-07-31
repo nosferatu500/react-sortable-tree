@@ -114,7 +114,7 @@ describe('ARIA structure', () => {
   })
 
   it('treats a lazy children function as expandable', () => {
-    render(<Controlled initial={[{ title: 'lazy', children: () => {} }]} />)
+    render(<Controlled initial={[{ title: 'lazy', children: () => [] }]} />)
     expect(itemByTitle('lazy').getAttribute('aria-expanded')).toBe('false')
   })
 

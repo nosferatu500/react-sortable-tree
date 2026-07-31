@@ -440,10 +440,9 @@ describe('controlled treeData', () => {
 
 describe('lazy children', () => {
   it('invokes the children function for an expanded node and applies the result', async () => {
-    // eslint-disable-next-line sonarjs/deprecation -- the deprecated `done` form is the subject
-    const children = vi.fn(({ done }: GetTreeItemChildren) => {
-      done([{ title: 'loaded' }])
-    })
+    const children = vi.fn((_data: GetTreeItemChildren) => [
+      { title: 'loaded' },
+    ])
     render(
       <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
     )
@@ -474,9 +473,10 @@ describe('lazy children', () => {
   })
 
   it('shows a loading handle for a pending lazy node', () => {
+    const never = () => new Promise<TreeItem[]>(() => {})
     render(
       <Controlled
-        initial={[{ title: 'lazy', expanded: true, children: () => {} }]}
+        initial={[{ title: 'lazy', expanded: true, children: never }]}
       />
     )
     expect(document.querySelector('.rst__loadingHandle')).not.toBeNull()
@@ -503,21 +503,10 @@ describe('lazy children', () => {
     await waitFor(() => expect(rowTitles()).toContain('sync'))
   })
 
-  it('still supports an async loader that calls the deprecated done callback', async () => {
-    // eslint-disable-next-line sonarjs/deprecation -- deliberately the old form
-    const children = vi.fn(async ({ done }: GetTreeItemChildren) => {
-      await Promise.resolve()
-      done([{ title: 'via-done' }])
-    })
-    render(
-      <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
-    )
-
-    await waitFor(() => expect(rowTitles()).toContain('via-done'))
-  })
-
   it('leaves the node alone when the promise resolves to nothing', async () => {
-    const children = vi.fn(async () => undefined)
+    // Only reachable from JavaScript — the signature requires `TreeItem[]`. It
+    // must not write `children: undefined` and drop the loader.
+    const children = vi.fn(async () => undefined as unknown as TreeItem[])
     render(
       <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
     )

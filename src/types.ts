@@ -47,13 +47,6 @@ export interface SearchData extends NodeData {
 }
 
 export interface GetTreeItemChildren {
-  /**
-   * Callback form of delivering the loaded children.
-   *
-   * @deprecated Return the children array — or a promise for it — instead.
-   * `done` keeps working and is not scheduled for removal.
-   */
-  done: (children: TreeItem[]) => void
   node: TreeItem
   path: TreeKey[]
   lowerSiblingCounts: number[]
@@ -61,11 +54,8 @@ export interface GetTreeItemChildren {
 }
 
 /**
- * Loader for a node whose children are fetched on demand. Deliver the children
- * by returning them, by returning a promise for them, or — deprecated — by
- * calling `done`. Returning (or resolving to) nothing leaves the node's
- * children untouched, so a loader that awaits and then calls `done` still
- * works.
+ * Loader for a node whose children are fetched on demand. Return the children,
+ * or a promise for them; the node shows a loading indicator until they arrive.
  *
  * The tree it updates is the tree as it was when the loader was invoked, and a
  * loader for a node that is still a function may be invoked again on a later
@@ -73,7 +63,7 @@ export interface GetTreeItemChildren {
  */
 export type GetTreeItemChildrenFn = (
   data: GetTreeItemChildren
-) => TreeItem[] | Promise<TreeItem[] | undefined | void> | undefined | void
+) => TreeItem[] | Promise<TreeItem[]>
 
 export type GetNodeKeyFunction = (data: TreeIndex & TreeNode) => string | number
 
