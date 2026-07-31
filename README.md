@@ -123,6 +123,60 @@ All props are typed in `ReactSortableTreeProps` (see `src/react-sortable-tree.ts
 | `virtuaRef`                 | `RefObject<VListHandle>`     | Direct access to the virtual list   |
 | `dragDropManager`           | `object`                     | External react-dnd manager          |
 
+### Accessibility
+
+| Prop                 | Type      | Default | Description                                      |
+| -------------------- | --------- | ------- | ------------------------------------------------ |
+| `aria-label`         | `string`  | -       | Accessible name for the tree                     |
+| `aria-labelledby`    | `string`  | -       | Id of an element naming the tree                 |
+| `keyboardNavigation` | `boolean` | `true`  | Set to `false` to opt out of built-in arrow keys |
+
+## Accessibility
+
+The tree implements the [WAI-ARIA tree view pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/).
+Give it an accessible name — everything else is automatic:
+
+```tsx
+<SortableTree
+  aria-label="Project files"
+  treeData={treeData}
+  onChange={setTreeData}
+/>
+```
+
+Rows are exposed as `role="treeitem"` with `aria-level`, `aria-setsize`,
+`aria-posinset`, and `aria-expanded` (the last only on nodes that actually have
+children). Because the list is virtualized the DOM is flat, so depth and position are
+stated explicitly rather than implied by nesting.
+
+### Keyboard
+
+One row is in the tab sequence at a time — a roving tabindex — so tabbing into the tree
+lands on the active row and tabbing again leaves it.
+
+| Key                                 | Action                                              |
+| ----------------------------------- | --------------------------------------------------- |
+| <kbd>↓</kbd> / <kbd>↑</kbd>         | Move to the next / previous visible row             |
+| <kbd>→</kbd>                        | Expand a collapsed node, or move to its first child |
+| <kbd>←</kbd>                        | Collapse an expanded node, or move to its parent    |
+| <kbd>Home</kbd> / <kbd>End</kbd>    | Move to the first / last visible row                |
+| <kbd>Enter</kbd> / <kbd>Space</kbd> | Toggle the focused node                             |
+
+<kbd>←</kbd> and <kbd>→</kbd> swap roles when `rowDirection="rtl"`. Keys the tree does
+not handle are left alone, and keystrokes originating in an `input`, `textarea`,
+`select`, or `contenteditable` inside a row are never intercepted — so inline renaming
+keeps working.
+
+Expanding or collapsing via the keyboard goes through the same `onChange` and
+`onVisibilityToggle` callbacks as clicking the toggle.
+
+Pass `keyboardNavigation={false}` to handle the arrow keys yourself; the ARIA roles and
+the roving tabindex stay in place.
+
+> **Drag and drop is still pointer-only.** Keyboard-accessible reordering needs a drag
+> backend with a keyboard sensor, which is tracked as part of the planned move off
+> `react-dnd`.
+
 ## Theming
 
 The component supports theming through CSS variables, the `theme` prop, and custom renderers.

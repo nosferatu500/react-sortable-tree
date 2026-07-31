@@ -21,6 +21,16 @@ export interface TreeRendererProps {
   children: JSX.Element[]
   style?: React.CSSProperties
 
+  // ARIA tree semantics, supplied by the tree because a virtualized list has
+  // no DOM nesting to infer depth or sibling position from. Forwarded to the
+  // row element through `otherProps`.
+  role?: string
+  tabIndex?: number
+  'aria-level'?: number
+  'aria-setsize'?: number
+  'aria-posinset'?: number
+  'aria-expanded'?: boolean
+
   // Drop target
   connectDropTarget: ConnectDropTarget
   isOver: boolean

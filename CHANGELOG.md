@@ -63,6 +63,31 @@
 - If you were relying on `immer` being installed transitively, add it to your own
   dependencies.
 
+### Added
+
+#### Accessibility: the tree is now an actual ARIA tree
+
+v5 exposed no tree semantics at all and could not be operated from the keyboard. v6
+implements the [WAI-ARIA tree view pattern](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/).
+
+- `role="tree"` on the container and `role="treeitem"` per row, with `aria-level`,
+  `aria-setsize`, `aria-posinset`, and `aria-expanded` (only on nodes that have
+  children). The virtualizer's scroll container and row wrappers are marked
+  presentational so the treeitems are properly owned by the tree.
+- **Keyboard navigation**, on by default: arrows to move, <kbd>→</kbd>/<kbd>←</kbd> to
+  expand/collapse or jump to first child/parent, <kbd>Home</kbd>/<kbd>End</kbd>, and
+  <kbd>Enter</kbd>/<kbd>Space</kbd> to toggle. Left/right swap under
+  `rowDirection="rtl"`. One row is in the tab sequence at a time (roving tabindex).
+- Keys the tree does not handle are left alone, and keystrokes from an `input`,
+  `textarea`, `select`, or `contenteditable` inside a row are never intercepted, so
+  inline editing keeps working.
+- New props: **`aria-label`** and **`aria-labelledby`** (give the tree an accessible
+  name — a `role="tree"` needs one), and **`keyboardNavigation`** (default `true`; set
+  `false` to bind the arrow keys yourself while keeping the roles).
+
+Keyboard-driven *drag and drop* is still not supported; that needs a drag backend with a
+keyboard sensor and is planned alongside the move off `react-dnd`.
+
 ### Fixed
 
 - **`insertNode` reported the wrong `path` and `parentNode` for any nested insert.**
@@ -123,7 +148,7 @@ of a 60 fps frame budget in v5, 5% in v6. Behind it:
 
 ### Testing
 
-The project had no tests before v6. It now has **139**, run with `npm test` (or
+The project had no tests before v6. It now has **164**, run with `npm test` (or
 `npm run test:watch`):
 
 - `src/utils/tree-data-utils.test.ts` (83) — every export of the tree-data module,
@@ -134,6 +159,8 @@ The project had no tests before v6. It now has **139**, run with `npm test` (or
   contract, custom renderers, theme precedence, lazy children, controlled updates.
 - `src/utils/dnd-manager.test.tsx` (12) — real drags driven through react-dnd's
   `TestBackend`: begin/hover/drop/cancel, `canDrop` enforcement, and subtree integrity.
+- `src/accessibility.test.tsx` (25) — ARIA tree semantics, roving tabindex, and every
+  keyboard interaction, including rtl mirroring and not hijacking nested inputs.
 
 ### Migration Guide
 

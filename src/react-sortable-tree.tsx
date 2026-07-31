@@ -163,11 +163,67 @@ export type ReactSortableTreeProps = {
   onlyExpandSearchedNodes?: boolean
   rowDirection?: string
   loadCollapsedLazyChildren?: boolean
+  /**
+   * Accessible name for the tree. A `role="tree"` needs one; supply this or
+   * `aria-labelledby`.
+   */
+  'aria-label'?: string
+  'aria-labelledby'?: string
+  /**
+   * Set to false to opt out of the built-in arrow-key navigation, for example
+   * when the surrounding app binds those keys itself. ARIA roles and the roving
+   * tabindex stay in place either way.
+   */
+  keyboardNavigation?: boolean
 }
 
 const DEFAULT_SCAFFOLD_BLOCK_PX_WIDTH = 44
 const DEFAULT_ROW_HEIGHT = 62
 const alwaysTrue = () => true
+
+/** Children the node can actually reveal, as opposed to a lazy-loader function. */
+const hasRevealableChildren = (node: TreeItem): boolean =>
+  typeof node.children === 'function' ||
+  (Array.isArray(node.children) && node.children.length > 0)
+
+/**
+ * Virtua wraps every row in a positioned div. Left as a plain `<div>` that
+ * wrapper sits between `role="tree"` and `role="treeitem"` and breaks the
+ * ownership the ARIA tree pattern requires, so it is marked presentational.
+ */
+const PresentationalItem = ({
+  style,
+  children,
+  ref,
+}: {
+  style: React.CSSProperties
+  children: ReactNode
+  index: number
+  ref?: React.Ref<HTMLDivElement>
+}) => (
+  <div ref={ref} role="none" style={style}>
+    {children}
+  </div>
+)
+
+/** Keys handled by the tree, so anything else passes through untouched. */
+const NAVIGATION_KEYS = new Set([
+  'ArrowDown',
+  'ArrowUp',
+  'ArrowLeft',
+  'ArrowRight',
+  'Home',
+  'End',
+])
+
+/** True when the key event came from a control that needs the keystroke. */
+const isFromTextEntry = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false
+  return (
+    target.isContentEditable ||
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+  )
+}
 
 interface ReactSortableTreeState {
   draggingTreeData?: TreeItem[]
@@ -351,6 +407,9 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     placeholderRenderer: placeholderRendererProp,
     treeNodeRenderer: treeNodeRendererProp,
     dndType: dndTypeProp,
+    keyboardNavigation = true,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
   } = props
 
   // Theme fallbacks. These are plain expressions rather than a memoized merged
@@ -963,6 +1022,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
   const treeData = draggingTreeData || stateTreeData
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
+  // `aria-setsize` for depth-1 rows, which have no parentNode to count.
+  const rootNodeCount = treeData.length
 
   const { rows, swapFrom, swapLength } = useMemo(() => {
     if (draggedNode && draggedMinimumTreeIndex !== undefined) {
@@ -1003,6 +1064,139 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     getRows,
   ])
 
+  /* ------------------------------------------------------------------ *
+   * Keyboard navigation (WAI-ARIA tree pattern)
+   *
+   * One row at a time is tabbable — a roving tabindex — and the arrow keys
+   * move that focus. `focusedRowIndex` is an index into `rows`, so it tracks
+   * the visible order rather than the tree structure.
+   *
+   * These are plain functions, not `useEffectEvent`: effect events may not be
+   * passed as props, and these are attached to the container element. They are
+   * only ever handed to a DOM node, so a fresh identity per render costs
+   * nothing.
+   * ------------------------------------------------------------------ */
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [focusedRowIndex, setFocusedRowIndex] = useState(0)
+  // Set when navigation should move DOM focus, cleared once it lands. Focus
+  // cannot be applied immediately to a row virtua has not mounted yet.
+  const pendingFocusRef = useRef<number | undefined>(undefined)
+
+  const activeRowIndex = Math.min(focusedRowIndex, Math.max(rows.length - 1, 0))
+
+  const focusRow = (index: number) => {
+    if (rows.length === 0) return
+    const clamped = Math.max(0, Math.min(index, rows.length - 1))
+    setFocusedRowIndex(clamped)
+    pendingFocusRef.current = clamped
+    listRef.current?.scrollToIndex(clamped, { align: 'nearest' })
+  }
+
+  // Runs after every render so a row scrolled into view can still be focused.
+  useEffect(() => {
+    const target = pendingFocusRef.current
+    if (target === undefined) return
+    const element = containerRef.current?.querySelector<HTMLElement>(
+      `[data-rst-row="${CSS.escape(String(target))}"]`
+    )
+    if (element) {
+      pendingFocusRef.current = undefined
+      element.focus()
+    }
+  })
+
+  /**
+   * Keeps the roving tabindex aligned with wherever focus actually went —
+   * clicking a row, tabbing in, or a consumer calling `.focus()` — so the arrow
+   * keys always act on the row the user is really on.
+   */
+  const handleFocus = (event: React.FocusEvent) => {
+    const rowElement =
+      event.target instanceof HTMLElement
+        ? event.target.closest<HTMLElement>('[data-rst-row]')
+        : null
+    const index = Number(rowElement?.dataset['rstRow'])
+    if (Number.isSafeInteger(index)) {
+      setFocusedRowIndex(index)
+    }
+  }
+
+  const toggleRow = (row: FlatDataItem) =>
+    toggleChildrenVisibility({ node: row.node, path: row.path as number[] })
+
+  /** ArrowRight in ltr: open a closed node, else step into its first child. */
+  const expandOrEnter = (index: number, row: FlatDataItem) => {
+    if (!hasRevealableChildren(row.node)) return
+    if (row.node.expanded === true) {
+      focusRow(index + 1)
+    } else {
+      toggleRow(row)
+    }
+  }
+
+  /** ArrowLeft in ltr: close an open node, else move up to its parent. */
+  const collapseOrLeave = (index: number, row: FlatDataItem) => {
+    if (hasRevealableChildren(row.node) && row.node.expanded === true) {
+      toggleRow(row)
+      return
+    }
+    const depth = row.path.length
+    for (let i = index - 1; i >= 0; i--) {
+      if (rows[i].path.length < depth) {
+        focusRow(i)
+        return
+      }
+    }
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (!keyboardNavigation || rows.length === 0) return
+    if (isFromTextEntry(event.target)) return
+
+    const { key } = event
+    const isToggleKey = key === 'Enter' || key === ' '
+    if (!NAVIGATION_KEYS.has(key) && !isToggleKey) return
+
+    const index = Math.min(activeRowIndex, rows.length - 1)
+    const row = rows[index]
+    // Right means "deeper" in ltr and "shallower" in rtl.
+    const deeper = rowDirection === 'rtl' ? 'ArrowLeft' : 'ArrowRight'
+
+    switch (key) {
+      case 'ArrowDown': {
+        focusRow(index + 1)
+        break
+      }
+      case 'ArrowUp': {
+        focusRow(index - 1)
+        break
+      }
+      case 'Home': {
+        focusRow(0)
+        break
+      }
+      case 'End': {
+        focusRow(rows.length - 1)
+        break
+      }
+      case 'ArrowLeft':
+      case 'ArrowRight': {
+        if (key === deeper) {
+          expandOrEnter(index, row)
+        } else {
+          collapseOrLeave(index, row)
+        }
+        break
+      }
+      default: {
+        // Enter or Space
+        if (hasRevealableChildren(row.node)) toggleRow(row)
+      }
+    }
+
+    // Only keys handled above reach this point, so nothing else is swallowed.
+    event.preventDefault()
+  }
   // Get indices for rows that match the search conditions
   const matchKeys = useMemo(() => {
     const keys: Record<TreeKey, number> = {}
@@ -1068,6 +1262,14 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         rowDirection,
       }
 
+      // ARIA tree semantics. The DOM is flat because the list is virtualized,
+      // so depth and sibling position have to be stated explicitly rather than
+      // inferred from nesting.
+      const siblingCount = Array.isArray(parentNode?.children)
+        ? parentNode.children.length
+        : rootNodeCount
+      const lowerSiblings = lowerSiblingCounts.at(-1) ?? 0
+
       return (
         <TreeNodeRenderer
           rowHeight={rowHeight}
@@ -1078,6 +1280,15 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           swapFrom={rowSwapFrom}
           swapLength={rowSwapLength}
           swapDepth={swapDepth}
+          role="treeitem"
+          aria-level={path.length}
+          aria-setsize={siblingCount}
+          aria-posinset={siblingCount - lowerSiblings}
+          aria-expanded={
+            hasRevealableChildren(node) ? node.expanded === true : undefined
+          }
+          tabIndex={listIndex === activeRowIndex ? 0 : -1}
+          data-rst-row={listIndex}
           {...sharedProps}>
           <NodeContentRenderer
             parentNode={parentNode}
@@ -1103,6 +1314,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       rowDirection,
       rowHeight,
       toggleChildrenVisibility,
+      activeRowIndex,
+      rootNodeCount,
     ]
   )
 
@@ -1130,7 +1343,15 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     containerStyle = { height: '100%', ...containerStyle }
 
     list = (
-      <VList id="vlist" ref={listRef} style={innerStyle} data={rows}>
+      <VList
+        id="vlist"
+        // Scroll container and per-row wrappers both sit between the tree and
+        // its treeitems; neither may appear in the accessibility tree.
+        role="none"
+        ref={listRef}
+        style={innerStyle}
+        data={rows}
+        item={PresentationalItem}>
         {(item, index) =>
           renderRow(item, {
             listIndex: index,
@@ -1146,7 +1367,19 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
   return (
     <div
+      ref={containerRef}
+      // The scroll container sits between this element and the rows, so the
+      // tree role goes here and the intervening elements are presentational.
+      role="tree"
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      // The tab stop is the active row, per the roving-tabindex half of the
+      // ARIA tree pattern; -1 keeps the container programmatically focusable
+      // without adding a second stop.
+      tabIndex={-1}
       dir={rowDirection === 'rtl' ? 'rtl' : 'ltr'}
+      onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
       className={classnames(
         'rst__tree',
         className || '',
