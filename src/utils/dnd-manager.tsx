@@ -1,8 +1,9 @@
-import React, { Ref, useCallback, useLayoutEffect, useRef } from 'react'
+import React, { Ref, useCallback, useRef } from 'react'
 import { DropTargetMonitor, useDrag, useDrop } from 'react-dnd'
 import { type TreeRendererProps } from '../tree-node'
 import { TreeItem } from '../types'
 import { getDepth } from './tree-data-utils'
+import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect'
 
 type DropTargetProps = Pick<
   TreeRendererProps,
@@ -28,10 +29,6 @@ type CanDropArgs = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = React.ComponentType<any>
 
-// Helper to avoid SSR warnings if used with Next.js/Gatsby
-const useIsomorphicLayoutEffect =
-  globalThis.window == undefined ? React.useEffect : useLayoutEffect
-
 interface DragItem {
   node: TreeItem
   path: number[]
@@ -49,6 +46,33 @@ interface DropResult {
   depth: number
   parentNode?: TreeItem
 }
+
+/**
+ * Everything the wrapped components need from the tree, read at event time.
+ *
+ * These arrive behind a stable getter rather than as direct arguments so that
+ * `wrapSource`, `wrapTarget` and `wrapPlaceholder` can be memoized on nothing
+ * but the renderer, the tree id and the dnd type. Passing the callbacks
+ * directly would mint a new component *type* whenever any of them changed
+ * identity — and React reconciles by type, so every row, and every registered
+ * drop target with it, would be unmounted and remounted on each parent render.
+ */
+export interface TreeDndHandlers {
+  canNodeHaveChildren: (node: TreeItem) => boolean
+  canDrop?: (args: CanDropArgs) => boolean
+  maxDepth?: number
+  startDrag: (item: { path: number[] }) => void
+  endDrag: (dropResult: DropResult | null) => void
+  drop: (dropResult: DropResult) => void
+  dragHover: (args: {
+    node: TreeItem
+    path: number[]
+    minimumTreeIndex: number
+    depth: number
+  }) => void
+}
+
+export type GetTreeDndHandlers = () => TreeDndHandlers
 
 /**
  * Safe Ref Merger
@@ -86,14 +110,13 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
 
 export const wrapSource = (
   Component: AnyComponent,
-  startDrag: (props: DragItem) => void,
-  endDrag: (dropResult: DropResult | null) => void,
-  dndType: string
+  dndType: string,
+  getHandlers: GetTreeDndHandlers
 ) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DraggableSource: React.FC<any> = (props) => {
-    // React 18: Use useLayoutEffect to ensure props are fresh
-    // BEFORE any drag event callbacks fire.
+    // Keeps the drag callbacks free of per-render props without re-running
+    // useDrag: a layout effect lands before any pointer event can fire.
     const propsRef = useRef(props)
     useIsomorphicLayoutEffect(() => {
       propsRef.current = props
@@ -103,9 +126,8 @@ export const wrapSource = (
       () => ({
         type: dndType,
         item: () => {
-          // Always read from ref to get latest state without re-running useDrag
           const currentProps = propsRef.current
-          startDrag(currentProps)
+          getHandlers().startDrag(currentProps)
           return {
             node: currentProps.node,
             parentNode: currentProps.parentNode,
@@ -115,13 +137,13 @@ export const wrapSource = (
           }
         },
         end: (_item, monitor) => {
-          endDrag(monitor.getDropResult() as DropResult)
+          getHandlers().endDrag(monitor.getDropResult() as DropResult)
         },
         collect: (monitor) => ({
           isDragging: monitor.isDragging(),
         }),
       }),
-      [dndType] // Only recreate if type changes
+      [dndType, getHandlers]
     )
 
     return (
@@ -140,31 +162,34 @@ export const wrapSource = (
 export const wrapPlaceholder = (
   Component: AnyComponent,
   treeId: string,
-  drop: (dropResult: DropResult) => void,
-  dndType: string
+  dndType: string,
+  getHandlers: GetTreeDndHandlers
 ) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppablePlaceholder: React.FC<any> = (props) => {
-    const [{ isOver, canDrop }, dropRef] = useDrop({
-      accept: dndType,
-      drop: (item: DragItem, _monitor) => {
-        const { node, path, treeIndex } = item
-        const result: DropResult = {
-          node,
-          path,
-          treeIndex,
-          treeId,
-          minimumTreeIndex: 0,
-          depth: 0,
-        }
-        drop(result)
-        return result
-      },
-      collect: (monitor) => ({
-        isOver: monitor.isOver(),
-        canDrop: monitor.canDrop(),
+    const [{ isOver, canDrop }, dropRef] = useDrop(
+      () => ({
+        accept: dndType,
+        drop: (item: DragItem) => {
+          const { node, path, treeIndex } = item
+          const result: DropResult = {
+            node,
+            path,
+            treeIndex,
+            treeId,
+            minimumTreeIndex: 0,
+            depth: 0,
+          }
+          getHandlers().drop(result)
+          return result
+        },
+        collect: (monitor) => ({
+          isOver: monitor.isOver(),
+          canDrop: monitor.canDrop(),
+        }),
       }),
-    })
+      [dndType, treeId, getHandlers]
+    )
 
     return (
       <Component
@@ -263,9 +288,6 @@ const getTargetDepth = (
 const canDrop = (
   dropTargetProps: DropTargetProps,
   monitor: DropTargetMonitor<DragItem, DropResult>,
-  canNodeHaveChildren: (node: TreeItem) => boolean,
-  treeId: string,
-  maxDepth: number | undefined,
   treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined
 ) => {
   if (!monitor.isOver()) {
@@ -301,25 +323,16 @@ const canDrop = (
 
 export const wrapTarget = (
   Component: AnyComponent,
-  canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
-  maxDepth: number | undefined,
-  treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined,
-  drop: (dropResult: DropResult) => void,
-  dragHover: (args: {
-    node: TreeItem
-    path: number[]
-    minimumTreeIndex: number
-    depth: number
-  }) => void,
-  dndType: string
+  dndType: string,
+  getHandlers: GetTreeDndHandlers
 ) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppableTarget: React.FC<any> = (props) => {
     const nodeRef = useRef<HTMLElement>(null)
 
-    // React 18: useLayoutEffect ensures props are updated immediately after DOM paint,
-    // avoiding stale closures in the 'hover' callback which runs very frequently.
+    // The hover handler runs on every mousemove, so it must never close over
+    // stale row props. A layout effect refreshes them before any pointer event.
     const propsRef = useRef(props)
     useIsomorphicLayoutEffect(() => {
       propsRef.current = props
@@ -334,6 +347,7 @@ export const wrapTarget = (
         accept: dndType,
         drop: (_item, monitor) => {
           const currentProps = propsRef.current
+          const { canNodeHaveChildren, maxDepth, drop } = getHandlers()
           const item = monitor.getItem()
           const result: DropResult = {
             node: item.node,
@@ -355,6 +369,7 @@ export const wrapTarget = (
         },
         hover: (item, monitor) => {
           const currentProps = propsRef.current
+          const { canNodeHaveChildren, maxDepth, dragHover } = getHandlers()
           const targetDepth = getTargetDepth(
             currentProps,
             monitor,
@@ -380,20 +395,13 @@ export const wrapTarget = (
           })
         },
         canDrop: (_item, monitor) =>
-          canDrop(
-            propsRef.current,
-            monitor,
-            canNodeHaveChildren,
-            treeId,
-            maxDepth,
-            treeRefCanDrop
-          ),
+          canDrop(propsRef.current, monitor, getHandlers().canDrop),
         collect: (monitor) => ({
           isOver: monitor.isOver(),
           canDrop: monitor.canDrop(),
         }),
       }),
-      [dndType, treeId, maxDepth]
+      [dndType, treeId, getHandlers]
     )
 
     const combinedRef = useCombinedRefs(

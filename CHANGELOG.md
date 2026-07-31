@@ -88,8 +88,31 @@ Measured on a 10,200-node tree, before/after in one interleaved process:
 | `insertNode`                          | 0.235 ms  | 0.060 ms | 3.9× faster |
 | **one drag-hover event (end to end)** | **5.481 ms** | **0.845 ms** | **6.5× faster** |
 
-The last row is the work done on every mousemove during a drag: 33% of a 60 fps frame
-budget in v5, 5% in v6. Behind it:
+**Rows are no longer remounted on every render.** In v5, `mergedProps` was rebuilt on
+each render and the staleness cascaded into component _identity_ — `canNodeHaveChildren`
+→ `treeNodeRenderer` was a fresh component type every time, and React reconciles by
+type. Since the documented usage is `onChange={data => setTreeData(data)}`, every
+expand, collapse and drop tore down and rebuilt every visible row along with its
+registered drop target.
+
+Measured with 8 rows and inline callback props, across 5 parent re-renders:
+
+| | row mounts | row renders |
+| --- | ---: | ---: |
+| v5 | 8 → 48 (40 extra) | 64 |
+| v6 | 8 → 8 (0 extra) | 64 |
+
+Rows still re-render; they are simply updated in place now. This also means custom
+`nodeContentRenderer` components keep their state and effects across parent renders
+instead of being reinitialised.
+
+The tree-data, search and drag-state effects no longer re-run on every render, and
+`React.memo` was removed from the internal row wrapper: it could never hit, because each
+row receives fresh `children` on every render. Making row memoization effective requires
+a breaking change to how rows receive their content, deferred to v7.
+
+The last row of the table above is the work done on every mousemove during a drag: 33%
+of a 60 fps frame budget in v5, 5% in v6. Behind it:
 
 - `changeNodeAtPath` no longer resolves the target path inside an Immer draft, which had
   been forcing a proxy for every sibling subtree instead of just the path being written.
@@ -100,13 +123,13 @@ budget in v5, 5% in v6. Behind it:
 
 ### Testing
 
-The project had no tests before v6. It now has **137**, run with `npm test` (or
+The project had no tests before v6. It now has **139**, run with `npm test` (or
 `npm run test:watch`):
 
 - `src/utils/tree-data-utils.test.ts` (83) — every export of the tree-data module,
   including no-mutation and structural-sharing invariants. Both bugs above were found by
   these tests.
-- `src/react-sortable-tree.test.tsx` (42) — component behaviour under
+- `src/react-sortable-tree.test.tsx` (45) — component behaviour under
   `@testing-library/react` + jsdom: rendering, expand/collapse, search, every callback
   contract, custom renderers, theme precedence, lazy children, controlled updates.
 - `src/utils/dnd-manager.test.tsx` (12) — real drags driven through react-dnd's

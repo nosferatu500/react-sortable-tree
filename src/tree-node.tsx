@@ -202,4 +202,17 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   )
 }
 
-export default React.memo(TreeNodeComponent)
+/**
+ * Deliberately not wrapped in `React.memo`.
+ *
+ * Each row is rendered as `<TreeNodeRenderer …><NodeContentRenderer …/></…>`,
+ * so `children` is a fresh element on every render and a shallow prop
+ * comparison can never pass — measured: rows still re-rendered after a parent
+ * re-render with the memo in place. It was pure overhead plus a misleading
+ * signal that rows were memoized.
+ *
+ * Making memoization effective needs the row to stop taking its content as
+ * `children`. Note that rows are virtualized, so only the visible window
+ * ever re-renders.
+ */
+export default TreeNodeComponent

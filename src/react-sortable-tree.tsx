@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useDeferredValue,
   useEffect,
+  useEffectEvent,
   useId,
   useMemo,
   useRef,
@@ -27,7 +28,12 @@ import {
   defaultGetNodeKey,
   defaultSearchMethod,
 } from './utils/default-handlers'
-import { wrapPlaceholder, wrapSource, wrapTarget } from './utils/dnd-manager'
+import {
+  type TreeDndHandlers,
+  wrapPlaceholder,
+  wrapSource,
+  wrapTarget,
+} from './utils/dnd-manager'
 import { slideRows } from './utils/generic-utils'
 import {
   type FlatDataItem,
@@ -40,6 +46,7 @@ import {
   toggleExpandedForAll,
   walk,
 } from './utils/tree-data-utils'
+import { useIsomorphicLayoutEffect } from './utils/use-isomorphic-layout-effect'
 import './react-sortable-tree.css'
 
 type SearchParams = {
@@ -158,41 +165,9 @@ export type ReactSortableTreeProps = {
   loadCollapsedLazyChildren?: boolean
 }
 
-interface MergedTheme extends ReactSortableTreeProps {
-  nodeContentRenderer: AnyRenderer
-  placeholderRenderer: AnyRenderer
-  scaffoldBlockPxWidth: number
-  slideRegionSize: number
-  rowHeight:
-    number | ((treeIndex: number, node: TreeItem, path: number[]) => number)
-  treeNodeRenderer: AnyRenderer
-}
-
-// Helper to memoize theme merging to avoid re-renders in StrictMode/Concurrent Root
-const getMergedTheme = (props: ReactSortableTreeProps): MergedTheme => {
-  const merged: MergedTheme = {
-    ...props,
-    style: { ...props.theme?.style, ...props.style },
-    innerStyle: { ...props.theme?.innerStyle, ...props.innerStyle },
-    nodeContentRenderer:
-      props.nodeContentRenderer ||
-      props.theme?.nodeContentRenderer ||
-      NodeRendererDefault,
-    placeholderRenderer:
-      props.placeholderRenderer ||
-      props.theme?.placeholderRenderer ||
-      PlaceholderRendererDefault,
-    scaffoldBlockPxWidth:
-      props.scaffoldBlockPxWidth ?? props.theme?.scaffoldBlockPxWidth ?? 44,
-    slideRegionSize:
-      props.slideRegionSize ?? props.theme?.slideRegionSize ?? 100,
-    rowHeight: props.rowHeight ?? 62,
-    treeNodeRenderer:
-      props.treeNodeRenderer || props.theme?.treeNodeRenderer || TreeNode,
-  }
-
-  return merged
-}
+const DEFAULT_SCAFFOLD_BLOCK_PX_WIDTH = 44
+const DEFAULT_ROW_HEIGHT = 62
+const alwaysTrue = () => true
 
 interface ReactSortableTreeState {
   draggingTreeData?: TreeItem[]
@@ -215,9 +190,18 @@ interface DropResult {
   depth: number
 }
 
-// Static search function (extracted from class)
+type SearchConfig = Pick<
+  ReactSortableTreeProps,
+  | 'onChange'
+  | 'searchFinishCallback'
+  | 'searchQuery'
+  | 'searchMethod'
+  | 'searchFocusOffset'
+  | 'onlyExpandSearchedNodes'
+> & { getNodeKey: GetNodeKeyFunction }
+
 const performSearch = (
-  props: ReactSortableTreeProps,
+  props: SearchConfig,
   treeData: TreeItem[],
   seekIndex: boolean,
   expand: boolean,
@@ -248,7 +232,7 @@ const performSearch = (
 
   // if onlyExpandSearchedNodes collapse the tree and search
   const { treeData: expandedTreeData, matches: searchMatches } = find({
-    getNodeKey: getNodeKey!,
+    getNodeKey,
     treeData: onlyExpandSearchedNodes
       ? toggleExpandedForAll({
           treeData,
@@ -285,15 +269,17 @@ const performSearch = (
   return { searchMatches, searchFocusTreeIndex, newTreeData }
 }
 
+type LazyChildrenConfig = Pick<
+  ReactSortableTreeProps,
+  'onChange' | 'loadCollapsedLazyChildren'
+> & { getNodeKey: GetNodeKeyFunction }
+
 // Load any children in the tree that are given by a function
 // calls the onChange callback on the new treeData
-const loadLazyChildren = (
-  props: ReactSortableTreeProps,
-  treeData: TreeItem[]
-) => {
+const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
   walk({
     treeData,
-    getNodeKey: props.getNodeKey!,
+    getNodeKey: props.getNodeKey,
     callback: ({ node, path, lowerSiblingCounts, treeIndex }) => {
       // If the node has children defined by a function, and is either expanded
       //  or set to load even before expansion, run the function.
@@ -333,58 +319,82 @@ const loadLazyChildren = (
   })
 }
 
-// Default props values
-const defaultProps: Partial<ReactSortableTreeProps> = {
-  canDrag: true,
-  canDrop: undefined,
-  canNodeHaveChildren: () => true,
-  className: '',
-  dndType: undefined,
-  generateNodeProps: undefined,
-  getNodeKey: defaultGetNodeKey,
-  innerStyle: {},
-  maxDepth: undefined,
-  treeNodeRenderer: undefined,
-  nodeContentRenderer: undefined,
-  onMoveNode: () => {},
-  onVisibilityToggle: () => {},
-  placeholderRenderer: undefined,
-  scaffoldBlockPxWidth: undefined,
-  searchFinishCallback: undefined,
-  searchFocusOffset: undefined,
-  searchMethod: undefined,
-  searchQuery: undefined,
-  shouldCopyOnOutsideDrop: false,
-  slideRegionSize: undefined,
-  style: {},
-  theme: {},
-  onDragStateChanged: () => {},
-  onlyExpandSearchedNodes: false,
-  rowDirection: 'ltr',
-  virtuaRef: undefined,
-}
-
 const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
-  // React 18: useId for stable, unique tree IDs (replaces manual counter)
-  const generatedTreeId = useId()
-  const treeId = `rst__${generatedTreeId}`
+  const {
+    treeData: treeDataProp,
+    onChange,
+    onMoveNode,
+    onVisibilityToggle,
+    onDragStateChanged,
+    searchFinishCallback,
+    searchQuery,
+    searchMethod,
+    searchFocusOffset,
+    onlyExpandSearchedNodes = false,
+    generateNodeProps,
+    getNodeKey = defaultGetNodeKey,
+    canDrag = true,
+    canDrop,
+    canNodeHaveChildren = alwaysTrue,
+    shouldCopyOnOutsideDrop = false,
+    maxDepth,
+    loadCollapsedLazyChildren,
+    className = '',
+    rowDirection = 'ltr',
+    virtuaRef,
+    theme,
+    style: styleProp,
+    innerStyle: innerStyleProp,
+    scaffoldBlockPxWidth: scaffoldBlockPxWidthProp,
+    rowHeight = DEFAULT_ROW_HEIGHT,
+    nodeContentRenderer: nodeContentRendererProp,
+    placeholderRenderer: placeholderRendererProp,
+    treeNodeRenderer: treeNodeRendererProp,
+    dndType: dndTypeProp,
+  } = props
 
-  // React 18: useTransition for non-blocking search operations
-  const [, startSearchTransition] = useTransition()
+  // Theme fallbacks. These are plain expressions rather than a memoized merged
+  // object: a merged object would be a fresh reference on every render, and
+  // anything memoized against it — including the wrapped DnD components — would
+  // rebuild along with it.
+  const NodeContent: AnyRenderer =
+    nodeContentRendererProp ?? theme?.nodeContentRenderer ?? NodeRendererDefault
+  const PlaceholderContent: AnyRenderer =
+    placeholderRendererProp ??
+    theme?.placeholderRenderer ??
+    PlaceholderRendererDefault
+  const TreeNodeRendererBase: AnyRenderer =
+    treeNodeRendererProp ?? theme?.treeNodeRenderer ?? TreeNode
+  const scaffoldBlockPxWidth =
+    scaffoldBlockPxWidthProp ??
+    theme?.scaffoldBlockPxWidth ??
+    DEFAULT_SCAFFOLD_BLOCK_PX_WIDTH
 
-  // Memoize merged props to avoid recreating on every render
-  const mergedProps = useMemo(() => ({ ...defaultProps, ...props }), [props])
-
-  // React 18: useDeferredValue for responsive search input
-  const deferredSearchQuery = useDeferredValue(mergedProps.searchQuery)
-  const deferredSearchFocusOffset = useDeferredValue(
-    mergedProps.searchFocusOffset
+  const themeStyle = theme?.style
+  const themeInnerStyle = theme?.innerStyle
+  const style = useMemo(
+    () => ({ ...themeStyle, ...styleProp }),
+    [themeStyle, styleProp]
+  )
+  const innerStyle = useMemo(
+    () => ({ ...themeInnerStyle, ...innerStyleProp }),
+    [themeInnerStyle, innerStyleProp]
   )
 
-  // Refs - always call useRef unconditionally
+  // Stable, unique tree id
+  const generatedTreeId = useId()
+  const treeId = `rst__${generatedTreeId}`
+  const dndType = dndTypeProp ?? theme?.dndType ?? treeId
+
+  // Non-blocking search
+  const [, startSearchTransition] = useTransition()
+  const deferredSearchQuery = useDeferredValue(searchQuery)
+  const deferredSearchFocusOffset = useDeferredValue(searchFocusOffset)
+
+  // Refs
   const internalListRef = useRef<VListHandle>(null)
-  const listRef = mergedProps.virtuaRef || internalListRef
-  const prevTreeDataRef = useRef<TreeItem[]>(mergedProps.treeData)
+  const listRef = virtuaRef ?? internalListRef
+  const prevTreeDataRef = useRef<TreeItem[]>(treeDataProp)
   const prevDeferredSearchQueryRef = useRef(deferredSearchQuery)
   const prevDeferredSearchFocusOffsetRef = useRef(deferredSearchFocusOffset)
   const prevDraggingRef = useRef(false)
@@ -406,54 +416,51 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     searchMatches: [],
     searchFocusTreeIndex: undefined,
     dragging: false,
-    treeData: mergedProps.treeData,
+    treeData: treeDataProp,
     ignoreOneTreeUpdate: false,
   }))
 
-  // Memoized theme
-  const mergedTheme = useMemo(
-    () => getMergedTheme(mergedProps as ReactSortableTreeProps),
-    [mergedProps]
-  )
+  /**
+   * Latest props read by event-time code (state updaters, DnD callbacks).
+   *
+   * Going through a ref is what lets the callbacks below be declared with empty
+   * dependency lists. That in turn keeps `wrapSource`/`wrapTarget` memoized on
+   * stable values only — otherwise each render produces new component *types*
+   * and React unmounts and remounts every row.
+   */
+  const latestRef = useRef({ getNodeKey, shouldCopyOnOutsideDrop })
+  useIsomorphicLayoutEffect(() => {
+    latestRef.current = { getNodeKey, shouldCopyOnOutsideDrop }
+  })
 
-  // DnD type
-  const dndType = useMemo(
-    () => mergedTheme.dndType || treeId,
-    [mergedTheme.dndType, treeId]
-  )
-
-  // Callbacks - defined before they're used in wrapped components
-  const startDrag = useCallback(
-    ({ path }: { path: number[] }) => {
-      setState((prevState) => {
-        const result = removeNode({
-          treeData: prevState.treeData,
-          path,
-          getNodeKey: mergedProps.getNodeKey!,
-        })
-
-        if (!result) {
-          return prevState
-        }
-
-        const {
-          treeData: draggingTreeData,
-          node: draggedNode,
-          treeIndex: draggedMinimumTreeIndex,
-        } = result
-
-        return {
-          ...prevState,
-          draggingTreeData,
-          draggedNode,
-          draggedDepth: path.length - 1,
-          draggedMinimumTreeIndex,
-          dragging: true,
-        }
+  const startDrag = useCallback(({ path }: { path: number[] }) => {
+    setState((prevState) => {
+      const result = removeNode({
+        treeData: prevState.treeData,
+        path,
+        getNodeKey: latestRef.current.getNodeKey,
       })
-    },
-    [mergedProps.getNodeKey]
-  )
+
+      if (!result) {
+        return prevState
+      }
+
+      const {
+        treeData: draggingTreeData,
+        node: draggedNode,
+        treeIndex: draggedMinimumTreeIndex,
+      } = result
+
+      return {
+        ...prevState,
+        draggingTreeData,
+        draggedNode,
+        draggedDepth: path.length - 1,
+        draggedMinimumTreeIndex,
+        dragging: true,
+      }
+    })
+  }, [])
 
   const moveNode = useCallback(
     ({
@@ -481,10 +488,10 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           depth,
           minimumTreeIndex,
           expandParent: true,
-          getNodeKey: mergedProps.getNodeKey!,
+          getNodeKey: latestRef.current.getNodeKey,
         })
 
-        // Store callbacks in refs to be called after state update (avoids setState-during-render warning)
+        // Deferred to an effect so the callbacks never fire mid-update
         pendingOnChangeRef.current = treeData
         pendingOnMoveNodeRef.current = {
           treeData,
@@ -507,7 +514,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         }
       })
     },
-    [mergedProps.getNodeKey]
+    []
   )
 
   const drop = useCallback(
@@ -533,14 +540,14 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         // The node was dropped in an external drop target or tree
         setState((prevState) => {
           const { node, path, treeIndex } = dropResult
-          let shouldCopy = mergedProps.shouldCopyOnOutsideDrop
-          if (typeof shouldCopy === 'function') {
-            shouldCopy = shouldCopy({
-              node,
-              prevTreeIndex: treeIndex,
-              prevPath: path,
-            })
-          }
+          const {
+            getNodeKey: currentGetNodeKey,
+            shouldCopyOnOutsideDrop: copy,
+          } = latestRef.current
+          const shouldCopy =
+            typeof copy === 'function'
+              ? copy({ node, prevTreeIndex: treeIndex, prevPath: path })
+              : copy
 
           // If copying is enabled, a drop outside leaves behind a copy in the
           //  source tree
@@ -551,11 +558,10 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
                 newNode: ({ node: copyNode }: { node: TreeItem }) => ({
                   ...copyNode,
                 }), // create a shallow copy of the node
-                getNodeKey: mergedProps.getNodeKey!,
+                getNodeKey: currentGetNodeKey,
               })
             : prevState.draggingTreeData || prevState.treeData
 
-          // Store callbacks in refs to be called after state update
           pendingOnChangeRef.current = treeData
           pendingOnMoveNodeRef.current = {
             treeData,
@@ -579,7 +585,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         })
       }
     },
-    [treeId, mergedProps.shouldCopyOnOutsideDrop, mergedProps.getNodeKey]
+    [treeId]
   )
 
   const dragHover = useCallback(
@@ -601,6 +607,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           return prevState
         }
 
+        const currentGetNodeKey = latestRef.current.getNodeKey
+
         // Fall back to the tree data if something is being dragged in from
         //  an external element
         const newDraggingTreeData =
@@ -612,7 +620,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           depth: draggedDepth,
           minimumTreeIndex: draggedMinimumTreeIndex,
           expandParent: true,
-          getNodeKey: mergedProps.getNodeKey!,
+          getNodeKey: currentGetNodeKey,
         })
 
         // `insertNode` already knows where it put the node, so take the path
@@ -634,7 +642,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
               ...node,
               expanded: true,
             }),
-            getNodeKey: mergedProps.getNodeKey!,
+            getNodeKey: currentGetNodeKey,
           }),
           // reset the scroll focus so it doesn't jump back
           // to a search result while dragging
@@ -643,17 +651,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         }
       })
     },
-    [mergedProps.getNodeKey]
-  )
-
-  const canNodeHaveChildren = useCallback(
-    (node: TreeItem) => {
-      if (mergedProps.canNodeHaveChildren) {
-        return mergedProps.canNodeHaveChildren(node)
-      }
-      return true
-    },
-    [mergedProps]
+    []
   )
 
   const toggleChildrenVisibility = useCallback(
@@ -666,10 +664,9 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
             ...node,
             expanded: !node.expanded,
           }),
-          getNodeKey: mergedProps.getNodeKey!,
+          getNodeKey: latestRef.current.getNodeKey,
         })
 
-        // Store callbacks in refs to be called after state update
         pendingOnChangeRef.current = treeData
         pendingOnVisibilityToggleRef.current = {
           treeData,
@@ -685,94 +682,153 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         }
       })
     },
-    [mergedProps.getNodeKey]
+    []
   )
 
-  // Wrapped components (memoized to avoid recreation)
+  /**
+   * Handed to the wrapped DnD components as one stable object.
+   *
+   * Seeded with the first render's values so the wrapped components are usable
+   * before any effect has run, then refreshed in a layout effect — which lands
+   * before any pointer event can reach them.
+   */
+  const dndHandlersRef = useRef<TreeDndHandlers>({
+    canNodeHaveChildren,
+    canDrop,
+    maxDepth,
+    startDrag,
+    endDrag,
+    drop,
+    dragHover,
+  })
+  useIsomorphicLayoutEffect(() => {
+    dndHandlersRef.current = {
+      canNodeHaveChildren,
+      canDrop,
+      maxDepth,
+      startDrag,
+      endDrag,
+      drop,
+      dragHover,
+    }
+  })
+  const getDndHandlers = useCallback(() => dndHandlersRef.current, [])
+
+  /*
+   * Wrapped components. Memoized on the renderer, tree id and dnd type only —
+   * every other input reaches them through `getDndHandlers`, so their component
+   * identity survives a parent re-render and rows are updated, not remounted.
+   *
+   * `react-hooks/refs` flags these because `getDndHandlers` reads a ref and is
+   * passed to a function during render. The lint cannot see that the wrappers
+   * only *store* it and call it from drag events; nothing here reads the ref
+   * while rendering. Covered by the render-stability and drag-and-drop tests.
+   */
+  /* eslint-disable react-hooks/refs */
   const nodeContentRenderer = useMemo(
-    () =>
-      wrapSource(mergedTheme.nodeContentRenderer, startDrag, endDrag, dndType),
-    [mergedTheme.nodeContentRenderer, startDrag, endDrag, dndType]
+    () => wrapSource(NodeContent, dndType, getDndHandlers),
+    [NodeContent, dndType, getDndHandlers]
   )
 
   const treePlaceholderRenderer = useMemo(
-    () => wrapPlaceholder(TreePlaceholder, treeId, drop, dndType),
-    [treeId, drop, dndType]
+    () => wrapPlaceholder(TreePlaceholder, treeId, dndType, getDndHandlers),
+    [treeId, dndType, getDndHandlers]
   )
 
   const treeNodeRenderer = useMemo(
-    () =>
-      wrapTarget(
-        mergedTheme.treeNodeRenderer,
-        canNodeHaveChildren,
-        treeId,
-        mergedProps.maxDepth,
-        mergedProps.canDrop,
-        drop,
-        dragHover,
-        dndType
-      ),
-    [
-      mergedTheme.treeNodeRenderer,
-      canNodeHaveChildren,
-      treeId,
-      mergedProps.maxDepth,
-      mergedProps.canDrop,
-      drop,
-      dragHover,
-      dndType,
-    ]
+    () => wrapTarget(TreeNodeRendererBase, treeId, dndType, getDndHandlers),
+    [TreeNodeRendererBase, treeId, dndType, getDndHandlers]
+  )
+  /* eslint-enable react-hooks/refs */
+
+  const getRows = useCallback(
+    (rowTreeData: TreeItem[]) =>
+      getFlatDataFromTree({
+        ignoreCollapsed: true,
+        getNodeKey,
+        treeData: rowTreeData,
+      }),
+    [getNodeKey]
   )
 
-  // React 18: useMemo for tree operations (replaces custom memoization)
-  const getRows = useCallback(
-    (treeData: TreeItem[]) => {
-      return getFlatDataFromTree({
-        ignoreCollapsed: true,
-        getNodeKey: mergedProps.getNodeKey!,
-        treeData,
-      })
-    },
-    [mergedProps.getNodeKey]
+  // Effect events: user callbacks invoked from effects. Wrapping them keeps
+  // them out of dependency arrays, so the effects below re-run when their real
+  // inputs change rather than on every render.
+  const emitChange = useEffectEvent((next: TreeItem[]) => onChange(next))
+  const emitMoveNode = useEffectEvent((params: OnMoveNodeParams) =>
+    onMoveNode?.(params)
+  )
+  const emitVisibilityToggle = useEffectEvent(
+    (params: OnVisibilityToggleParams) => onVisibilityToggle?.(params)
+  )
+  const emitDragStateChanged = useEffectEvent(
+    (params: OnDragStateChangedParams) => onDragStateChanged?.(params)
+  )
+
+  const runSearch = useEffectEvent(
+    (
+      searchTreeData: TreeItem[],
+      query: string | undefined,
+      focusOffset: number | undefined,
+      seekIndex: boolean,
+      expand: boolean,
+      singleSearch: boolean
+    ) =>
+      performSearch(
+        {
+          onChange,
+          getNodeKey,
+          searchFinishCallback,
+          searchQuery: query,
+          searchMethod,
+          searchFocusOffset: focusOffset,
+          onlyExpandSearchedNodes,
+        },
+        searchTreeData,
+        seekIndex,
+        expand,
+        singleSearch
+      )
+  )
+
+  const runLoadLazyChildren = useEffectEvent((lazyTreeData: TreeItem[]) =>
+    loadLazyChildren(
+      { onChange, getNodeKey, loadCollapsedLazyChildren },
+      lazyTreeData
+    )
   )
 
   // Effect: Execute pending callbacks after state updates
   // This avoids the "Cannot update a component while rendering a different component" warning
   useEffect(() => {
     if (pendingOnChangeRef.current !== null) {
-      const treeData = pendingOnChangeRef.current
+      const nextTreeData = pendingOnChangeRef.current
       pendingOnChangeRef.current = null
-      mergedProps.onChange(treeData)
+      emitChange(nextTreeData)
     }
 
     if (pendingOnMoveNodeRef.current !== null) {
       const params = pendingOnMoveNodeRef.current
       pendingOnMoveNodeRef.current = null
-      if (mergedProps.onMoveNode) {
-        mergedProps.onMoveNode(params)
-      }
+      emitMoveNode(params)
     }
 
     if (pendingOnVisibilityToggleRef.current !== null) {
       const params = pendingOnVisibilityToggleRef.current
       pendingOnVisibilityToggleRef.current = null
-      if (mergedProps.onVisibilityToggle) {
-        mergedProps.onVisibilityToggle(params)
-      }
+      emitVisibilityToggle(params)
     }
   })
 
   // Effect: Initial mount - load lazy children and perform initial search
   useEffect(() => {
-    loadLazyChildren(
-      mergedProps as ReactSortableTreeProps,
-      mergedProps.treeData
-    )
+    runLoadLazyChildren(treeDataProp)
 
     startSearchTransition(() => {
-      const searchResult = performSearch(
-        mergedProps as ReactSortableTreeProps,
-        mergedProps.treeData,
+      const searchResult = runSearch(
+        treeDataProp,
+        searchQuery,
+        searchFocusOffset,
         true,
         true,
         false
@@ -796,59 +852,57 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       return
     }
 
-    const isTreeDataEqual = prevTreeDataRef.current === mergedProps.treeData
-    prevTreeDataRef.current = mergedProps.treeData!
+    if (prevTreeDataRef.current === treeDataProp) {
+      return
+    }
+    prevTreeDataRef.current = treeDataProp
 
-    if (!isTreeDataEqual) {
-      // Check if we should ignore this update (set by search expanding nodes)
-      let shouldSearch = true
-      setState((prevState) => {
-        if (prevState.ignoreOneTreeUpdate) {
-          shouldSearch = false
-          return {
-            ...prevState,
-            treeData: mergedProps.treeData,
-            ignoreOneTreeUpdate: false,
-          }
-        }
-
+    // Check if we should ignore this update (set by search expanding nodes)
+    let shouldSearch = true
+    setState((prevState) => {
+      if (prevState.ignoreOneTreeUpdate) {
+        shouldSearch = false
         return {
           ...prevState,
-          treeData: mergedProps.treeData,
-          draggingTreeData: undefined,
-          draggedNode: undefined,
-          draggedMinimumTreeIndex: undefined,
-          draggedDepth: undefined,
-          dragging: false,
+          treeData: treeDataProp,
+          ignoreOneTreeUpdate: false,
         }
-      })
-
-      // Perform these operations outside of setState to avoid "Cannot call startTransition while rendering"
-      if (shouldSearch) {
-        loadLazyChildren(
-          mergedProps as ReactSortableTreeProps,
-          mergedProps.treeData
-        )
-
-        startSearchTransition(() => {
-          const searchResult = performSearch(
-            mergedProps as ReactSortableTreeProps,
-            mergedProps.treeData,
-            false,
-            false,
-            false
-          )
-          setState((prev) => ({
-            ...prev,
-            searchMatches: searchResult.searchMatches,
-            searchFocusTreeIndex: undefined,
-          }))
-        })
       }
-    }
-  }, [mergedProps.treeData, mergedProps])
 
-  // Effect: Handle deferred search query changes (React 18: useDeferredValue)
+      return {
+        ...prevState,
+        treeData: treeDataProp,
+        draggingTreeData: undefined,
+        draggedNode: undefined,
+        draggedMinimumTreeIndex: undefined,
+        draggedDepth: undefined,
+        dragging: false,
+      }
+    })
+
+    // Outside of setState to avoid "Cannot call startTransition while rendering"
+    if (shouldSearch) {
+      runLoadLazyChildren(treeDataProp)
+
+      startSearchTransition(() => {
+        const searchResult = runSearch(
+          treeDataProp,
+          searchQuery,
+          searchFocusOffset,
+          false,
+          false,
+          false
+        )
+        setState((prev) => ({
+          ...prev,
+          searchMatches: searchResult.searchMatches,
+          searchFocusTreeIndex: undefined,
+        }))
+      })
+    }
+  }, [treeDataProp, searchQuery, searchFocusOffset])
+
+  // Effect: Handle deferred search query changes
   useEffect(() => {
     const queryChanged =
       prevDeferredSearchQueryRef.current !== deferredSearchQuery
@@ -858,57 +912,31 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     prevDeferredSearchQueryRef.current = deferredSearchQuery
     prevDeferredSearchFocusOffsetRef.current = deferredSearchFocusOffset
 
-    if (queryChanged) {
-      // React 18: useTransition for non-blocking search
-      startSearchTransition(() => {
-        const searchResult = performSearch(
-          {
-            ...(mergedProps as ReactSortableTreeProps),
-            searchQuery: deferredSearchQuery,
-          },
-          state.treeData,
-          true,
-          true,
-          false
-        )
-        setState((prev) => ({
-          ...prev,
-          searchMatches: searchResult.searchMatches,
-          searchFocusTreeIndex: searchResult.searchFocusTreeIndex,
-          ignoreOneTreeUpdate: searchResult.newTreeData
-            ? true
-            : prev.ignoreOneTreeUpdate,
-        }))
-      })
-    } else if (offsetChanged) {
-      startSearchTransition(() => {
-        const searchResult = performSearch(
-          {
-            ...(mergedProps as ReactSortableTreeProps),
-            searchQuery: deferredSearchQuery,
-            searchFocusOffset: deferredSearchFocusOffset,
-          },
-          state.treeData,
-          true,
-          true,
-          true
-        )
-        setState((prev) => ({
-          ...prev,
-          searchMatches: searchResult.searchMatches,
-          searchFocusTreeIndex: searchResult.searchFocusTreeIndex,
-          ignoreOneTreeUpdate: searchResult.newTreeData
-            ? true
-            : prev.ignoreOneTreeUpdate,
-        }))
-      })
+    if (!queryChanged && !offsetChanged) {
+      return
     }
-  }, [
-    deferredSearchQuery,
-    deferredSearchFocusOffset,
-    mergedProps,
-    state.treeData,
-  ])
+
+    startSearchTransition(() => {
+      const searchResult = runSearch(
+        state.treeData,
+        deferredSearchQuery,
+        deferredSearchFocusOffset,
+        true,
+        true,
+        // A changed focus offset alone steps through existing matches rather
+        // than re-running the whole search.
+        !queryChanged
+      )
+      setState((prev) => ({
+        ...prev,
+        searchMatches: searchResult.searchMatches,
+        searchFocusTreeIndex: searchResult.searchFocusTreeIndex,
+        ignoreOneTreeUpdate: searchResult.newTreeData
+          ? true
+          : prev.ignoreOneTreeUpdate,
+      }))
+    })
+  }, [deferredSearchQuery, deferredSearchFocusOffset, state.treeData])
 
   // Effect: Call onDragStateChanged when dragging state changes
   useEffect(() => {
@@ -917,13 +945,75 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     }
 
     prevDraggingRef.current = state.dragging
-    if (mergedProps.onDragStateChanged) {
-      mergedProps.onDragStateChanged({
-        isDragging: state.dragging,
-        draggedNode: state.draggedNode,
+    emitDragStateChanged({
+      isDragging: state.dragging,
+      draggedNode: state.draggedNode,
+    })
+  }, [state.dragging, state.draggedNode])
+
+  const {
+    searchMatches,
+    searchFocusTreeIndex,
+    draggedNode,
+    draggedDepth,
+    draggedMinimumTreeIndex,
+    draggingTreeData,
+    treeData: stateTreeData,
+  } = state
+
+  const treeData = draggingTreeData || stateTreeData
+  const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
+
+  const { rows, swapFrom, swapLength } = useMemo(() => {
+    if (draggedNode && draggedMinimumTreeIndex !== undefined) {
+      const addedResult = insertNode({
+        treeData,
+        newNode: draggedNode,
+        depth: draggedDepth!,
+        minimumTreeIndex: draggedMinimumTreeIndex,
+        expandParent: true,
+        getNodeKey,
       })
+
+      const computedSwapFrom = addedResult.treeIndex
+      const computedSwapLength = 1 + getDescendantCount({ node: draggedNode })
+      return {
+        rows: slideRows(
+          getRows(addedResult.treeData),
+          computedSwapFrom,
+          draggedMinimumTreeIndex,
+          computedSwapLength
+        ),
+        swapFrom: computedSwapFrom,
+        swapLength: computedSwapLength,
+      }
     }
-  }, [state.dragging, state.draggedNode, mergedProps])
+
+    return {
+      rows: getRows(treeData),
+      swapFrom: undefined,
+      swapLength: undefined,
+    }
+  }, [
+    treeData,
+    draggedNode,
+    draggedDepth,
+    draggedMinimumTreeIndex,
+    getNodeKey,
+    getRows,
+  ])
+
+  // Get indices for rows that match the search conditions
+  const matchKeys = useMemo(() => {
+    const keys: Record<TreeKey, number> = {}
+    for (const [i, { path }] of searchMatches.entries()) {
+      const lastKey = path.at(-1)
+      if (lastKey !== undefined) {
+        keys[lastKey] = i
+      }
+    }
+    return keys
+  }, [searchMatches])
 
   // Render row function
   const renderRow = useCallback(
@@ -932,29 +1022,18 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       {
         listIndex,
         getPrevRow,
-        matchKeys,
-        swapFrom,
+        swapFrom: rowSwapFrom,
         swapDepth,
-        swapLength,
+        swapLength: rowSwapLength,
       }: {
         listIndex: number
         getPrevRow: () => FlatDataItem | undefined
-        matchKeys: Record<TreeKey, number>
         swapFrom: number | undefined
         swapDepth: number | undefined
         swapLength: number | undefined
       }
     ) => {
       const { node, parentNode, path, lowerSiblingCounts, treeIndex } = row
-
-      const {
-        canDrag,
-        generateNodeProps,
-        scaffoldBlockPxWidth,
-        searchFocusOffset,
-        rowDirection,
-        rowHeight,
-      } = mergedTheme
 
       const TreeNodeRenderer = treeNodeRenderer
       const NodeContentRenderer = nodeContentRenderer
@@ -996,8 +1075,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           listIndex={listIndex}
           getPrevRow={getPrevRow}
           lowerSiblingCounts={lowerSiblingCounts}
-          swapFrom={swapFrom}
-          swapLength={swapLength}
+          swapFrom={rowSwapFrom}
+          swapLength={rowSwapLength}
           swapDepth={swapDepth}
           {...sharedProps}>
           <NodeContentRenderer
@@ -1013,91 +1092,19 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       )
     },
     [
-      mergedTheme,
       treeNodeRenderer,
       nodeContentRenderer,
+      matchKeys,
+      searchFocusOffset,
+      generateNodeProps,
+      canDrag,
+      scaffoldBlockPxWidth,
       treeId,
+      rowDirection,
+      rowHeight,
       toggleChildrenVisibility,
     ]
   )
-
-  // Render
-  const {
-    style,
-    className,
-    innerStyle,
-    placeholderRenderer,
-    getNodeKey,
-    rowDirection,
-  } = mergedTheme
-
-  const {
-    searchMatches,
-    searchFocusTreeIndex,
-    draggedNode,
-    draggedDepth,
-    draggedMinimumTreeIndex,
-    draggingTreeData,
-    treeData: stateTreeData,
-  } = state
-
-  const treeData = draggingTreeData || stateTreeData
-  const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
-
-  // React 18: useMemo for computed values (replaces custom memoization)
-  const { rows, swapFrom, swapLength } = useMemo(() => {
-    let computedRows
-    let computedSwapFrom: number | undefined
-    let computedSwapLength: number | undefined
-
-    if (draggedNode && draggedMinimumTreeIndex !== undefined) {
-      const addedResult = insertNode({
-        treeData,
-        newNode: draggedNode,
-        depth: draggedDepth!,
-        minimumTreeIndex: draggedMinimumTreeIndex,
-        expandParent: true,
-        getNodeKey: getNodeKey!,
-      })
-
-      const swapTo = draggedMinimumTreeIndex
-      computedSwapFrom = addedResult.treeIndex
-      computedSwapLength = 1 + getDescendantCount({ node: draggedNode })
-      computedRows = slideRows(
-        getRows(addedResult.treeData),
-        computedSwapFrom,
-        swapTo,
-        computedSwapLength
-      )
-    } else {
-      computedRows = getRows(treeData)
-    }
-
-    return {
-      rows: computedRows,
-      swapFrom: computedSwapFrom,
-      swapLength: computedSwapLength,
-    }
-  }, [
-    treeData,
-    draggedNode,
-    draggedDepth,
-    draggedMinimumTreeIndex,
-    getNodeKey,
-    getRows,
-  ])
-
-  // Get indices for rows that match the search conditions
-  const matchKeys = useMemo(() => {
-    const keys: Record<TreeKey, number> = {}
-    for (const [i, { path }] of searchMatches.entries()) {
-      const lastKey = path.at(-1)
-      if (lastKey !== undefined) {
-        keys[lastKey] = i
-      }
-    }
-    return keys
-  }, [searchMatches])
 
   // Seek to the focused search result if there is one specified
   useEffect(() => {
@@ -1113,7 +1120,6 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   let list
   if (rows.length === 0) {
     const Placeholder = treePlaceholderRenderer
-    const PlaceholderContent = placeholderRenderer
     list = (
       // eslint-disable-next-line react-hooks/static-components
       <Placeholder treeId={treeId} drop={drop}>
@@ -1125,16 +1131,15 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
     list = (
       <VList id="vlist" ref={listRef} style={innerStyle} data={rows}>
-        {(item, index) => {
-          return renderRow(item, {
+        {(item, index) =>
+          renderRow(item, {
             listIndex: index,
             getPrevRow: () => rows[index - 1] || undefined,
-            matchKeys,
             swapFrom,
             swapDepth: draggedDepth,
             swapLength,
           })
-        }}
+        }
       </VList>
     )
   }

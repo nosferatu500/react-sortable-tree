@@ -500,7 +500,7 @@ describe('tree ids', () => {
   })
 })
 
-describe('render stability (Tier 2 tripwire)', () => {
+describe('render stability', () => {
   /**
    * Counts how many times a node renderer instance mounts. Row components
    * should be re-rendered, not remounted, when the parent re-renders.
@@ -517,16 +517,15 @@ describe('render stability (Tier 2 tripwire)', () => {
   }
 
   /**
-   * KNOWN BUG — Tier 2 item 2.1.
+   * Regression test for the v5 remount bug.
    *
-   * `mergedProps = useMemo(..., [props])` never hits across parent renders, so
-   * `canNodeHaveChildren` → `treeNodeRenderer` gets a fresh component identity
-   * every time, and React tears down and remounts every row.
-   *
-   * `it.fails` passes while the bug is present. Once 2.1 lands this test starts
-   * failing, which is the signal to flip it to a plain `it`.
+   * `mergedProps = useMemo(..., [props])` could never hit across parent
+   * renders, and the staleness cascaded into component *identity*:
+   * `canNodeHaveChildren` → `treeNodeRenderer` was a fresh component type every
+   * render, so React tore down and rebuilt every row — and every registered
+   * drop target with it — on each parent render.
    */
-  it.fails('does not remount rows when the parent re-renders', () => {
+  it('does not remount rows when the parent re-renders', () => {
     const { mounts, Renderer } = makeCountingRenderer()
     const data = [{ title: 'a' }, { title: 'b' }]
     const Wrapper = ({ tick }: { tick: number }) =>
@@ -546,6 +545,52 @@ describe('render stability (Tier 2 tripwire)', () => {
     act(() => rerender(<Wrapper tick={1} />))
 
     expect(mounts.count).toBe(afterFirst)
+  })
+
+  // Inline callbacks are the common case — `onChange={d => setData(d)}` is what
+  // the README shows — and used to be the worst case, because every one of them
+  // was a fresh reference feeding the memo chain that produced the row
+  // component types.
+  it('does not remount rows when every callback prop is an inline arrow', () => {
+    const { mounts, Renderer } = makeCountingRenderer()
+    const data = [{ title: 'a' }, { title: 'b' }]
+    const Wrapper = ({ tick }: { tick: number }) =>
+      sized(
+        <SortableTree
+          treeData={data}
+          onChange={() => {}}
+          onMoveNode={() => {}}
+          onVisibilityToggle={() => {}}
+          onDragStateChanged={() => {}}
+          canDrop={() => true}
+          canNodeHaveChildren={() => true}
+          nodeContentRenderer={Renderer}
+          data-tick={tick}
+        />
+      )
+
+    const { rerender } = render(<Wrapper tick={0} />)
+    const afterFirst = mounts.count
+
+    act(() => rerender(<Wrapper tick={1} />))
+    act(() => rerender(<Wrapper tick={2} />))
+
+    expect(mounts.count).toBe(afterFirst)
+  })
+
+  it('does not remount rows when the tree state changes', async () => {
+    const user = userEvent.setup()
+    const { mounts, Renderer } = makeCountingRenderer()
+    render(<Controlled nodeContentRenderer={Renderer} />)
+
+    const mountsBefore = mounts.count
+    // Toggling calls onChange, which re-renders the parent with new treeData —
+    // the exact cycle that used to rebuild every row.
+    await user.click(toggleButton('a')!)
+
+    // 'a1' and 'a2' unmount because they are genuinely hidden now; nothing
+    // should have been torn down and rebuilt in place.
+    expect(mounts.count).toBe(mountsBefore)
   })
 
   it('renders the same rows after a parent re-render', () => {
