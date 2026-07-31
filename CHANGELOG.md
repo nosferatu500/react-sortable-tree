@@ -1,6 +1,87 @@
 # Changelog
 
-## [5.0.0-rc.2] - 2025
+## [6.0.0] - 2026-07-31
+
+### Breaking Changes
+
+#### React Version Support
+
+- **Dropped React 18 support** — minimum version is now React 19.0.0
+- Peer dependencies changed to `react: ^19.0.0` and `react-dom: ^19.0.0`
+  (was `^18.0.0 || ^19.0.0`)
+
+#### React Compiler is now always on
+
+- **The published bundle is compiled by React Compiler.** There is no longer an
+  un-compiled build path, and the `build:compiler` script has been removed — plain
+  `npm run build` produces the compiled output.
+- This is what required dropping React 18: the compiled output imports
+  `react/compiler-runtime`, which React 19 exports and React 18 does not. React 19-only
+  peers mean no `react-compiler-runtime` polyfill is needed.
+- Consumers do not need to configure anything. If your app also runs React Compiler,
+  it will simply skip this package's already-compiled code.
+
+### Migration Guide
+
+#### From v5.x to v6.x
+
+1. **Update React** to 19.0.0 or higher. There are no other required changes — the
+   component API is unchanged from v5.
+
+   ```sh
+   npm install react@^19 react-dom@^19
+   ```
+
+2. **If you were building this package from source** and relied on `build:compiler`,
+   use `build` instead:
+
+   ```sh
+   # Before (v5)
+   npm run build            # un-compiled
+   npm run build:compiler   # React Compiler
+
+   # After (v6)
+   npm run build            # always React Compiler
+   ```
+
+## [5.1.0] - 2026-07-30
+
+First stable v5 release. Everything in the `5.0.0-rc.2` notes below applies; this entry
+covers what changed after that release candidate.
+
+### Breaking Changes
+
+- **Build system migrated from Rollup to [`tsdown`](https://tsdown.dev)**
+- **Entry point renamed from `lib/index.esm.js` to `lib/index.js`.** `"type": "module"`
+  already makes `.js` unambiguous ESM, and it keeps the paths in the `exports` map
+  stable. Declaration output is `lib/index.d.ts` (not `.d.mts`).
+- Compile target raised to **ES2025** (`Object.groupBy`, `Array.prototype.toSpliced`
+  are now used internally)
+
+### New Features
+
+- **Optional React Compiler build** via `npm run build:compiler`
+  (made the default in v6)
+
+### Fixed
+
+- Crash in the external-node drag-and-drop example
+- Build warnings from the previous Rollup pipeline
+- Assorted type-level fixes across the public surface
+
+### Other Changes
+
+- CSS refactored onto a documented theming API: all knobs are CSS custom properties
+  declared with `@property` so invalid consumer values fall back instead of collapsing
+  the layout, and physical `left`/`right` rules were replaced with logical properties
+  (`inset-inline-*`, `padding-inline-*`) for RTL correctness
+- TypeScript 5.9 → 6.0
+- Export correctness now verified in CI-ready form via `publint` and
+  `@arethetypeswrong/cli` (`npm run check:exports`)
+- Added `oxlint` alongside ESLint; lint rules applied to Storybook examples too
+- Removed the CodeQL workflow
+
+## [5.0.0-rc.2] - 2026-02-02
 
 ### Breaking Changes
 
@@ -17,13 +98,21 @@
 
 #### Package Output Format
 - **Changed from dual-format (CJS + ESM) to ESM-only output**
-- New entry point: `lib/index.esm.js`
+- New entry point: `lib/index.esm.js` (renamed to `lib/index.js` in the final 5.0.0
+  release — see above)
 - Removed CommonJS build - consumers must use ESM imports
+- **The default export was removed.** `SortableTree` is now a named export:
+  `import { SortableTree } from '@nosferatu500/react-sortable-tree'`
 - CSS is now injected at runtime (removed separate `style.css` export)
 
 #### Virtualization Library
 - **Replaced `react-virtuoso` with `virtua`**
-- If you were passing `virtuosoProps`, you now need to use `virtuaProps` with the virtua API
+- `virtuosoRef` was renamed to `virtuaRef` and now takes a
+  `React.RefObject<VListHandle>` from `virtua`
+- **`virtuosoProps` was removed with no replacement.** There is no prop for passing
+  arbitrary options through to the virtual list; `virtuaRef` is the only escape hatch,
+  and it exposes the imperative `VListHandle` (e.g. `scrollToIndex`) rather than
+  configuration
 - Simplified virtualization with better TypeScript support
 
 #### React-DnD Upgrade (v14 → v16)
@@ -89,22 +178,26 @@
 
 1. **Update React version** to 18.0.0 or higher
 
-2. **Update imports** - ESM only:
+2. **Update imports** - ESM only, and **the default export was removed**. `SortableTree`
+   is now a named export:
    ```js
    // Before (v4)
    const SortableTree = require('@nosferatu500/react-sortable-tree')
+   // or
+   import SortableTree from '@nosferatu500/react-sortable-tree'
 
    // After (v5)
-   import SortableTree from '@nosferatu500/react-sortable-tree'
+   import { SortableTree } from '@nosferatu500/react-sortable-tree'
    ```
 
-3. **Update virtualization props** if using custom virtuoso configuration:
+3. **Update virtualization props.** `virtuosoRef` became `virtuaRef`, and
+   `virtuosoProps` was removed with no equivalent:
    ```jsx
    // Before (v4)
-   <SortableTree virtuosoProps={{ ... }} />
+   <SortableTree virtuosoRef={ref} virtuosoProps={{ ... }} />
 
-   // After (v5) - use virtua API
-   <SortableTree virtuaProps={{ ... }} />
+   // After (v5) - virtuaRef exposes virtua's VListHandle; there is no props passthrough
+   <SortableTree virtuaRef={ref} />
    ```
 
 4. **Remove CSS import** - styles are now injected automatically:

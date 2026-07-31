@@ -1,11 +1,16 @@
 {
+  /* No `rootDir` on purpose. This project is `noEmit` — tsdown does the emitting
+   * (including .d.ts) — so `rootDir` bought nothing except forbidding any
+   * included file above `src`, which left tsdown.config.ts in no project at all:
+   * editors fell back to an inferred project (hence spurious "cannot find
+   * node:fs/promises, install @types/node" reports) and `npm run typecheck`
+   * silently skipped it. Re-adding `rootDir` reintroduces both problems. */
   "compilerOptions": {
     "target": "ES2025",
     "outDir": "lib",
     "lib": ["dom", "dom.iterable", "es2025"],
     "declaration": true,
     "declarationDir": "lib",
-    "rootDir": "src",
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -16,6 +21,6 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"],
+  "include": ["src", "tsdown.config.ts"],
   "exclude": ["node_modules", "lib"]
 }

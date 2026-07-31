@@ -1,6 +1,6 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "Drag-and-drop sortable component for nested data and hierarchies",
   "homepage": "https://nosferatu500.github.io/react-sortable-tree",
   "type": "module",
@@ -18,7 +18,6 @@
     "typecheck": "tsc --noEmit",
     "prebuild": "npm run typecheck",
     "build": "tsdown",
-    "build:compiler": "REACT_COMPILER=true tsdown",
     "check:exports": "publint --strict && attw --pack . --ignore-rules cjs-resolves-to-esm",
     "lint": "npm run lint:oxlint && npm run lint:eslint",
     "lint:oxlint": "oxlint src",
@@ -72,8 +71,9 @@
     "@storybook/addon-docs": "^10.5.5",
     "@storybook/addon-links": "^10.5.5",
     "@storybook/react-vite": "^10.5.5",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
@@ -99,10 +99,10 @@
     "vite": "^8.1.5"
   },
   "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
+    "react": "^19.0.0",
     "react-dnd": "^16.0.0",
     "react-dnd-html5-backend": "^16.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react-dom": "^19.0.0"
   },
   "dependencies": {
     "immer": "^11.1.0",

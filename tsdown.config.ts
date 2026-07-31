@@ -55,19 +55,12 @@ function injectCssPlugin() {
   }
 }
 
-// React Compiler is opt-in via REACT_COMPILER=true, and must stay that way for
-// now: its output imports `react/compiler-runtime`, which React 19 exports but
-// React 18 does not. package.json still lists react ^18.0.0 as a supported
-// peer, so shipping a compiled build by default would break React 18 consumers
-// with an unresolvable import.
-//
-// To make it the default, first do one of:
-//   - drop ^18.0.0 from the react/react-dom peer ranges (a major version bump), or
-//   - add the `react-compiler-runtime` polyfill as a dependency for React 18.
-const useReactCompiler = process.env['REACT_COMPILER'] === 'true'
-
 /**
  * Runs babel-plugin-react-compiler over the TypeScript sources.
+ *
+ * As of v6 this always runs — there is no un-compiled build path. The compiled
+ * output imports `react/compiler-runtime`, which React 19 exports; the React 18
+ * peer range was dropped in v6, so no polyfill is needed.
  *
  * This calls @babel/core directly instead of going through
  * @rollup/plugin-babel: that plugin peers on `rollup` (no longer a dependency
@@ -83,8 +76,8 @@ const useReactCompiler = process.env['REACT_COMPILER'] === 'true'
  * silently stops memoizing NodeRendererDefault (4 memo caches drop to 3, and
  * the bundle shrinks ~10 kB) — it still depends on @babel/types@^7. The build
  * succeeds, so this regression is invisible unless the output is checked. Retest
- * by counting `memo_cache_sentinel` occurrences in lib/index.js after a
- * `REACT_COMPILER=true` build before upgrading.
+ * by counting `memo_cache_sentinel` occurrences in lib/index.js after a build
+ * before upgrading.
  */
 const reactCompilerPlugin = () => ({
   name: 'rst:react-compiler',
@@ -114,12 +107,6 @@ const reactCompilerPlugin = () => ({
   },
 })
 
-const reactCompilerPlugins = () => {
-  if (!useReactCompiler) return []
-  console.log('🚀 Building with React Compiler enabled')
-  return [reactCompilerPlugin()]
-}
-
 export default defineConfig({
   entry: 'src/index.ts',
   outDir: 'lib',
@@ -132,5 +119,5 @@ export default defineConfig({
   // already unambiguous ESM because package.json sets "type": "module", and it
   // keeps the paths in the "exports" map stable.
   outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
-  plugins: [injectCssPlugin(), ...reactCompilerPlugins()],
+  plugins: [injectCssPlugin(), reactCompilerPlugin()],
 })
