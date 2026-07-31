@@ -12,9 +12,18 @@ import type { TreeItem } from '../types'
  *
  * Handler ids are not exposed by any public API, so they are read off the
  * manager's registry, where registration is one source + one target per row in
- * row order (`S0, T1, S2, T3, …`). The first test in this file pins that
- * layout, so if it ever changes these tests fail there rather than silently
- * dragging the wrong row everywhere else.
+ * row order (`S0, T1, S2, T3, …`). The first test in this file pins that layout,
+ * so if it ever changes these tests fail there rather than silently dragging the
+ * wrong row everywhere else.
+ *
+ * A handler belongs to a row *instance*, not to a screen position: rows are
+ * keyed by node identity (see `node-identity.ts`), so an instance — and its
+ * handler id — travels with its node when the order changes, which a drag's own
+ * preview does. A browser hovers whatever element sits under the cursor, so
+ * `beginDrag(i)` / `hover(i)` resolve the id for the row *currently* at index `i`
+ * through the title→id map captured at mount. Addressing handlers by
+ * registration order instead would silently mean "the node that started at
+ * index i".
  */
 interface TestManager {
   getRegistry: () => { types: Map<string, unknown> }
@@ -99,13 +108,50 @@ const renderTree = (
   }
   const backend = () => manager.getBackend()
 
+  // Registration order is row order at mount, so this pins each row's handlers
+  // to its title while the two still line up.
+  const mounted = handlers()
+  const byTitle = new Map(
+    rowTitles().map((title, i) => [
+      title,
+      { source: at(mounted.sources, i), target: at(mounted.targets, i) },
+    ])
+  )
+
+  /** The handlers of whichever row is at `index` right now. */
+  const rowHandlers = (index: number) => {
+    const title = at(rowTitles(), index)
+    const found = byTitle.get(title)
+    if (!found) {
+      throw new Error(
+        `no handlers for the row at index ${index} ("${title}") — it ` +
+          `mounted after the initial render, so its ids were never captured`
+      )
+    }
+    return found
+  }
+
   return {
     ...result,
     handlers,
     beginDrag: (row: number) =>
-      act(() => backend().simulateBeginDrag([at(handlers().sources, row)])),
-    hover: (row: number) =>
-      act(() => backend().simulateHover([at(handlers().targets, row)])),
+      act(() => backend().simulateBeginDrag([rowHandlers(row).source])),
+    /**
+     * Hovers the row at `index`, then keeps hovering whatever ends up there
+     * until the preview settles. A browser fires `dragover` continuously while
+     * the pointer sits still, and one event is not enough: the first hover's
+     * preview reorders rows out from under the cursor, and a drop reads the
+     * hovered row's *current* position.
+     */
+    hover: (row: number) => {
+      let previous = ''
+      for (let i = 0; i < 5; i += 1) {
+        act(() => backend().simulateHover([rowHandlers(row).target]))
+        const current = rowTitles().join(',')
+        if (current === previous) break
+        previous = current
+      }
+    },
     drop: () => act(() => backend().simulateDrop()),
     endDrag: () => act(() => backend().simulateEndDrag()),
   }

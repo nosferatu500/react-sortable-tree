@@ -7,7 +7,9 @@ import {
   SortableTreeWithoutDndContext,
 } from './react-sortable-tree'
 import { at } from './test-helpers'
-import type { GetTreeItemChildren, TreeItem } from './types'
+import type { GetTreeItemChildren, TreeItem, TreeNode } from './types'
+import { defaultGetNodeKey } from './utils/default-handlers'
+import { changeNodeAtPath } from './utils/tree-data-utils'
 
 /**
  * virtua renders into a scroller whose height jsdom reports as 0, which would
@@ -671,5 +673,142 @@ describe('render stability', () => {
     rerender(<Wrapper tick={1} />)
 
     expect(rowTitles()).toEqual(['a', 'b'])
+  })
+})
+
+describe('row identity', () => {
+  /**
+   * Renders `title@instance`, where `instance` is state owned by the row's React
+   * instance. If React hands one node's row instance to a different node, the
+   * number stays with the screen position while the title moves — and so would
+   * an open inline editor, a checkbox, or focus.
+   *
+   * The default `getNodeKey` is `({ treeIndex }) => treeIndex`, which is
+   * positional, so rows are keyed by node identity instead. See 2.3 in
+   * MODERNIZATION.md and `src/utils/node-identity.ts`.
+   */
+  let instances = 0
+  const InstanceRenderer = ({ node }: { node: TreeItem }) => {
+    const [id] = useState(() => ++instances)
+    return <div className="rst__rowTitle">{`${String(node.title)}@${id}`}</div>
+  }
+
+  const labels = () =>
+    [...document.querySelectorAll('.rst__rowTitle')].map((el) => el.textContent)
+
+  //  a (expanded) → a1
+  //  b
+  //  c (collapsed) → c1
+  const fixture = (): TreeItem[] => [
+    {
+      id: 'a',
+      title: 'a',
+      expanded: true,
+      children: [{ id: 'a1', title: 'a1' }],
+    },
+    { id: 'b', title: 'b' },
+    { id: 'c', title: 'c', children: [{ id: 'c1', title: 'c1' }] },
+  ]
+
+  /** Renders the tree and hands back a setter, like a controlled consumer. */
+  const mount = (props: Record<string, unknown> = {}) => {
+    instances = 0
+    const initial = fixture()
+    let current = initial
+    let setData: (next: TreeItem[]) => void = () => {}
+    const Harness = () => {
+      const [treeData, setTreeData] = useState<TreeItem[]>(initial)
+      // Published from an effect rather than during render: reassigning an outer
+      // binding while rendering is a side effect (`react-hooks/globals`).
+      React.useEffect(() => {
+        current = treeData
+        setData = setTreeData
+      }, [treeData])
+      return sized(
+        <SortableTree
+          treeData={treeData}
+          onChange={setTreeData}
+          nodeContentRenderer={InstanceRenderer}
+          {...props}
+        />
+      )
+    }
+    render(<Harness />)
+    return {
+      tree: () => current,
+      change: (next: TreeItem[]) => act(() => setData(next)),
+    }
+  }
+
+  it('keeps a row with its node across a reorder', () => {
+    const t = mount()
+    expect(labels()).toEqual(['a@1', 'a1@2', 'b@3', 'c@4'])
+
+    // What a drop does: the same node objects, in a new order.
+    const [a, b, c] = t.tree()
+    t.change([c!, a!, b!])
+
+    // Positional keys used to produce `c@1, a@2, a1@3, b@4` — every row wearing
+    // its neighbour's state.
+    expect(labels()).toEqual(['c@4', 'a@1', 'a1@2', 'b@3'])
+  })
+
+  it('leaves the rows below alone when a node expands', () => {
+    const t = mount()
+    expect(labels()).toEqual(['a@1', 'a1@2', 'b@3', 'c@4'])
+
+    // Expanding 'c' the way the toggle button does.
+    t.change(
+      changeNodeAtPath({
+        treeData: t.tree(),
+        path: [3],
+        getNodeKey: defaultGetNodeKey,
+        newNode: ({ node }) => ({ ...node, expanded: true }),
+      })
+    )
+
+    // Only the revealed row is new. Positional keys used to renumber every row
+    // from the insertion point down.
+    expect(labels()).toEqual(['a@1', 'a1@2', 'b@3', 'c@4', 'c1@5'])
+  })
+
+  it('keeps row instances when a node is edited through changeNodeAtPath', () => {
+    const t = mount()
+
+    t.change(
+      changeNodeAtPath({
+        treeData: t.tree(),
+        path: [2],
+        getNodeKey: defaultGetNodeKey,
+        newNode: ({ node }) => ({ ...node, title: 'B!' }),
+      })
+    )
+
+    expect(labels()).toEqual(['a@1', 'a1@2', 'B!@3', 'c@4'])
+  })
+
+  it('honours a caller-supplied getNodeKey instead of node identity', () => {
+    const byId = ({ node }: TreeNode) => String(node['id'])
+    const t = mount({ getNodeKey: byId })
+    expect(labels()).toEqual(['a@1', 'a1@2', 'b@3', 'c@4'])
+
+    // Fresh objects carrying the same ids. A supplied key is a promise that it
+    // is stable, so rows are matched by it and keep their instances — behaviour
+    // that predates keying by identity and must not change.
+    t.change(fixture())
+
+    expect(labels()).toEqual(['a@1', 'a1@2', 'b@3', 'c@4'])
+  })
+
+  it('rebuilds rows when the tree is replaced wholesale under the default key', () => {
+    const t = mount()
+    expect(labels()).toEqual(['a@1', 'a1@2', 'b@3', 'c@4'])
+
+    // New objects, no ids the tree can match on: every row is genuinely new.
+    // Callers who replace their tree this way and want row state preserved
+    // should pass a `getNodeKey` — see the test above.
+    t.change(fixture())
+
+    expect(labels()).toEqual(['a@5', 'a1@6', 'b@7', 'c@8'])
   })
 })

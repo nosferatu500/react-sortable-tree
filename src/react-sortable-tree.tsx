@@ -35,6 +35,7 @@ import {
   wrapTarget,
 } from './utils/dnd-manager'
 import { slideRows } from './utils/generic-utils'
+import { rowIdentity } from './utils/node-identity'
 import {
   type FlatDataItem,
   changeNodeAtPath,
@@ -436,6 +437,10 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
   } = props
+
+  // Whether row keys can come from `getNodeKey`. The default one is positional,
+  // so it cannot serve as a React key — see the `rowKey` comment below.
+  const usesDefaultNodeKey = getNodeKey === defaultGetNodeKey
 
   // Theme fallbacks. These are plain expressions rather than a memoized merged
   // object: a merged object would be a fresh reference on every render, and
@@ -1265,6 +1270,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         nodeKey !== undefined && Object.hasOwn(matchKeys, nodeKey)
       const isSearchFocus =
         isSearchMatch && matchKeys[nodeKey] === searchFocusOffset
+
+      // React's row identity. A caller-supplied `getNodeKey` is meant to be
+      // stable, so its value is the key; the *default* one is `treeIndex`, which
+      // shifts whenever anything above the row is inserted, removed or moved —
+      // as a key that hands one node's row instance to another node. Fall back
+      // to the node's own identity in that case. See `node-identity.ts`.
+      const rowKey = usesDefaultNodeKey ? rowIdentity(node) : nodeKey
       const callbackParams = {
         node,
         parentNode,
@@ -1302,7 +1314,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       return (
         <TreeNodeRenderer
           rowHeight={rowHeight}
-          key={nodeKey}
+          key={rowKey}
           listIndex={listIndex}
           getPrevRow={getPrevRow}
           lowerSiblingCounts={lowerSiblingCounts}
@@ -1345,6 +1357,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       toggleChildrenVisibility,
       activeRowIndex,
       rootNodeCount,
+      usesDefaultNodeKey,
     ]
   )
 

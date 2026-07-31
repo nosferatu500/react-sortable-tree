@@ -10,6 +10,7 @@ import type {
   TreePath,
   TreePathInput,
 } from '../types'
+import { cloneWithIdentity, inheritIdentity } from './node-identity'
 
 const STOP_WALK = -Infinity
 
@@ -285,7 +286,7 @@ const mapDescendants = ({
   path?: Array<string | number>
   lowerSiblingCounts?: number[]
 }): { node: TreeItem; treeIndex: number } => {
-  const nextNode = { ...node }
+  const nextNode = cloneWithIdentity(node)
 
   // The pseudo-root is not considered in the path
   const selfPath = isPseudoRoot
@@ -306,7 +307,7 @@ const mapDescendants = ({
   ) {
     return {
       treeIndex: currentIndex,
-      node: callback(selfInfo) as TreeItem,
+      node: inheritIdentity(nextNode, callback(selfInfo) as TreeItem),
     }
   }
 
@@ -332,7 +333,7 @@ const mapDescendants = ({
   }
 
   return {
-    node: callback(selfInfo) as TreeItem,
+    node: inheritIdentity(nextNode, callback(selfInfo) as TreeItem),
     treeIndex: childIndex,
   }
 }
@@ -484,7 +485,10 @@ const applyNewNode = (
 
   return result === undefined || result === null
     ? children.toSpliced(foundIndex, 1)
-    : children.with(foundIndex, result)
+    : // The replacement stands in for the node that was there — including when a
+      // `newNode` callback built it with `{ ...node, … }` — so it keeps its row
+      // identity and React updates that row instead of rebuilding it.
+      children.with(foundIndex, inheritIdentity(targetNode, result))
 }
 
 /**
@@ -525,18 +529,20 @@ const updateAtPath = (
     throw new Error('Path referenced children of node with no children.')
   }
 
-  return siblings.with(foundIndex, {
-    ...child,
-    children: updateAtPath(
-      child.children,
-      path,
-      depthIndex + 1,
-      treeIndex,
-      newNode,
-      getNodeKey,
-      ignoreCollapsed
-    ),
-  })
+  return siblings.with(
+    foundIndex,
+    cloneWithIdentity(child, {
+      children: updateAtPath(
+        child.children,
+        path,
+        depthIndex + 1,
+        treeIndex,
+        newNode,
+        getNodeKey,
+        ignoreCollapsed
+      ),
+    })
+  )
 }
 
 export const changeNodeAtPath = ({
@@ -686,7 +692,7 @@ export const addNodeUnderParent = ({
 
     if (!node.children) {
       insertedTreeIndex = nodeIndex + 1
-      return { ...node, ...expanded, children: [newNode] }
+      return cloneWithIdentity(node, { ...expanded, children: [newNode] })
     }
     if (typeof node.children === 'function') {
       throw new TypeError('Cannot add to children defined by a function')
@@ -700,13 +706,12 @@ export const addNodeUnderParent = ({
     }
     insertedTreeIndex = childIndexOffset
 
-    return {
-      ...node,
+    return cloneWithIdentity(node, {
       ...expanded,
       children: addAsFirstChild
         ? [newNode, ...node.children]
         : [...node.children, newNode],
-    }
+    })
   }
 
   /**
@@ -735,7 +740,10 @@ export const addNodeUnderParent = ({
       ) {
         const newChildren = findAndInsert(node.children, indexCounter + 1)
         if (found) {
-          return nodes.with(i, { ...node, children: newChildren })
+          return nodes.with(
+            i,
+            cloneWithIdentity(node, { children: newChildren })
+          )
         }
       }
 
@@ -821,11 +829,10 @@ const insertAtCurrentPosition = (
     throw new TypeError('Cannot add to children defined by a function')
   }
   const extraNodeProps = expandParent ? { expanded: true } : {}
-  const nextNode = {
-    ...node,
+  const nextNode = cloneWithIdentity(node, {
     ...extraNodeProps,
     children: node.children ? [newNode, ...node.children] : [newNode],
-  }
+  })
   return {
     node: nextNode,
     nextIndex: currentIndex + 2,
@@ -871,10 +878,9 @@ const findInsertAtDepth = (params: AddNodeAtDepthParams): AddNodeResult => {
     insertIndex = children.length
   }
 
-  const nextNode = {
-    ...node,
+  const nextNode = cloneWithIdentity(node, {
     children: children.toSpliced(insertIndex, 0, newNode),
-  }
+  })
   return {
     node: nextNode,
     nextIndex: childIndex,
@@ -929,7 +935,7 @@ const traverseChildrenForInsert = (
     return mapResult.node
   })
 
-  const nextNode = { ...node, children: newChildren }
+  const nextNode = cloneWithIdentity(node, { children: newChildren })
   const result: AddNodeResult = { node: nextNode, nextIndex: childIndex }
   if (insertedTreeIndex !== undefined) {
     result.insertedTreeIndex = insertedTreeIndex
@@ -1179,7 +1185,7 @@ export const find = ({
     }
 
     let childIndex = currentIndex
-    const newNode = { ...node }
+    const newNode = cloneWithIdentity(node)
     if (hasChildren) {
       // Get all descendants
       newNode.children = (newNode.children as TreeItem[]).map(
