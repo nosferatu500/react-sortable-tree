@@ -1,5 +1,5 @@
 import React, {
-  ReactNode,
+  type ReactNode,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -12,12 +12,12 @@ import React, {
 } from 'react'
 import { DndContext, DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { VList, VListHandle } from 'virtua'
+import { VList, type VListHandle } from 'virtua'
 import NodeRendererDefault from './node-renderer-default'
 import PlaceholderRendererDefault from './placeholder-renderer-default'
 import TreeNode from './tree-node'
 import TreePlaceholder from './tree-placeholder'
-import {
+import type {
   GetNodeKeyFunction,
   GetTreeItemChildrenFn,
   TreeItem,
@@ -112,7 +112,11 @@ type OnDragStateChangedParams = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRenderer = React.ComponentType<any>
 
-type ThemeProps = {
+/**
+ * The `theme` prop's shape: renderer slots and layout defaults a theme can set,
+ * each overridable by the matching prop on the component itself.
+ */
+export type ThemeProps = {
   style?: React.CSSProperties
   innerStyle?: React.CSSProperties
   scaffoldBlockPxWidth?: number
@@ -311,14 +315,14 @@ const performSearch = (
     searchFinishCallback(searchMatches)
   }
 
-  let searchFocusTreeIndex: number | undefined
-  if (
-    seekIndex &&
-    searchFocusOffset !== undefined &&
-    searchFocusOffset < searchMatches.length
-  ) {
-    searchFocusTreeIndex = searchMatches[searchFocusOffset].treeIndex
-  }
+  // Indexing rather than range-checking: the old `searchFocusOffset <
+  // searchMatches.length` test let a negative offset through, and
+  // `searchMatches[-1].treeIndex` threw.
+  const focusedMatch =
+    seekIndex && searchFocusOffset !== undefined
+      ? searchMatches[searchFocusOffset]
+      : undefined
+  const searchFocusTreeIndex: number | undefined = focusedMatch?.treeIndex
 
   return { searchMatches, searchFocusTreeIndex, newTreeData }
 }
@@ -328,6 +332,13 @@ type LazyChildrenConfig = Pick<
   'onChange' | 'loadCollapsedLazyChildren'
 > & { getNodeKey: GetNodeKeyFunction }
 
+const isThenable = (
+  value: unknown
+): value is PromiseLike<TreeItem[] | undefined | void> =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as PromiseLike<unknown>).then === 'function'
+
 // Load any children in the tree that are given by a function
 // calls the onChange callback on the new treeData
 const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
@@ -335,39 +346,56 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
     treeData,
     getNodeKey: props.getNodeKey,
     callback: ({ node, path, lowerSiblingCounts, treeIndex }) => {
-      // If the node has children defined by a function, and is either expanded
-      //  or set to load even before expansion, run the function.
+      // Only nodes whose children are given by a function, and that are either
+      //  expanded or set to load even before expansion.
       if (
-        node.children &&
-        typeof node.children === 'function' &&
-        (node.expanded || props.loadCollapsedLazyChildren)
+        typeof node.children !== 'function' ||
+        !(node.expanded || props.loadCollapsedLazyChildren)
       ) {
-        // Call the children fetching function
-        ;(node.children as GetTreeItemChildrenFn)({
-          node,
-          path,
-          lowerSiblingCounts,
-          treeIndex,
+        return
+      }
 
-          // Provide a helper to append the new data when it is received
-          done: (childrenArray: TreeItem[]) =>
-            props.onChange(
-              changeNodeAtPath({
-                treeData,
-                path,
-                newNode: ({ node: oldNode }: { node: TreeItem }) =>
-                  // Only replace the old node if it's the one we set off to find children
-                  //  for in the first place
-                  oldNode === node
-                    ? {
-                        ...oldNode,
-                        children: childrenArray,
-                      }
-                    : oldNode,
-                getNodeKey: props.getNodeKey!,
-              })
-            ),
-        })
+      // Append the loaded data, whichever way the loader delivered it
+      const applyChildren = (childrenArray: TreeItem[]) =>
+        props.onChange(
+          changeNodeAtPath({
+            treeData,
+            path,
+            newNode: ({ node: oldNode }: { node: TreeItem }) =>
+              // Only replace the old node if it's the one we set off to find children
+              //  for in the first place
+              oldNode === node
+                ? {
+                    ...oldNode,
+                    children: childrenArray,
+                  }
+                : oldNode,
+            getNodeKey: props.getNodeKey,
+          })
+        )
+
+      // Call the children fetching function
+      const result = (node.children as GetTreeItemChildrenFn)({
+        node,
+        path,
+        lowerSiblingCounts,
+        treeIndex,
+
+        // Deprecated callback form, still supported
+        done: applyChildren,
+      })
+
+      if (Array.isArray(result)) {
+        applyChildren(result)
+      } else if (isThenable(result)) {
+        // Rejections are deliberately not swallowed: an unhandled rejection is
+        // visible in the console and catchable by the consumer, whereas
+        // silently dropping it would leave the node stuck on its spinner with
+        // no diagnostic at all.
+        // Resolving to nothing means the loader used `done` instead
+        void result.then((childrenArray) =>
+          childrenArray ? applyChildren(childrenArray) : undefined
+        )
       }
     },
   })
@@ -1139,11 +1167,11 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       return
     }
     const depth = row.path.length
-    for (let i = index - 1; i >= 0; i--) {
-      if (rows[i].path.length < depth) {
-        focusRow(i)
-        return
-      }
+    const parentIndex = rows.findLastIndex(
+      (candidate, i) => i < index && candidate.path.length < depth
+    )
+    if (parentIndex !== -1) {
+      focusRow(parentIndex)
     }
   }
 
@@ -1157,6 +1185,10 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
     const index = Math.min(activeRowIndex, rows.length - 1)
     const row = rows[index]
+    // `activeRowIndex` is clamped to the row count, so this only misses if the
+    // rows changed underneath the handler. Return without preventDefault so
+    // the key keeps its native behaviour.
+    if (!row) return
     // Right means "deeper" in ltr and "shallower" in rtl.
     const deeper = rowDirection === 'rtl' ? 'ArrowLeft' : 'ArrowRight'
 
@@ -1391,7 +1423,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
 export const SortableTreeWithoutDndContext = (
   props: ReactSortableTreeProps
-) => {
+): React.JSX.Element => {
   return (
     <DndContext.Consumer>
       {({ dragDropManager }) =>
@@ -1406,7 +1438,9 @@ export const SortableTreeWithoutDndContext = (
   )
 }
 
-export const SortableTree = (props: ReactSortableTreeProps) => {
+export const SortableTree = (
+  props: ReactSortableTreeProps
+): React.JSX.Element => {
   return (
     <DndProvider backend={HTML5Backend}>
       <SortableTreeWithoutDndContext {...props} />

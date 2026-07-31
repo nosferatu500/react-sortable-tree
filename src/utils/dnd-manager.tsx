@@ -1,7 +1,7 @@
-import React, { Ref, useCallback, useRef } from 'react'
-import { DropTargetMonitor, useDrag, useDrop } from 'react-dnd'
-import { type TreeRendererProps } from '../tree-node'
-import { TreeItem } from '../types'
+import React, { type Ref, useCallback, useRef } from 'react'
+import { type DropTargetMonitor, useDrag, useDrop } from 'react-dnd'
+import type { TreeRendererProps } from '../tree-node'
+import type { TreeItem } from '../types'
 import { getDepth } from './tree-data-utils'
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect'
 
@@ -112,7 +112,7 @@ export const wrapSource = (
   Component: AnyComponent,
   dndType: string,
   getHandlers: GetTreeDndHandlers
-) => {
+): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DraggableSource: React.FC<any> = (props) => {
     // Keeps the drag callbacks free of per-render props without re-running
@@ -164,7 +164,7 @@ export const wrapPlaceholder = (
   treeId: string,
   dndType: string,
   getHandlers: GetTreeDndHandlers
-) => {
+): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppablePlaceholder: React.FC<any> = (props) => {
     const [{ isOver, canDrop }, dropRef] = useDrop(
@@ -326,7 +326,7 @@ export const wrapTarget = (
   treeId: string,
   dndType: string,
   getHandlers: GetTreeDndHandlers
-) => {
+): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppableTarget: React.FC<any> = (props) => {
     const nodeRef = useRef<HTMLElement>(null)

@@ -1,7 +1,7 @@
-import { ReactNode } from 'react'
-import { SearchData, TreeIndex, TreeItem } from '../types'
+import type { ReactNode } from 'react'
+import type { SearchData, TreeIndex, TreeItem } from '../types'
 
-export const defaultGetNodeKey = ({ treeIndex }: TreeIndex) => treeIndex
+export const defaultGetNodeKey = ({ treeIndex }: TreeIndex): number => treeIndex
 
 // Cheap hack to get the text of a react object
 const getReactElementText = (parent: ReactNode): string => {

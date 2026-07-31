@@ -1,6 +1,6 @@
-import React, { JSX } from 'react'
-import { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
-import { NodeData, TreeItem } from './types'
+import React, { type JSX } from 'react'
+import type { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
+import type { NodeData, TreeItem, TreeItemContent } from './types'
 import { classnames } from './utils/classnames'
 import { isDescendant } from './utils/tree-data-utils'
 import './node-renderer-default.css'
@@ -17,8 +17,9 @@ export interface NodeRendererProps {
   buttons?: JSX.Element[]
   className?: string
   style?: React.CSSProperties
-  title?: (data: NodeData) => JSX.Element
-  subtitle?: (data: NodeData) => JSX.Element
+  /** Overrides `node.title`; same value-or-function shape. */
+  title?: TreeItemContent
+  subtitle?: TreeItemContent
   icons?: JSX.Element[]
   lowerSiblingCounts: number[]
   swapDepth?: number

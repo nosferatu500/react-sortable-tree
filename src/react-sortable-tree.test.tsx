@@ -6,7 +6,8 @@ import {
   SortableTree,
   SortableTreeWithoutDndContext,
 } from './react-sortable-tree'
-import { GetTreeItemChildren, TreeItem } from './types'
+import { at } from './test-helpers'
+import type { GetTreeItemChildren, TreeItem } from './types'
 
 /**
  * virtua renders into a scroller whose height jsdom reports as 0, which would
@@ -86,14 +87,25 @@ describe('rendering', () => {
   })
 
   it('accepts render-function titles', () => {
-    // The renderer supports `title` as a function of the node, but `TreeItem`
-    // types it as plain `ReactNode`. The cast is the type lying, not the runtime.
-    const title = (({ node }: { node: TreeItem }) => (
+    // No cast: `TreeItem['title']` accepts a function of the node, which is what
+    // the renderer has always supported.
+    const title: TreeItem['title'] = ({ node }) => (
       <b>fn:{String(node['id'])}</b>
-    )) as unknown as TreeItem['title']
+    )
 
     render(<Controlled initial={[{ title, id: 7 }]} />)
     expect(document.querySelector('.rst__rowTitle')?.textContent).toBe('fn:7')
+  })
+
+  it('accepts render-function subtitles', () => {
+    const subtitle: TreeItem['subtitle'] = ({ treeIndex }) => (
+      <i>at:{treeIndex}</i>
+    )
+
+    render(<Controlled initial={[{ title: 'a', subtitle }]} />)
+    expect(document.querySelector('.rst__rowSubtitle')?.textContent).toBe(
+      'at:0'
+    )
   })
 
   it('applies rtl direction', () => {
@@ -151,14 +163,14 @@ describe('expand and collapse', () => {
     await user.click(toggleButton('b')!)
 
     expect(onChangeSpy).toHaveBeenCalledTimes(1)
-    const next = onChangeSpy.mock.calls[0][0] as TreeItem[]
-    expect(next[1].expanded).toBe(true)
+    const next = at(onChangeSpy.mock.calls, 0)[0] as TreeItem[]
+    expect(at(next, 1).expanded).toBe(true)
     // The toggled node is a fresh object; untouched siblings are carried over
     // by reference, so consumers can diff cheaply.
     expect(next[1]).not.toBe(initial[1])
     expect(next[0]).toBe(initial[0])
     expect(next[2]).toBe(initial[2])
-    expect(initial[1].expanded).toBeUndefined() // input not mutated
+    expect(at(initial, 1).expanded).toBeUndefined() // input not mutated
   })
 
   it('calls onVisibilityToggle with node, path and the new expanded state', async () => {
@@ -169,7 +181,7 @@ describe('expand and collapse', () => {
     await user.click(toggleButton('b')!)
 
     expect(onVisibilityToggle).toHaveBeenCalledTimes(1)
-    const arg = onVisibilityToggle.mock.calls[0][0]
+    const arg = at(onVisibilityToggle.mock.calls, 0)[0]
     expect(arg.expanded).toBe(true)
     expect(arg.node.title).toBe('b')
     expect(arg.path).toEqual([3])
@@ -233,6 +245,23 @@ describe('search', () => {
     ).toBe('a1')
   })
 
+  // The old range check was `searchFocusOffset < searchMatches.length`, which
+  // let a negative offset through into `searchMatches[-1].treeIndex`.
+  it.each([-1, 99])(
+    'ignores a searchFocusOffset of %i, which addresses no match',
+    async (searchFocusOffset) => {
+      render(
+        <Controlled searchQuery="a" searchFocusOffset={searchFocusOffset} />
+      )
+      await waitFor(() => {
+        expect(document.querySelectorAll('.rst__rowSearchMatch')).toHaveLength(
+          3
+        )
+      })
+      expect(document.querySelectorAll('.rst__rowSearchFocus')).toHaveLength(0)
+    }
+  )
+
   it('uses a custom searchMethod', async () => {
     const searchMethod = vi.fn(
       ({ node }: { node: TreeItem }) => node['tag'] === 'wanted'
@@ -281,7 +310,7 @@ describe('generateNodeProps', () => {
     render(<Controlled generateNodeProps={generateNodeProps} />)
 
     expect(document.querySelectorAll('.injected').length).toBeGreaterThan(0)
-    const arg = generateNodeProps.mock.calls[0][0]
+    const arg = at(generateNodeProps.mock.calls, 0)[0]
     expect(arg).toMatchObject({
       node: expect.objectContaining({ title: 'a' }),
       path: [0],
@@ -411,6 +440,7 @@ describe('controlled treeData', () => {
 
 describe('lazy children', () => {
   it('invokes the children function for an expanded node and applies the result', async () => {
+    // eslint-disable-next-line sonarjs/deprecation -- the deprecated `done` form is the subject
     const children = vi.fn(({ done }: GetTreeItemChildren) => {
       done([{ title: 'loaded' }])
     })
@@ -420,7 +450,7 @@ describe('lazy children', () => {
 
     await waitFor(() => expect(rowTitles()).toContain('loaded'))
     expect(children).toHaveBeenCalled()
-    const arg = children.mock.calls[0][0]
+    const arg = at(children.mock.calls, 0)[0]
     expect(arg.node.title).toBe('lazy')
     expect(arg.path).toEqual([0])
     expect(arg.treeIndex).toBe(0)
@@ -449,6 +479,54 @@ describe('lazy children', () => {
         initial={[{ title: 'lazy', expanded: true, children: () => {} }]}
       />
     )
+    expect(document.querySelector('.rst__loadingHandle')).not.toBeNull()
+  })
+
+  it('applies children returned as a promise', async () => {
+    const children = vi.fn(async ({ node }: GetTreeItemChildren) => [
+      { title: `${String(node.title)}-async` },
+    ])
+    render(
+      <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
+    )
+
+    await waitFor(() => expect(rowTitles()).toContain('lazy-async'))
+    expect(document.querySelector('.rst__loadingHandle')).toBeNull()
+  })
+
+  it('applies children returned synchronously', async () => {
+    const children = vi.fn(() => [{ title: 'sync' }])
+    render(
+      <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
+    )
+
+    await waitFor(() => expect(rowTitles()).toContain('sync'))
+  })
+
+  it('still supports an async loader that calls the deprecated done callback', async () => {
+    // eslint-disable-next-line sonarjs/deprecation -- deliberately the old form
+    const children = vi.fn(async ({ done }: GetTreeItemChildren) => {
+      await Promise.resolve()
+      done([{ title: 'via-done' }])
+    })
+    render(
+      <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
+    )
+
+    await waitFor(() => expect(rowTitles()).toContain('via-done'))
+  })
+
+  it('leaves the node alone when the promise resolves to nothing', async () => {
+    const children = vi.fn(async () => undefined)
+    render(
+      <Controlled initial={[{ title: 'lazy', expanded: true, children }]} />
+    )
+
+    await waitFor(() => expect(children).toHaveBeenCalled())
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(rowTitles()).toEqual(['lazy'])
     expect(document.querySelector('.rst__loadingHandle')).not.toBeNull()
   })
 })

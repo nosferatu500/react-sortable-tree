@@ -15,4 +15,5 @@ export type {
   CanDropParams,
   GenerateNodePropsParams,
   ReactSortableTreeProps,
+  ThemeProps,
 } from './react-sortable-tree'

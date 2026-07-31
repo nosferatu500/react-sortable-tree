@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config'
+import { type ViteUserConfig, defineConfig } from 'vitest/config'
 
-export default defineConfig({
+const config: ViteUserConfig = defineConfig({
   test: {
     // jsdom for everything: the tree-data-utils tests don't need a DOM but
     // don't care either, and a single environment keeps the config honest.
@@ -13,3 +13,5 @@ export default defineConfig({
     css: false,
   },
 })
+
+export default config

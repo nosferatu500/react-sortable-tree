@@ -1,4 +1,4 @@
-import { defineConfig } from 'tsdown'
+import { type UserConfig, defineConfig } from 'tsdown'
 
 /**
  * CSS is emitted as a real stylesheet (`lib/styles.css`) by @tsdown/css, which
@@ -66,7 +66,7 @@ const reactCompilerPlugin = () => ({
   },
 })
 
-export default defineConfig({
+const config: UserConfig = defineConfig({
   entry: 'src/index.ts',
   outDir: 'lib',
   format: 'esm',
@@ -80,3 +80,5 @@ export default defineConfig({
   outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
   plugins: [reactCompilerPlugin()],
 })
+
+export default config

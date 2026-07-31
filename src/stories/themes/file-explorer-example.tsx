@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import {
   SortableTree,
-  TreeItem,
+  type TreeItem,
   defaultGetNodeKey,
   removeNodeAtPath,
 } from '../../index'

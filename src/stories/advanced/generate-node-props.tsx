@@ -34,7 +34,8 @@ const GenerateNodeProps: React.FC = () => {
             0,
             treeData.findIndex((n) => path[0] === n.id)
           )
-          const playerColor = TEAM_COLORS[rootLevelIndex]
+          const playerColor =
+            TEAM_COLORS[rootLevelIndex % TEAM_COLORS.length] ?? 'Red'
 
           return {
             style: {

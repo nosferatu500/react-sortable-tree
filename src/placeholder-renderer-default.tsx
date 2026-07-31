@@ -1,5 +1,5 @@
 import React from 'react'
-import { TreeItem } from './types'
+import type { TreeItem } from './types'
 import { classnames } from './utils/classnames'
 import './placeholder-renderer-default.css'
 

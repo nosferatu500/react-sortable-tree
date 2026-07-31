@@ -1,8 +1,8 @@
-import React, { Children, JSX, ReactNode, cloneElement } from 'react'
-import { ConnectDropTarget } from 'react-dnd'
-import { TreeItem } from './types'
+import React, { Children, type JSX, type ReactNode, cloneElement } from 'react'
+import type { ConnectDropTarget } from 'react-dnd'
+import type { TreeItem } from './types'
 import { classnames } from './utils/classnames'
-import { type FlatDataItem } from './utils/tree-data-utils'
+import type { FlatDataItem } from './utils/tree-data-utils'
 import './tree-node.css'
 
 export interface TreeRendererProps {

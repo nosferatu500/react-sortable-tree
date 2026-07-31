@@ -4,7 +4,8 @@ import { DndProvider, useDragDropManager } from 'react-dnd'
 import { TestBackend } from 'react-dnd-test-backend'
 import { describe, expect, it, vi } from 'vitest'
 import { SortableTreeWithoutDndContext } from '../react-sortable-tree'
-import { TreeItem } from '../types'
+import { at, childrenOf } from '../test-helpers'
+import type { TreeItem } from '../types'
 
 /**
  * Drives real drags through react-dnd's TestBackend.
@@ -102,9 +103,9 @@ const renderTree = (
     ...result,
     handlers,
     beginDrag: (row: number) =>
-      act(() => backend().simulateBeginDrag([handlers().sources[row]])),
+      act(() => backend().simulateBeginDrag([at(handlers().sources, row)])),
     hover: (row: number) =>
-      act(() => backend().simulateHover([handlers().targets[row]])),
+      act(() => backend().simulateHover([at(handlers().targets, row)])),
     drop: () => act(() => backend().simulateDrop()),
     endDrag: () => act(() => backend().simulateEndDrag()),
   }
@@ -135,14 +136,14 @@ describe('drag lifecycle', () => {
 
     beginDrag(0)
     expect(onDragStateChanged).toHaveBeenCalledTimes(1)
-    expect(onDragStateChanged.mock.calls[0][0]).toMatchObject({
+    expect(at(onDragStateChanged.mock.calls, 0)[0]).toMatchObject({
       isDragging: true,
       draggedNode: expect.objectContaining({ title: 'a' }),
     })
 
     endDrag()
     expect(onDragStateChanged).toHaveBeenCalledTimes(2)
-    expect(onDragStateChanged.mock.calls[1][0].isDragging).toBe(false)
+    expect(at(onDragStateChanged.mock.calls, 1)[0].isDragging).toBe(false)
   })
 
   it('keeps the dragged row rendered at its drag position', () => {
@@ -179,7 +180,7 @@ describe('drop', () => {
 
     expect(rowTitles()).toEqual(['b', 'a', 'c'])
     expect(onMoveNode).toHaveBeenCalledTimes(1)
-    const move = onMoveNode.mock.calls[0][0]
+    const move = at(onMoveNode.mock.calls, 0)[0]
     expect(move.node.title).toBe('a')
     expect(move.treeData.map((n: TreeItem) => n.title)).toEqual(['b', 'a', 'c'])
     expect(move.prevPath).toEqual([0])
@@ -196,7 +197,10 @@ describe('drop', () => {
     hover(0)
     drop()
 
-    const { treeData, nextPath, nextTreeIndex } = onMoveNode.mock.calls[0][0]
+    const { treeData, nextPath, nextTreeIndex } = at(
+      onMoveNode.mock.calls,
+      0
+    )[0]
     // nextPath is a list of treeIndexes under the default getNodeKey, so the
     // last segment is the node's own index in the new tree.
     expect(nextPath.at(-1)).toBe(nextTreeIndex)
@@ -265,11 +269,9 @@ describe('nested trees', () => {
     drop()
 
     // wherever the parent lands, the child stays under it
-    const moved = onMoveNode.mock.calls[0][0].treeData as TreeItem[]
+    const moved = at(onMoveNode.mock.calls, 0)[0].treeData as TreeItem[]
     const parent = moved.find((n) => n.title === 'parent')!
-    expect((parent.children as TreeItem[]).map((c) => c.title)).toEqual([
-      'child',
-    ])
+    expect(childrenOf(parent).map((c) => c.title)).toEqual(['child'])
     expect(rowTitles()).toContain('child')
   })
 
@@ -282,7 +284,7 @@ describe('nested trees', () => {
     drop()
 
     expect(onMoveNode).toHaveBeenCalledTimes(1)
-    const move = onMoveNode.mock.calls[0][0]
+    const move = at(onMoveNode.mock.calls, 0)[0]
     expect(move.node.title).toBe('sibling')
     // nextParentNode is either null (root level) or a real node — never
     // undefined, and never a node the tree doesn't contain.

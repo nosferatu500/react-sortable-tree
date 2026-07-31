@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import { GetTreeItemChildrenFn, TreeIndex, TreeItem, TreeNode } from '../types'
+import { at, childAt, childrenOf } from '../test-helpers'
+import type {
+  GetTreeItemChildrenFn,
+  TreeIndex,
+  TreeItem,
+  TreeNode,
+} from '../types'
 import { defaultGetNodeKey } from './default-handlers'
 import {
   addNodeUnderParent,
@@ -33,7 +39,7 @@ const keyById = ({ node }: TreeNode & TreeIndex) => node['id'] as string
  * └─ b1
  * c
  */
-const sample = (): TreeItem[] => [
+const sample = (): [TreeItem, TreeItem, TreeItem] => [
   {
     id: 'a',
     title: 'a',
@@ -130,16 +136,16 @@ describe('getVisibleNodeCount', () => {
 describe('getVisibleNodeInfoAtIndex', () => {
   it('resolves each visible index to its node and path', () => {
     const treeData = sample()
-    const at = (index: number) =>
+    const infoAt = (index: number) =>
       getVisibleNodeInfoAtIndex({ treeData, index, getNodeKey: keyById })
 
-    expect(at(0)?.node['id']).toBe('a')
-    expect(at(1)?.node['id']).toBe('a1')
-    expect(at(2)?.node['id']).toBe('a1a')
-    expect(at(3)?.node['id']).toBe('a2')
-    expect(at(4)?.node['id']).toBe('b') // b1 is collapsed, so it has no index
-    expect(at(5)?.node['id']).toBe('c')
-    expect(at(2)?.path).toEqual(['a', 'a1', 'a1a'])
+    expect(infoAt(0)?.node['id']).toBe('a')
+    expect(infoAt(1)?.node['id']).toBe('a1')
+    expect(infoAt(2)?.node['id']).toBe('a1a')
+    expect(infoAt(3)?.node['id']).toBe('a2')
+    expect(infoAt(4)?.node['id']).toBe('b') // b1 is collapsed, so it has no index
+    expect(infoAt(5)?.node['id']).toBe('c')
+    expect(infoAt(2)?.path).toEqual(['a', 'a1', 'a1a'])
   })
 
   it('reports lowerSiblingCounts per depth', () => {
@@ -178,7 +184,7 @@ describe('walk', () => {
     })
     expect(seen.map((s) => s[0])).toEqual(['a', 'a1', 'a1a', 'a2', 'b', 'c'])
     expect(seen.map((s) => s[1])).toEqual([0, 1, 2, 3, 4, 5])
-    expect(seen[2][2]).toEqual(['a', 'a1', 'a1a'])
+    expect(at(seen, 2)[2]).toEqual(['a', 'a1', 'a1a'])
   })
 
   it('descends into collapsed nodes when ignoreCollapsed is false', () => {
@@ -240,9 +246,9 @@ describe('map', () => {
       getNodeKey: keyById,
       callback: ({ node }) => ({ ...node, title: `${node['title']}!` }),
     })
-    expect(result[0]['title']).toBe('a!')
-    expect((result[0].children as TreeItem[])[0]['title']).toBe('a1!')
-    expect(result[2]['title']).toBe('c!')
+    expect(at(result, 0)['title']).toBe('a!')
+    expect(childAt(result[0], 0)['title']).toBe('a1!')
+    expect(at(result, 2)['title']).toBe('c!')
   })
 
   it('leaves the input untouched', () => {
@@ -305,8 +311,8 @@ describe('toggleExpandedForAll', () => {
 
   it('collapses every node when expanded is false', () => {
     const result = toggleExpandedForAll({ treeData: sample(), expanded: false })
-    expect(result[0].expanded).toBe(false)
-    expect((result[0].children as TreeItem[])[0].expanded).toBe(false)
+    expect(at(result, 0).expanded).toBe(false)
+    expect(childAt(result[0], 0).expanded).toBe(false)
   })
 })
 
@@ -319,7 +325,7 @@ describe('changeNodeAtPath', () => {
       newNode: { id: 'c', title: 'C!' },
       getNodeKey: keyById,
     })
-    expect(result[2]['title']).toBe('C!')
+    expect(at(result, 2)['title']).toBe('C!')
     expect(treeData[2]['title']).toBe('c')
   })
 
@@ -330,8 +336,8 @@ describe('changeNodeAtPath', () => {
       newNode: { id: 'a1a', title: 'deep!' },
       getNodeKey: keyById,
     })
-    const a1 = (result[0].children as TreeItem[])[0]
-    expect((a1.children as TreeItem[])[0]['title']).toBe('deep!')
+    const a1 = childAt(result[0], 0)
+    expect(childAt(a1, 0)['title']).toBe('deep!')
   })
 
   it('passes the existing node and its treeIndex to a function newNode', () => {
@@ -346,8 +352,8 @@ describe('changeNodeAtPath', () => {
       getNodeKey: keyById,
     })
     expect(spy).toHaveBeenCalledTimes(1)
-    expect(spy.mock.calls[0][0].node['id']).toBe('a2')
-    expect((spy.mock.calls[0][0] as unknown as TreeIndex).treeIndex).toBe(3)
+    expect(at(spy.mock.calls, 0)[0].node['id']).toBe('a2')
+    expect((at(spy.mock.calls, 0)[0] as unknown as TreeIndex).treeIndex).toBe(3)
   })
 
   it('deletes the node when newNode resolves to undefined or null', () => {
@@ -358,9 +364,7 @@ describe('changeNodeAtPath', () => {
         newNode: () => nil,
         getNodeKey: keyById,
       })
-      expect((result[0].children as TreeItem[]).map((n) => n['id'])).toEqual([
-        'a1',
-      ])
+      expect(childrenOf(result[0]).map((n) => n['id'])).toEqual(['a1'])
     }
   })
 
@@ -387,9 +391,7 @@ describe('changeNodeAtPath', () => {
     // Siblings and unrelated roots must be the very same objects.
     expect(result[1]).toBe(treeData[1])
     expect(result[2]).toBe(treeData[2])
-    expect((result[0].children as TreeItem[])[1]).toBe(
-      (treeData[0].children as TreeItem[])[1]
-    )
+    expect(childAt(result[0], 1)).toBe(childAt(treeData[0], 1))
     // Nodes along the changed path must be fresh.
     expect(result[0]).not.toBe(treeData[0])
   })
@@ -401,8 +403,8 @@ describe('changeNodeAtPath', () => {
       newNode: { title: 'by index' },
       getNodeKey: defaultGetNodeKey,
     })
-    const a1 = (result[0].children as TreeItem[])[0]
-    expect((a1.children as TreeItem[])[0]['title']).toBe('by index')
+    const a1 = childAt(result[0], 0)
+    expect(childAt(a1, 0)['title']).toBe('by index')
   })
 
   it('throws when the path does not resolve', () => {
@@ -459,7 +461,7 @@ describe('changeNodeAtPath', () => {
       getNodeKey: keyById,
       ignoreCollapsed: false,
     })
-    expect((result[1].children as TreeItem[])[0]['title']).toBe('hidden!')
+    expect(childAt(result[1], 0)['title']).toBe('hidden!')
   })
 })
 
@@ -470,9 +472,7 @@ describe('removeNodeAtPath / removeNode', () => {
       path: ['a', 'a1'],
       getNodeKey: keyById,
     })
-    expect((result[0].children as TreeItem[]).map((n) => n['id'])).toEqual([
-      'a2',
-    ])
+    expect(childrenOf(result[0]).map((n) => n['id'])).toEqual(['a2'])
   })
 
   it('returns the removed node, its treeIndex, and the new tree', () => {
@@ -483,9 +483,7 @@ describe('removeNodeAtPath / removeNode', () => {
     })!
     expect(result.node['id']).toBe('a2')
     expect(result.treeIndex).toBe(3)
-    expect(
-      (result.treeData[0].children as TreeItem[]).map((n) => n['id'])
-    ).toEqual(['a1'])
+    expect(childrenOf(result.treeData[0]).map((n) => n['id'])).toEqual(['a1'])
   })
 
   it('returns a plain node, not a proxy or draft', () => {
@@ -497,7 +495,7 @@ describe('removeNodeAtPath / removeNode', () => {
     // Must survive being cloned and re-inserted elsewhere.
     expect(() => structuredClone(result.node)).not.toThrow()
     expect(result.node['id']).toBe('a1')
-    expect((result.node.children as TreeItem[])[0]['id']).toBe('a1a')
+    expect(childAt(result.node, 0)['id']).toBe('a1a')
   })
 
   it('returns undefined instead of throwing on a bad path', () => {
@@ -588,9 +586,11 @@ describe('addNodeUnderParent', () => {
       parentKey: 'a',
       getNodeKey: keyById,
     })
-    expect(
-      (result.treeData[0].children as TreeItem[]).map((n) => n['id'])
-    ).toEqual(['a1', 'a2', 'new'])
+    expect(childrenOf(result.treeData[0]).map((n) => n['id'])).toEqual([
+      'a1',
+      'a2',
+      'new',
+    ])
   })
 
   it('prepends under an existing parent with addAsFirstChild', () => {
@@ -601,9 +601,11 @@ describe('addNodeUnderParent', () => {
       getNodeKey: keyById,
       addAsFirstChild: true,
     })
-    expect(
-      (result.treeData[0].children as TreeItem[]).map((n) => n['id'])
-    ).toEqual(['new', 'a1', 'a2'])
+    expect(childrenOf(result.treeData[0]).map((n) => n['id'])).toEqual([
+      'new',
+      'a1',
+      'a2',
+    ])
     expect(result.treeIndex).toBe(1)
   })
 
@@ -614,9 +616,7 @@ describe('addNodeUnderParent', () => {
       parentKey: 'c',
       getNodeKey: keyById,
     })
-    expect(
-      (result.treeData[2].children as TreeItem[]).map((n) => n['id'])
-    ).toEqual(['new'])
+    expect(childrenOf(result.treeData[2]).map((n) => n['id'])).toEqual(['new'])
     expect(result.treeIndex).toBe(6)
   })
 
@@ -628,7 +628,7 @@ describe('addNodeUnderParent', () => {
       getNodeKey: keyById,
       expandParent: true,
     })
-    expect(result.treeData[1].expanded).toBe(true)
+    expect(at(result.treeData, 1).expanded).toBe(true)
   })
 
   it('does not mutate the input tree', () => {
@@ -698,9 +698,7 @@ describe('insertNode', () => {
       minimumTreeIndex: 1,
       getNodeKey: keyById,
     })
-    expect(
-      (result.treeData[0].children as TreeItem[]).map((n) => n['id'])
-    ).toContain('new')
+    expect(childrenOf(result.treeData[0]).map((n) => n['id'])).toContain('new')
     expect(result.parentNode?.['id']).toBe('a')
     expect(result.path).toEqual(['a', 'new'])
   })
@@ -815,7 +813,7 @@ describe('insertNode', () => {
           getNodeKey,
         })
         expect(
-          rows[result.treeIndex].path,
+          at(rows, result.treeIndex).path,
           `depth=${depth} min=${minimumTreeIndex}`
         ).toEqual(result.path)
       }
@@ -889,10 +887,10 @@ describe('getTreeFromFlatData', () => {
     ]
     const tree = getTreeFromFlatData({ flatData }) as unknown as TreeItem[]
     expect(tree).toHaveLength(2)
-    expect(tree[0]['name']).toBe('root')
-    const child = (tree[0].children as TreeItem[])[0]
+    expect(at(tree, 0)['name']).toBe('root')
+    const child = childAt(tree[0], 0)
     expect(child['name']).toBe('child')
-    expect((child.children as TreeItem[])[0]['name']).toBe('grandchild')
+    expect(childAt(child, 0)['name']).toBe('grandchild')
   })
 
   it('honours custom key accessors and rootKey', () => {
@@ -907,7 +905,7 @@ describe('getTreeFromFlatData', () => {
       rootKey: 'ROOT',
     }) as unknown as TreeItem[]
     expect(tree).toHaveLength(1)
-    expect((tree[0].children as TreeItem[])[0]['key']).toBe('k')
+    expect(childAt(tree[0], 0)['key']).toBe('k')
   })
 
   it('returns [] when nothing matches the root key', () => {
@@ -921,8 +919,8 @@ describe('getTreeFromFlatData', () => {
 describe('isDescendant', () => {
   it('detects direct and transitive descendants', () => {
     const [a] = sample()
-    const a1 = (a.children as TreeItem[])[0]
-    const a1a = (a1.children as TreeItem[])[0]
+    const a1 = childAt(a, 0)
+    const a1a = childAt(a1, 0)
     expect(isDescendant(a, a1)).toBe(true)
     expect(isDescendant(a, a1a)).toBe(true)
     expect(isDescendant(a1, a)).toBe(false)
@@ -966,8 +964,8 @@ describe('find', () => {
       searchMethod,
     })
     expect(matches).toHaveLength(1)
-    expect(matches[0].node['id']).toBe('a1a')
-    expect(matches[0].path).toEqual(['a', 'a1', 'a1a'])
+    expect(at(matches, 0).node['id']).toBe('a1a')
+    expect(at(matches, 0).path).toEqual(['a', 'a1', 'a1a'])
   })
 
   it('expands ancestors of every match when expandAllMatchPaths is set', () => {
@@ -978,7 +976,7 @@ describe('find', () => {
       searchMethod,
       expandAllMatchPaths: true,
     })
-    expect(treeData[1].expanded).toBe(true)
+    expect(at(treeData, 1).expanded).toBe(true)
   })
 
   it('expands only the focused match when expandFocusMatchPaths is set', () => {
@@ -991,7 +989,7 @@ describe('find', () => {
       expandFocusMatchPaths: true,
     })
     // matches in order: a1, a1a, b1 — offset 1 is a1a, under the already-open a
-    expect(treeData[1].expanded).not.toBe(true)
+    expect(at(treeData, 1).expanded).not.toBe(true)
   })
 
   it('finds every match across the forest', () => {

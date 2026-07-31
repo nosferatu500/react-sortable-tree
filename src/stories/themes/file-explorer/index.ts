@@ -1,3 +1,4 @@
+import type { ThemeProps } from '../../../index'
 import FileExplorerNodeRenderer from './file-explorer-node-renderer'
 import './file-explorer-theme.css'
 
@@ -31,7 +32,7 @@ import './file-explorer-theme.css'
  * </div>
  * ```
  */
-export const fileExplorerTheme = {
+export const fileExplorerTheme: ThemeProps = {
   nodeContentRenderer: FileExplorerNodeRenderer,
   scaffoldBlockPxWidth: 20,
 }

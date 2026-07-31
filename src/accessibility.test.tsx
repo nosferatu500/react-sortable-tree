@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import React, { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { SortableTree } from './react-sortable-tree'
-import { TreeItem } from './types'
+import { at } from './test-helpers'
+import type { TreeItem } from './types'
 
 const sized = (ui: React.ReactElement) => (
   <div style={{ height: 600, width: 800 }}>{ui}</div>
@@ -152,7 +153,7 @@ describe('roving tabindex', () => {
     render(<Controlled />)
     const tabbable = items().filter((el) => el.getAttribute('tabindex') === '0')
     expect(tabbable).toHaveLength(1)
-    expect(titleOf(tabbable[0])).toBe('a')
+    expect(titleOf(at(tabbable, 0))).toBe('a')
     for (const el of items()) {
       expect(['0', '-1']).toContain(el.getAttribute('tabindex'))
     }
@@ -306,7 +307,7 @@ describe('keyboard navigation', () => {
     await user.keyboard('{ArrowRight}')
 
     expect(onVisibilityToggle).toHaveBeenCalledTimes(1)
-    expect(onVisibilityToggle.mock.calls[0][0]).toMatchObject({
+    expect(at(onVisibilityToggle.mock.calls, 0)[0]).toMatchObject({
       expanded: true,
       node: expect.objectContaining({ title: 'b' }),
     })
@@ -333,7 +334,7 @@ describe('keyboard navigation', () => {
         })}
       />
     )
-    const input = screen.getAllByLabelText('rename')[0]
+    const input = at(screen.getAllByLabelText('rename'), 0)
     input.focus()
 
     await user.keyboard('{ArrowDown}hi')
