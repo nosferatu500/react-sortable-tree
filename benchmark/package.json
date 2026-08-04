@@ -19,7 +19,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "esbuild": "^0.27.0",
+    "esbuild": "^0.28.1",
     "puppeteer-core": "^24.28.0"
   }
 }
