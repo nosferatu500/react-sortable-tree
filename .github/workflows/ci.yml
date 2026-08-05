@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [stable]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to a PR makes the in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # `devEngines` asks for >=24.11 to develop here; `engines` (>=22) only
+      # constrains consumers. The tightest floor is actually jsdom's
+      # `^24.15.0`, which rules out early 24.x — `24` resolves to the latest
+      # 24.x, so it clears all three.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      # Runs ahead of `build` (whose `prebuild` repeats it) so a type error is
+      # reported as a type error rather than as a build failure.
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm test
+
+      - run: npm run format:check
+
+      - run: npm run build
+
+      # Reads `lib/`, so it has to follow `build`.
+      - run: npm run check:exports
+
+      - run: npm run build-storybook
