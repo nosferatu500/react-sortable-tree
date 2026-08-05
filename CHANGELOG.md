@@ -55,6 +55,32 @@
 
 - `sideEffects` narrowed from `true` to `["**/*.css"]`, since the JS is now pure.
 
+#### Lazy `children` loaders return their children instead of calling `done`
+
+A node's `children` can still be a function, but it now **returns** the children — or a
+promise for them — and the `done` callback it used to receive is gone:
+
+```tsx
+// v5
+children: ({ done }) => {
+  fetchChildren().then(done)
+}
+
+// v6
+children: () => fetchChildren()
+//   or: children: async ({ node }) => (await fetch(`/api/children?id=${String(node.id)}`)).json()
+```
+
+- The argument object keeps `node`, `path`, `lowerSiblingCounts` and `treeIndex`; only
+  `done` was removed. `GetTreeItemChildrenFn` is now
+  `(data: GetTreeItemChildren) => TreeItem[] | Promise<TreeItem[]>`, so TypeScript points
+  at every loader that needs updating.
+- A rejected promise is left unhandled on purpose, so the failure is visible in the console
+  and catchable by the consumer instead of leaving the node on its spinner.
+- Unchanged, but now documented: the loaded children are applied to the tree as it was when
+  the loader ran, and a node whose `children` is still a function may be asked to load
+  again on a later tree change — so a fetching loader should be idempotent or cached.
+
 #### `slideRegionSize` removed
 
 - **The `slideRegionSize` prop is gone**, from both `ReactSortableTreeProps` and
@@ -110,7 +136,71 @@ implements the [WAI-ARIA tree view pattern](https://www.w3.org/WAI/ARIA/apg/patt
 Keyboard-driven *drag and drop* is still not supported; that needs a drag backend with a
 keyboard sensor and is planned alongside the move off `react-dnd`.
 
+#### `title` and `subtitle` accept render functions in the types
+
+Both fields have always supported a function of the node at runtime; the types said
+`ReactNode`, so the documented form needed a cast. They are now
+`TreeItemContent = Exclude<ReactNode, undefined> | ((data: NodeData) => ReactNode)`, which
+is also the type of the `title`/`subtitle` overrides on `NodeRendererProps`.
+
+```tsx
+const treeData: TreeItem[] = [
+  { title: ({ node, treeIndex }) => <b>{`${treeIndex}: ${node.name}`}</b> },
+]
+```
+
+This is additive for code that builds nodes. If a **custom `nodeContentRenderer`** renders
+`{node.title}` directly, TypeScript will now ask it to handle the function form — which it
+had to anyway, since React throws on a function child. Branch the way the default renderer
+does:
+
+```tsx
+{typeof node.title === 'function' ? node.title({ node, path, treeIndex }) : node.title}
+```
+
+#### `ThemeProps` is exported
+
+The `theme` prop's type was documented but not importable. It is now exported, so custom
+themes can be typed:
+
+```ts
+import type { ThemeProps } from '@nosferatu500/react-sortable-tree'
+
+export const myTheme: ThemeProps = {
+  nodeContentRenderer: MyRenderer,
+  scaffoldBlockPxWidth: 24,
+}
+```
+
 ### Fixed
+
+- **Row state stuck to the screen position instead of the node.** Rows were keyed by the
+  last path segment, which under the default `getNodeKey` is the node's `treeIndex` — a
+  *position*. Reordering therefore handed one node's row instance to another node, and
+  expanding a node renumbered every row below it, so a custom `nodeContentRenderer`'s state
+  (an open inline editor, a checkbox, focus) moved to the wrong row. It happened on ordinary
+  expand/collapse, not just on drags.
+
+  Rows are now keyed by `getNodeKey`'s value when you supply one — unchanged behaviour, and
+  already correct — and otherwise by the node object's own identity. `getNodeKey` keeps its
+  actual job, which is building the paths in `onMoveNode`, `changeNodeAtPath` and friends;
+  it was only ever the wrong thing to reconcile by. No API change.
+
+  Two consequences worth knowing:
+
+  - If you **replace your whole tree with fresh objects** on every change *and* use the
+    default `getNodeKey`, the visible rows now remount, where positional keys accidentally
+    preserved them. Pass a `getNodeKey` that returns a stable id — which also makes your
+    paths stable across reorders — or pass `({ treeIndex }) => treeIndex` explicitly to keep
+    the old behaviour exactly.
+  - If the **same node object appears twice** in one tree, the two rows now share a key and
+    React logs "Encountered two children with the same key". Clone the node instead; edits
+    through the helpers were already ambiguous for aliased nodes.
+
+- **A negative `searchFocusOffset` crashed the tree.** The range check only tested the
+  upper bound, so `searchFocusOffset={-1}` read `searchMatches[-1].treeIndex` and threw
+  `TypeError`. An offset that addresses no match is now simply ignored. Found by turning
+  on `noUncheckedIndexedAccess`.
 
 - **`insertNode` reported the wrong `path` and `parentNode` for any nested insert.**
   It returned `path: [newNodeKey]` and `parentNode: null` no matter where the node
@@ -168,27 +258,61 @@ of a 60 fps frame budget in v5, 5% in v6. Behind it:
 - `dragHover` takes the inserted node's path from `insertNode`'s return value instead of
   re-flattening the entire tree on every mousemove to read one row.
 
+### Storybook
+
+- New stories for the features v6 changed: **Basics/LazyChildren** (promise-returning
+  loader, failure handling, and the fact that a still-pending loader can be called again),
+  **Accessibility/KeyboardNavigation** (`aria-labelledby`, roving tabindex,
+  `keyboardNavigation={false}`, rtl key mirroring) and **Advanced/LargeTree** (10,000 nodes,
+  with a live count of how few rows reach the DOM).
+- Every existing story now passes an `aria-label`, since a `role="tree"` needs an
+  accessible name and the examples are what people copy.
+
+### Types and internals
+
+- **The tsconfig runs with `noUncheckedIndexedAccess`, `verbatimModuleSyntax`,
+  `erasableSyntaxOnly` and `isolatedDeclarations`.** Consumer-visible effects are limited
+  to the `ThemeProps` export above and explicit return types in the emitted `.d.ts`; the
+  `searchFocusOffset` crash below was found by the first of those flags. Details and the
+  measurements behind the traversal loops are in
+  [MODERNIZATION.md](./MODERNIZATION.md) 4.5.
+
 ### Testing
 
-The project had no tests before v6. It now has **164**, run with `npm test` (or
+The project had no tests before v6. It now has **190**, run with `npm test` (or
 `npm run test:watch`):
 
 - `src/utils/tree-data-utils.test.ts` (83) — every export of the tree-data module,
   including no-mutation and structural-sharing invariants. Both bugs above were found by
   these tests.
-- `src/react-sortable-tree.test.tsx` (45) — component behaviour under
+- `src/react-sortable-tree.test.tsx` (55) — component behaviour under
   `@testing-library/react` + jsdom: rendering, expand/collapse, search, every callback
   contract, custom renderers, theme precedence, lazy children, controlled updates.
 - `src/utils/dnd-manager.test.tsx` (12) — real drags driven through react-dnd's
   `TestBackend`: begin/hover/drop/cancel, `canDrop` enforcement, and subtree integrity.
+- `src/stories/stories.test.tsx` (4) — smoke tests for the Storybook examples added for
+  lazy children, keyboard navigation and the 10,000-node tree.
+- `src/utils/node-identity.test.ts` (11) — row identity, and every tree helper carrying it
+  across a clone-on-write update.
 - `src/accessibility.test.tsx` (25) — ARIA tree semantics, roving tabindex, and every
   keyboard interaction, including rtl mirroring and not hijacking nested inputs.
+
+### Continuous integration
+
+The project had no CI either. `.github/workflows/ci.yml` now runs the full verification
+gate — `typecheck`, `lint`, `test`, `format:check`, `build`, `check:exports`,
+`build-storybook` — on every pull request and on pushes to `stable`.
+
+Its first useful act was catching a gate that only looked green: `npm test` reported all
+190 tests passing and still exited non-zero, because virtua's smooth scroll calls
+`Element.prototype.scrollTo`, which jsdom does not implement, and the rejection landed
+outside any test. Covered now by a fourth jsdom shim in `vitest.setup.ts`.
 
 ### Migration Guide
 
 #### From v5.x to v6.x
 
-1. **Update React** to 19.0.0 or higher. The component API is unchanged from v5.
+1. **Update React** to 19.0.0 or higher.
 
    ```sh
    npm install react@^19 react-dom@^19
@@ -209,7 +333,32 @@ The project had no tests before v6. It now has **164**, run with `npm test` (or
    `.rst__tree .rst__row`-style specificity hacks — unlayered rules beat the `rst`
    layer on their own.
 
-3. **If you were building this package from source** and relied on `build:compiler`,
+3. **If a node's `children` is a loader function**, return the children instead of calling
+   `done`. TypeScript flags every call site.
+
+   ```tsx
+   // v5
+   children: ({ done }) => {
+     fetchChildren().then(done)
+   }
+
+   // v6
+   children: () => fetchChildren()
+   ```
+
+4. **If you pass `slideRegionSize`**, delete it — it has had no effect since v5.
+
+5. **If you have a custom `nodeContentRenderer`** that renders `{node.title}` or
+   `{node.subtitle}` directly, handle the function form (it was always possible at runtime,
+   and React throws on a function child):
+
+   ```tsx
+   {typeof node.title === 'function'
+     ? node.title({ node, path, treeIndex })
+     : node.title}
+   ```
+
+6. **If you were building this package from source** and relied on `build:compiler`,
    use `build` instead:
 
    ```sh

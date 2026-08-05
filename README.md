@@ -1,5 +1,6 @@
 # React Sortable Tree
 
+[![CI](https://github.com/nosferatu500/react-sortable-tree/actions/workflows/ci.yml/badge.svg)](https://github.com/nosferatu500/react-sortable-tree/actions/workflows/ci.yml)
 ![NPM version](https://img.shields.io/npm/v/@nosferatu500/react-sortable-tree.svg?style=flat)
 ![NPM license](https://img.shields.io/npm/l/@nosferatu500/react-sortable-tree.svg?style=flat)
 [![NPM total downloads](https://img.shields.io/npm/dt/@nosferatu500/react-sortable-tree.svg?style=flat)](https://npmcharts.com/compare/@nosferatu500/react-sortable-tree?minimal=true)
@@ -29,7 +30,7 @@ has been rebuilt.
 | Runtime dependencies | 7                                                  | 3                                                              |
 | Module format        | CJS + ESM                                          | ESM only                                                       |
 | Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                   |
-| Tests                | Jest                                               | Vitest, 164 tests                                              |
+| Tests                | Jest                                               | Vitest, 190 tests                                              |
 
 Dropped along the way: `prop-types`, `lodash.isequal`, `react-lifecycles-compat`,
 `react-dnd-scrollzone`, and (in v6) `immer`.
@@ -220,6 +221,17 @@ All props are typed in `ReactSortableTreeProps` (see `src/react-sortable-tree.ts
 | `treeData` | `TreeItem[]`                     | Array of tree nodes with `{ title?, subtitle?, expanded?, children?, ...custom }` |
 | `onChange` | `(treeData: TreeItem[]) => void` | Called on every tree data change                                                  |
 
+`title` and `subtitle` take a value _or_ a function of the node, which is called with
+`{ node, path, treeIndex }` when the row renders:
+
+```tsx
+const treeData: TreeItem[] = [
+  { title: ({ treeIndex }) => <b>{`#${treeIndex} Chicken`}</b> },
+]
+```
+
+A node's `children` can also be a function — see [Lazy children](#lazy-children).
+
 ### Appearance & layout
 
 | Prop                   | Type                                            | Default | Description                        |
@@ -268,11 +280,33 @@ All props are typed in `ReactSortableTreeProps` (see `src/react-sortable-tree.ts
 | Prop                        | Type                         | Description                         |
 | --------------------------- | ---------------------------- | ----------------------------------- |
 | `generateNodeProps`         | `(params) => object`         | Add custom props to each node       |
-| `getNodeKey`                | `(node) => string \| number` | Generate stable node keys           |
+| `getNodeKey`                | `(node) => string \| number` | Builds the segments of every `path` |
 | `onVisibilityToggle`        | `(params) => void`           | Called when node expands/collapses  |
 | `loadCollapsedLazyChildren` | `boolean`                    | Load lazy children before expanding |
 | `virtuaRef`                 | `RefObject<VListHandle>`     | Direct access to the virtual list   |
 | `dragDropManager`           | `object`                     | External react-dnd manager          |
+
+#### `getNodeKey`
+
+`getNodeKey` builds the segments of the `path` arrays you get back — in `onMoveNode`'s
+`prevPath`/`nextPath`, in `onVisibilityToggle`, and in every helper that takes a `path`. The
+default is `({ treeIndex }) => treeIndex`, so those paths are positions: they are only valid
+against the tree they came from, and a stored path points somewhere else after a reorder.
+
+Return your own stable id if you keep paths around, diff trees, or persist selection:
+
+```tsx
+<SortableTree
+  treeData={treeData}
+  onChange={setTreeData}
+  getNodeKey={({ node }) => node.id}
+/>
+```
+
+You do **not** need it to keep row state (an open editor, a checkbox, focus) attached to the
+right row while rows move — rows are reconciled by node identity when you leave `getNodeKey`
+unset. The one case that benefits: if you replace `treeData` with freshly built objects on
+every change, supply `getNodeKey` so rows can still be matched across the replacement.
 
 ### Accessibility
 
@@ -327,6 +361,44 @@ the roving tabindex stay in place.
 > **Drag and drop is still pointer-only.** Keyboard-accessible reordering needs a drag
 > backend with a keyboard sensor, which is tracked as part of the planned move off
 > `react-dnd`.
+
+## Lazy children
+
+A node's `children` can be a function instead of an array. It is called when the node is
+expanded — or immediately, for every such node, if you pass
+`loadCollapsedLazyChildren` — and the node shows a loading indicator until its children
+arrive. Return the children, or a promise for them:
+
+```tsx
+const treeData: TreeItem[] = [
+  {
+    title: 'Remote folder',
+    children: async ({ node }) => {
+      const res = await fetch(`/api/children?id=${String(node.id)}`)
+      return (await res.json()) as TreeItem[]
+    },
+  },
+]
+```
+
+The loaded children are written into the tree through `onChange`, like every other
+change, so they end up in your own state.
+
+Two things to know: the update is applied to the tree as it was when the loader was
+called, and a node whose `children` is still a function may be asked to load again on a
+later tree change. Loaders that fetch should therefore be idempotent or cached.
+
+**Coming from v5?** The `done(children)` callback is gone — return the children instead:
+
+```tsx
+// v5
+children: ({ done }) => {
+  fetchChildren().then(done)
+}
+
+// v6
+children: () => fetchChildren()
+```
 
 ## Theming
 
