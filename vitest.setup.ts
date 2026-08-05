@@ -16,6 +16,15 @@ afterEach(cleanup)
 //      virtua reads.
 //   3. A non-null `offsetParent`. Virtua skips entries for detached elements
 //      via `if (target.offsetParent)`, and jsdom returns null for everything.
+//
+// A fourth gap is not about row counts but about unhandled rejections:
+//
+//   4. `Element.prototype.scrollTo`, which jsdom does not implement (only
+//      `window.scrollTo` exists). Virtua's scroller calls it for a *smooth*
+//      scroll and assigns `scrollTop` otherwise, so only the smooth path
+//      trips — which is the one `searchFocusOffset` takes. It rejects inside
+//      virtua's own async scroll loop, so the test still passes while vitest
+//      reports an unhandled error and exits non-zero.
 
 const VIEWPORT_HEIGHT = 600
 const VIEWPORT_WIDTH = 800
@@ -106,6 +115,19 @@ beforeEach(() => {
         return boxOf(this)[pick]
       },
     })
+  }
+
+  // Mirror what virtua does for a non-smooth scroll: assign the offsets. jsdom
+  // has no layout, so it clamps nothing and the value is simply retained.
+  Element.prototype.scrollTo = function (
+    this: Element,
+    xOrOptions?: number | ScrollToOptions,
+    y?: number
+  ) {
+    const { left, top } =
+      typeof xOrOptions === 'object' ? xOrOptions : { left: xOrOptions, top: y }
+    if (left !== undefined) this.scrollLeft = left
+    if (top !== undefined) this.scrollTop = top
   }
 
   HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {

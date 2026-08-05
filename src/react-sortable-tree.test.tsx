@@ -684,8 +684,7 @@ describe('row identity', () => {
    * an open inline editor, a checkbox, or focus.
    *
    * The default `getNodeKey` is `({ treeIndex }) => treeIndex`, which is
-   * positional, so rows are keyed by node identity instead. See 2.3 in
-   * MODERNIZATION.md and `src/utils/node-identity.ts`.
+   * positional, so rows are keyed by node identity instead.
    */
   let instances = 0
   const InstanceRenderer = ({ node }: { node: TreeItem }) => {
