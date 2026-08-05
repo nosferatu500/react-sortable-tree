@@ -139,6 +139,7 @@ export default defineConfig(
       'unicorn/no-null': 'off',
       'unicorn/prefer-module': 'off',
       'unicorn/no-useless-undefined': 'off',
+      'unicorn/single-line-block-comment-style': 'off',
     },
   },
 
