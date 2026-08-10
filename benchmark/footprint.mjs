@@ -4,8 +4,13 @@
  * Each entry lists the library plus the peers its own docs tell you to install,
  * minus react and react-dom, which any React app already has. --legacy-peer-deps
  * keeps npm from adding those two back. The distinction matters: this fork and
- * the original depend on react-dnd directly, while @minoru declares it a peer,
- * so counting only declared dependencies would silently drop it.
+ * the original depend on their drag-and-drop layer directly, while @minoru
+ * declares it a peer, so counting only declared dependencies would silently drop
+ * it.
+ *
+ * The two are not the same layer any more — the fork is on
+ * `@nosferatu500/react-dnd` 19 plus a keyboard backend, @minoru on upstream
+ * `react-dnd` 16 — which is part of what these numbers are measuring.
  */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'

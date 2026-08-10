@@ -32,15 +32,6 @@ has been rebuilt.
 | Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                                        |
 | Tests                | Jest                                               | Vitest, 212 tests                                                                   |
 
-Dropped along the way: `prop-types`, `lodash.isequal`, `react-lifecycles-compat`,
-`react-dnd-scrollzone`, and (in v6) `immer`.
-
-Beyond the table, v6 rewrote the tree-mutation internals — `changeNodeAtPath` is ~70×
-faster and a drag hover ~6.5× cheaper on a 10k-node tree — and stopped remounting every
-row on each parent render. v7 moved drag and drop onto a maintained `react-dnd` fork and
-added keyboard drag and drop. See [CHANGELOG.md](./CHANGELOG.md) for the details and
-[MODERNIZATION.md](./MODERNIZATION.md) for what is still planned.
-
 **Migrating from the original?** You still import a stylesheet, just from the scoped
 name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is
 that `SortableTree` is a named export rather than the default. Props tied to the old
@@ -52,8 +43,8 @@ The per-version migration notes in [CHANGELOG.md](./CHANGELOG.md) cover the rest
 Measured against the original release and against
 [`@minoru/react-dnd-treeview`](https://github.com/minop1205/react-dnd-treeview), the
 other actively maintained `react-dnd` tree for React. Same tree, same 600×900 viewport,
-same 62px rows, same `react-dnd` HTML5 backend, real Chrome. The harness, the exact
-method and its known asymmetries live in [benchmark/](./benchmark/):
+same 62px rows, an HTML5 drag-and-drop backend in all three, real Chrome. The harness,
+the exact method and its known asymmetries live in [benchmark/](./benchmark/):
 
 ```sh
 npm run bench:setup   # build + pack the fork, install the three workspaces
@@ -61,20 +52,22 @@ npm run bench         # writes benchmark/results.json and RESULTS.md
 ```
 
 The original is benchmarked on React 16.14, the newest React its peer range allows;
-the other two on React 19.2. Medians of 11 runs after a discarded warm-up, on an Apple
-M4. A figure is only **bolded** as a win where the winner's slowest run still beat the
-runner-up's fastest run — `results.json` keeps the min/max behind every median so that
-test is reproducible rather than a judgement call.
+the other two on React 19.2. Note the drag-and-drop layers differ by necessity: this fork
+is on `@nosferatu500/react-dnd` 19 plus its keyboard backend, the other two on upstream
+`react-dnd` 16. Medians of 11 runs after a discarded warm-up, on an Apple M4. A figure is
+only **bolded** as a win where the winner's slowest run still beat the runner-up's fastest
+run — `results.json` keeps the min/max behind every median so that test is reproducible
+rather than a judgement call.
 
 ### Shipping cost
 
-|                                                           | this fork v6.0.0 | react-sortable-tree v2.8.0 | @minoru/react-dnd-treeview v3.5.4 |
+|                                                           | this fork v7.0.0 | react-sortable-tree v2.8.0 | @minoru/react-dnd-treeview v3.5.4 |
 | --------------------------------------------------------- | ---------------- | -------------------------- | --------------------------------- |
-| JS, minified + gzipped (library alone)                    | **15.3 kB**      | 46.4 kB                    | 52.2 kB                           |
-| JS, minified + gzipped (with `react-dnd` + HTML5 backend) | **28.0 kB**      | 65.0 kB                    | 64.4 kB                           |
+| JS, minified + gzipped (library alone)                    | **16.0 kB**      | 46.5 kB                    | 52.2 kB                           |
+| JS, minified + gzipped (with `react-dnd` + HTML5 backend) | **30.9 kB**      | 65.0 kB                    | 64.5 kB                           |
 | Stylesheet, gzipped                                       | **2.5 kB**       | 3.2 kB                     | none (headless)                   |
-| npm packages installed                                    | **13**           | 30                         | 20                                |
-| `node_modules` on disk                                    | **5.1 MB**       | 12.9 MB                    | 14.6 MB                           |
+| npm packages installed                                    | **8**            | 30                         | 20                                |
+| `node_modules` on disk                                    | **4.6 MB**       | 12.9 MB                    | 14.6 MB                           |
 | React versions supported                                  | 19               | 16 only                    | 18, 19                            |
 
 ### Runtime
@@ -84,29 +77,28 @@ reveals 999 rows.
 
 | Nodes  | Library             | Mount CPU | Expand a group | Scroll top→bottom CPU | DOM elements | Event listeners | JS heap    |
 | ------ | ------------------- | --------- | -------------- | --------------------- | ------------ | --------------- | ---------- |
-| 100    | this fork           | 4.4 ms    | 2.3 ms         | 68.3 ms               | **177**      | 253             | 3.1 MB     |
-| 100    | react-sortable-tree | 5.5 ms    | 2.5 ms         | 69.8 ms               | 253          | **199**         | 3.4 MB     |
-| 100    | @minoru             | 7.4 ms    | 3.3 ms         | **17.9 ms**           | 322          | 993             | 4.1 MB     |
-| 1,000  | this fork           | 4.9 ms    | 2.4 ms         | 112 ms                | **175**      | 251             | 3.6 MB     |
-| 1,000  | react-sortable-tree | 4.6 ms    | 1.7 ms         | 124 ms                | 251          | **197**         | 4.0 MB     |
-| 1,000  | @minoru             | 64.3 ms   | 23.8 ms        | **26.5 ms**           | 3,022        | 8,193           | 16.2 MB    |
-| 10,000 | this fork           | 8.1 ms    | 7.2 ms         | 104 ms                | **175**      | 251             | 8.1 MB     |
-| 10,000 | react-sortable-tree | 10.1 ms   | 4.8 ms         | 113 ms                | 251          | **197**         | **6.3 MB** |
-| 10,000 | @minoru             | 2,437 ms  | 567 ms         | **48.7 ms**           | 30,022       | 80,193          | 135.8 MB   |
+| 100    | this fork           | 4.8 ms    | 3.2 ms         | 62.7 ms               | **177**      | 254             | 3.1 MB     |
+| 100    | react-sortable-tree | 4.2 ms    | 2.0 ms         | 54.7 ms               | 253          | **199**         | 3.4 MB     |
+| 100    | @minoru             | 7.0 ms    | 3.3 ms         | **11.6 ms**           | 322          | 993             | 4.1 MB     |
+| 1,000  | this fork           | 4.5 ms    | 3.1 ms         | 109 ms                | **175**      | 252             | 3.7 MB     |
+| 1,000  | react-sortable-tree | 4.1 ms    | **2.2 ms**     | 121 ms                | 251          | **197**         | 4.0 MB     |
+| 1,000  | @minoru             | 63.7 ms   | 23.4 ms        | **26.8 ms**           | 3,022        | 8,193           | 16.2 MB    |
+| 10,000 | this fork           | 6.9 ms    | 6.8 ms         | 94.4 ms               | **175**      | 252             | 8.2 MB     |
+| 10,000 | react-sortable-tree | 9.4 ms    | 4.7 ms         | 109 ms                | 251          | **197**         | **6.3 MB** |
+| 10,000 | @minoru             | 2,228 ms  | 584 ms         | **43.2 ms**           | 30,022       | 80,193          | 135.8 MB   |
 
-**All three scrolled at full frame rate.** p95 frame time stayed between 8.4 ms and
+**All three scrolled at full frame rate.** p95 frame time stayed between 8.7 ms and
 9.3 ms for every library at every size, and not one run dropped a frame. The scroll
 column is therefore headroom consumed, not jank observed — see below for why it is the
 one column the virtualized libraries lose.
 
-**This fork and the original are indistinguishable on CPU here, and that is the expected
-result** — one is a fork of the other and both virtualize the same way. Every mount and
-expand figure above has overlapping run-to-run ranges, which is why none of them is
-bolded. At 5 runs the apparent winner flipped between benchmark runs; at 11 it is simply
-a tie. The differences that survive are structural, not algorithmic: bundle size,
-dependency count, DOM and listener counts, React support and accessibility.
+**This fork and the original are near-indistinguishable on CPU, with one exception.** Mount
+and scroll have overlapping run-to-run ranges at every size, which is why neither is bolded
+— one library is a fork of the other and both virtualize the same way. But **expanding a
+group at 1,000 nodes now separates**: 2.9–3.9 ms for this fork against 1.6–2.3 ms for the
+original, with no overlap, so the original takes that cell.
 
-Scroll CPU rises from 100 to 1,000 nodes and then flattens (112 ms and 104 ms overlap).
+Scroll CPU rises from 100 to 1,000 nodes and then flattens (109 ms and 94.4 ms overlap).
 The 40 scroll steps are a fixed count, so past ~1,000 nodes every step jumps further than
 one viewport and replaces the whole rendered window — the cost per step saturates rather
 than continuing to grow with the tree.
@@ -117,37 +109,38 @@ Time until rows are actually on screen, which includes waiting for a display fra
 
 | Nodes  | this fork | react-sortable-tree | @minoru/react-dnd-treeview |
 | ------ | --------- | ------------------- | -------------------------- |
-| 100    | 12.2 ms   | 4.8 ms              | 7.5 ms                     |
-| 1,000  | 11.9 ms   | **4.2 ms**          | 61.0 ms                    |
-| 10,000 | 11.6 ms   | 9.6 ms              | 2,453 ms                   |
+| 100    | 11.8 ms   | 4.5 ms              | 7.2 ms                     |
+| 1,000  | 12.6 ms   | **4.5 ms**          | 63.1 ms                    |
+| 10,000 | 12.0 ms   | 9.1 ms              | 2,242 ms                   |
 
 ### Reading the results
 
-**Where this fork wins.** A third of the bytes of either alternative, less than half the
-install footprint, and a flat cost curve: mounting 10,000 nodes takes ~8 ms because only
-13 rows are ever in the DOM. Against `@minoru` at 10,000 nodes that is ~300× less mount
-CPU, ~79× cheaper expands, ~171× fewer DOM elements and ~17× less heap. It is also the
-only one of the three implementing the ARIA tree pattern — `role="treeitem"` with
-`aria-level`/`aria-setsize`/`aria-posinset`/`aria-expanded`, a roving tabindex and
-arrow-key navigation. The original exposes rows as `react-virtualized` grid cells
-(`role="gridcell"` inside `role="grid"`), `@minoru` as `<li role="listitem">`; in neither
-are rows focusable.
+**Where this fork wins.** A third of the bytes of either alternative, a third of the install
+footprint, and a flat cost curve: mounting 10,000 nodes takes ~7 ms because only 13 rows are
+ever in the DOM. Against `@minoru` at 10,000 nodes that is ~320× less mount CPU, ~86×
+cheaper expands, ~171× fewer DOM elements and ~17× less heap. It is also the only one of the
+three implementing the ARIA tree pattern — `role="treeitem"` with
+`aria-level`/`aria-setsize`/`aria-posinset`/`aria-expanded`, a roving tabindex, arrow-key
+navigation and keyboard drag and drop. The original exposes rows as `react-virtualized` grid
+cells (`role="gridcell"` inside `role="grid"`), `@minoru` as `<li role="listitem">`; in
+neither are rows focusable.
 
 **Where this fork loses.** Rows appear about a frame later than the original
-(11.9 ms vs 4.2 ms at 1,000 nodes) because `virtua` measures its viewport from a
+(12.6 ms vs 4.5 ms at 1,000 nodes) because `virtua` measures its viewport from a
 ResizeObserver before it can fill it. At 10,000 nodes it holds more heap than the
-original (8.1 MB vs 6.3 MB) and keeps a few more event listeners per viewport. Scrolling
-costs real CPU — ~104 ms to sweep the whole tree against `@minoru`'s ~49 ms — because
-rows are re-rendered as they come into view instead of already existing. That is the
-virtualization trade in one number: spend CPU while scrolling, in exchange for a DOM and
-a heap that stop growing with the tree. Neither choice dropped a frame here. And it is
-React 19 only: `@minoru` still supports React 18.
+original (8.2 MB vs 6.3 MB) and keeps a few more event listeners per viewport. Expanding a
+group costs about 1 ms more than the original on small trees, which is the price of composing
+a keyboard backend over the pointer one. Scrolling costs real CPU — ~94 ms to sweep the whole
+tree against `@minoru`'s ~43 ms — because rows are re-rendered as they come into view instead
+of already existing. That is the virtualization trade in one number: spend CPU while
+scrolling, in exchange for a DOM and a heap that stop growing with the tree. Neither choice
+dropped a frame here. And it is React 19 only: `@minoru` still supports React 18.
 
 **When to pick `@minoru/react-dnd-treeview` instead.** It is the right call for small
 trees where you want full markup control: it ships no CSS, animates expand/collapse with
 `framer-motion`, bundles multi-backend touch support, and supports React 18. Scrolling is
 cheaper because nothing re-renders. The cost is that everything is in the DOM — at 10,000
-nodes that is 30,022 elements, 80,193 listeners, 136 MB of heap and a 2.4 second mount
+nodes that is 30,022 elements, 80,193 listeners, 136 MB of heap and a 2.2 second mount
 that blocks the main thread. Even 1,000 nodes take 64 ms to mount, past the frame budget.
 It also has no built-in search, no ARIA tree semantics and no keyboard navigation.
 

@@ -1,9 +1,12 @@
 import React, { useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import { flushSync } from 'react-dom'
-import { DndProvider } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
-import { SortableTreeWithoutDndContext } from '@nosferatu500/react-sortable-tree'
+import { DndProvider } from '@nosferatu500/react-dnd'
+import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
+import {
+  SortableTreeWithoutDndContext,
+  withTreeKeyboard,
+} from '@nosferatu500/react-sortable-tree'
 import '@nosferatu500/react-sortable-tree/style.css'
 import {
   afterPaint,
@@ -17,6 +20,11 @@ import {
 } from './bench-core.js'
 import { createStore } from './store.js'
 import { VIEWPORT, ROW_HEIGHT } from './layout.js'
+
+// What the README tells consumers who supply their own provider to do, so the
+// page measures the keyboard-capable configuration rather than a pointer-only
+// one that no longer matches the documented setup.
+const backend = withTreeKeyboard(HTML5Backend)
 
 const store = createStore([])
 
@@ -56,7 +64,7 @@ register({
     return timed(() => {
       flushSync(() =>
         root.render(
-          <DndProvider backend={HTML5Backend}>
+          <DndProvider backend={backend}>
             <App />
           </DndProvider>
         )

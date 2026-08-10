@@ -12,12 +12,15 @@
   },
   "dependencies": {
     "@minoru/react-dnd-treeview": "3.5.4",
+    "@nosferatu500/react-dnd": "^19.0.0",
+    "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
     "@nosferatu500/react-sortable-tree": "file:./vendor/fork.tgz",
     "react": "^19.2.8",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.2.8"
   },
+  "//dnd": "Two drag-and-drop stacks on purpose: the fork uses @nosferatu500/react-dnd 19, @minoru/react-dnd-treeview needs upstream react-dnd 16. Installing only one would make a harness unbuildable.",
   "devDependencies": {
     "esbuild": "^0.28.1",
     "puppeteer-core": "^24.28.0"

@@ -140,6 +140,27 @@ Raised from `>=22`, because `@nosferatu500/react-dnd` 19 requires it. Node 22.12
 is the first release that can `require()` an ES module, which is what lets those
 packages ship ESM only.
 
+### Measured: install got smaller, bundle got slightly bigger
+
+Re-running the cross-library benchmark against 7.0.0:
+
+|                                         | v6.0.0  | v7.0.0      |
+| --------------------------------------- | ------- | ----------- |
+| npm packages installed                  | 13      | **8**       |
+| `node_modules` on disk                  | 5.1 MB  | **4.6 MB**  |
+| JS min+gzip, library alone              | 15.3 kB | 16.0 kB     |
+| JS min+gzip, with the drag-and-drop stack | 28.0 kB | 30.9 kB   |
+
+The install shrank because the `react-dnd` fork dropped four utility packages of its own.
+The ~2.9 kB of extra JS is keyboard dragging and its live region.
+
+Runtime is unchanged within run-to-run noise at every tree size, with one exception:
+**expanding a group costs about 1 ms more on small trees** (2.4 → 3.1 ms at 1,000 nodes),
+which is enough for the original v2.8.0 to take that cell on a separated range. The likely
+cause is each row registering with two composed backends instead of one — the price of
+keyboard support — but that attribution is not yet measured. Tracked in
+[MODERNIZATION.md](./MODERNIZATION.md).
+
 ### Changed: `@nosferatu500/react-dnd-keyboard-backend` 19.1.0
 
 Uses the release's new APIs: `isKeyboardDrag()` to tell a keyboard drag from a

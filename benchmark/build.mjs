@@ -26,7 +26,24 @@ const REACT_EXTERNALS = [
   'react/jsx-runtime',
   'react-dom/client',
 ]
-const DND_EXTERNALS = ['react-dnd', 'react-dnd-html5-backend']
+/**
+ * Every drag-and-drop layer any of the three libraries can pull in.
+ *
+ * Used only for the "library alone" size variant, which answers "how big is the
+ * library once its drag-and-drop stack is treated as already present". Each
+ * library imports just its own, so listing all of them keeps that comparison
+ * like-for-like: the fork is on `@nosferatu500/react-dnd` 19 plus the keyboard
+ * backend, while `@minoru/react-dnd-treeview` and the original are on upstream
+ * `react-dnd` 16. Omitting the scoped names would charge the fork for a layer the
+ * others are credited as free.
+ */
+const DND_EXTERNALS = [
+  'react-dnd',
+  'react-dnd-html5-backend',
+  '@nosferatu500/react-dnd',
+  '@nosferatu500/react-dnd-html5-backend',
+  '@nosferatu500/react-dnd-keyboard-backend',
+]
 
 const shared = {
   bundle: true,

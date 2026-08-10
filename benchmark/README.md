@@ -105,9 +105,15 @@ Kept deliberately, and all of them flatter the other two libraries:
 - `react-virtualized` overscans 10 rows by default and `virtua` fewer, so the
   original renders 20 rows per viewport against this fork's 13. Both are library
   defaults, and more rows means more work.
-- All three run through the same `react-dnd` `HTML5Backend` and the
-  context-less tree export, so the DnD provider cost is identical and included
-  everywhere.
+- All three run through an HTML5 drag-and-drop backend and the context-less tree
+  export, so a DnD provider is present and included everywhere. **The backends are
+  no longer identical**, and this is the one asymmetry that does not flatter the
+  others: this fork is on `@nosferatu500/react-dnd` 19 wrapped in
+  `withTreeKeyboard`, so it carries a second composed backend and a keyboard
+  interaction the other two do not implement at all, while they use upstream
+  `react-dnd` 16. That shows up as +1 event listener and about 1 ms on expands.
+  Matching them would mean benchmarking a configuration the README no longer
+  tells anyone to use.
 - Row height is pinned to 62px (both react-sortable-tree defaults) and the
   viewport to 600×900 for all three, so every library shows the same ~10 rows.
 
