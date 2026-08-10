@@ -505,6 +505,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   const pendingOnVisibilityToggleRef = useRef<OnVisibilityToggleParams | null>(
     null
   )
+  /** Where a just-moved node landed, so the roving tabindex can follow it. */
+  const pendingMoveFocusRef = useRef<number | undefined>(undefined)
 
   // State
   const [state, setState] = useState<ReactSortableTreeState>(() => ({
@@ -997,6 +999,9 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       pendingOnMoveNodeRef.current = null
       emitMoveNode(params)
       announceMove(params)
+      // Where the node landed, for the roving-tabindex sync below. Recorded
+      // rather than applied here: the focus state is declared further down.
+      pendingMoveFocusRef.current = params.nextTreeIndex
     }
 
     if (pendingOnVisibilityToggleRef.current !== null) {
@@ -1218,6 +1223,31 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     pendingFocusRef.current = clamped
     listRef.current?.scrollToIndex(clamped, { align: 'nearest' })
   }
+
+  /**
+   * Keeps the roving tabindex on the row that moved.
+   *
+   * A keyboard drop leaves focus on the dragged row's handle while the row lands
+   * somewhere new, so `focusedRowIndex` still points at the old position and the
+   * tab stop and the focused element end up on different rows — after which the
+   * next arrow key acts somewhere unexpected. This is the same failure the
+   * container's `onFocus` sync exists to prevent, and it cannot help here because
+   * focus never actually moved.
+   *
+   * Only when focus is inside the tree, so a pointer drag does not pull the tab
+   * stop around while the user is somewhere else entirely.
+   */
+  // Runs after every render, like the focus effect below, because a move lands a
+  // render after the drop. It cannot loop: the ref is cleared before the state
+  // is set, so the next render returns at the first line.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const moved = pendingMoveFocusRef.current
+    if (moved === undefined) return
+    pendingMoveFocusRef.current = undefined
+    if (!containerRef.current?.contains(document.activeElement)) return
+    setFocusedRowIndex(moved)
+  })
 
   // Runs after every render so a row scrolled into view can still be focused.
   useEffect(() => {

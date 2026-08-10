@@ -81,6 +81,35 @@ export interface TreeDndHandlers {
 
 export type GetTreeDndHandlers = () => TreeDndHandlers
 
+/*
+ * ---------------------------------------------------------------------------
+ * Why all three wrapped components carry `'use no memo'`
+ * ---------------------------------------------------------------------------
+ *
+ * The React Compiler *outlines* callbacks it believes are constant, moving them
+ * to module scope as `_temp1`, `_temp2`, … Its capture analysis misses variables
+ * belonging to an enclosing factory: each component here is created by
+ * `wrapSource` / `wrapPlaceholder` / `wrapTarget` and closes over their
+ * parameters (`dndType`, `treeId`, `getHandlers`), which are neither module
+ * scope nor component scope.
+ *
+ * Compiled, the placeholder's `useDrop` spec came out as:
+ *
+ *   function _temp5() { return { accept: dndType, … } }   // dndType unbound
+ *
+ * so rendering an *empty* tree threw `ReferenceError: dndType is not defined`,
+ * and the drag-end and placeholder-drop callbacks were broken the same way.
+ * This shipped in 6.0.0 and was reported by a consumer.
+ *
+ * It could not be caught here: the suite runs against `src/`, so nothing
+ * exercised compiler output. `npm run test:build` now renders the built bundle,
+ * including the empty-tree path.
+ *
+ * These are thin wrappers around `useDrag`/`useDrop` — the memoization that
+ * matters is in the row renderers and `tree-data-utils`, both still compiled.
+ * Remove the directives only against a passing `test:build`.
+ */
+
 /**
  * Safe Ref Merger
  * Combines multiple refs (function refs or object refs) into one.
@@ -122,6 +151,7 @@ export const wrapSource = (
 ): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DraggableSource: React.FC<any> = (props) => {
+    'use no memo'
     // Keeps the drag callbacks free of per-render props without re-running
     // useDrag: a layout effect lands before any pointer event can fire.
     const propsRef = useRef(props)
@@ -174,6 +204,7 @@ export const wrapPlaceholder = (
 ): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppablePlaceholder: React.FC<any> = (props) => {
+    'use no memo'
     const [{ isOver, canDrop }, dropRef] = useDrop(
       () => ({
         accept: dndType,
@@ -420,6 +451,7 @@ export const wrapTarget = (
 ): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppableTarget: React.FC<any> = (props) => {
+    'use no memo'
     const nodeRef = useRef<HTMLElement>(null)
 
     // The hover handler runs on every mousemove, so it must never close over

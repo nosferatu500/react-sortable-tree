@@ -24,6 +24,15 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "tsdown.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  /* `test/` is deliberately absent: it imports the built `lib/`, which does not
+   * exist on a clean checkout — and `typecheck` runs as `prebuild`, before it is
+   * built. Those are smoke tests over compiler output, not type tests. */
+  "include": [
+    "src",
+    "tsdown.config.ts",
+    "vitest.config.ts",
+    "vitest.build.config.ts",
+    "vitest.setup.ts"
+  ],
   "exclude": ["node_modules", "lib"]
 }

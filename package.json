@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:build": "npm run build && vitest run --config vitest.build.config.ts",
     "prebuild": "npm run typecheck",
     "build": "tsdown",
     "check:exports": "publint --strict && attw --pack . --ignore-rules cjs-resolves-to-esm --exclude-entrypoints style.css",
@@ -32,7 +33,7 @@
     "bench": "npm --prefix benchmark run footprint && npm --prefix benchmark run bench",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "prepublishOnly": "npm run build && npm run check:exports",
+    "prepublishOnly": "npm run test:build && npm run check:exports",
     "deploy-storybook": "gh-pages -d storybook-static"
   },
   "files": [

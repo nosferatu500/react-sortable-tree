@@ -44,6 +44,12 @@ jobs:
 
       - run: npm run build
 
+      # Smoke-tests the built bundle, which `npm test` cannot: that runs against
+      # `src`, so React Compiler output is otherwise never executed. 6.0.0
+      # shipped a `ReferenceError` on every empty tree with the whole suite
+      # green. Reads `lib/`, so it follows `build`.
+      - run: npx vitest run --config vitest.build.config.ts
+
       # Reads `lib/`, so it has to follow `build`.
       - run: npm run check:exports
 

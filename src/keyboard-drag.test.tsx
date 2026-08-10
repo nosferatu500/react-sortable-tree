@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import React, { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { SortableTree } from './react-sortable-tree'
+import { at } from './test-helpers'
 import type { TreeItem } from './types'
 
 /**
@@ -224,6 +225,30 @@ describe('coexistence with the tree’s own key handling', () => {
 
     // The hover moves; focus stays on the dragged item's handle.
     expect(document.activeElement).toBe(focusedBefore)
+  })
+})
+
+describe('focus after a drop', () => {
+  it('leaves the tab stop on the row that moved', async () => {
+    const user = userEvent.setup()
+    render(<Controlled />)
+
+    handleAt(0).focus()
+    await user.keyboard(' ')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard(' ')
+
+    expect(itemTitles()).toEqual(['b', 'a', 'c'])
+    // Focus never moved — it stayed on the dragged row's handle — so nothing
+    // fires the container's `onFocus` sync and the roving index has to be
+    // corrected explicitly, or the next arrow key acts on the wrong row.
+    const focusedRow = (document.activeElement as HTMLElement).closest(
+      '[data-rst-row]'
+    )!
+    expect(titleOf(focusedRow)).toBe('a')
+    const tabbable = items().filter((el) => (el as HTMLElement).tabIndex === 0)
+    expect(tabbable).toHaveLength(1)
+    expect(titleOf(at(tabbable, 0))).toBe('a')
   })
 })
 
