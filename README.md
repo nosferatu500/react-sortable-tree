@@ -7,7 +7,7 @@
 [![NPM monthly downloads](https://img.shields.io/npm/dm/@nosferatu500/react-sortable-tree.svg?style=flat)](https://npmcharts.com/compare/@nosferatu500/react-sortable-tree?minimal=true)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 
-Drag-and-drop sortable representation of hierarchical data for React 19 with virtualized rendering powered by [`virtua`](https://github.com/inokawa/virtua) and [`react-dnd`](https://react-dnd.github.io/react-dnd/). [Storybook demos](https://nosferatu500.github.io/react-sortable-tree/) cover both basic and advanced scenarios.
+Drag-and-drop sortable representation of hierarchical data for React 19, usable by mouse, touch **and keyboard**, with virtualized rendering powered by [`virtua`](https://github.com/inokawa/virtua) and drag-and-drop by [`@nosferatu500/react-dnd`](https://github.com/nosferatu500/react-dnd). [Storybook demos](https://nosferatu500.github.io/react-sortable-tree/) cover both basic and advanced scenarios.
 
 ## Why this fork
 
@@ -18,28 +18,28 @@ React 17 support and has been maintained since. The comparison below is against 
 last upstream release. The component API is recognisably the same; everything underneath
 has been rebuilt.
 
-|                      | original v2.8.0 (Aug 2020)                         | this fork v6                                                   |
-| -------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
-| Maintenance          | no releases since 2020                             | actively maintained                                            |
-| React                | 16                                                 | 19 (incl. React Compiler)                                      |
-| Components           | class components                                   | function components + hooks                                    |
-| TypeScript           | none bundled — needed `@types/react-sortable-tree` | written in TS, `.d.ts` shipped                                 |
-| Accessibility        | one `aria-label`, no keyboard support              | full ARIA tree pattern + [keyboard navigation](#accessibility) |
-| Virtualization       | `react-virtualized`                                | `virtua`                                                       |
-| `react-dnd`          | 11                                                 | 16                                                             |
-| Runtime dependencies | 7                                                  | 3                                                              |
-| Module format        | CJS + ESM                                          | ESM only                                                       |
-| Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                   |
-| Tests                | Jest                                               | Vitest, 190 tests                                              |
+|                      | original v2.8.0 (Aug 2020)                         | this fork v7                                                                        |
+| -------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Maintenance          | no releases since 2020                             | actively maintained                                                                 |
+| React                | 16                                                 | 19 (incl. React Compiler)                                                           |
+| Components           | class components                                   | function components + hooks                                                         |
+| TypeScript           | none bundled — needed `@types/react-sortable-tree` | written in TS, `.d.ts` shipped                                                      |
+| Accessibility        | one `aria-label`, no keyboard support              | full ARIA tree pattern, [keyboard navigation **and drag and drop**](#accessibility) |
+| Virtualization       | `react-virtualized`                                | `virtua`                                                                            |
+| Drag and drop        | `react-dnd` 11                                     | `@nosferatu500/react-dnd` 19 — a maintained fork                                    |
+| Runtime dependencies | 7                                                  | 4                                                                                   |
+| Module format        | CJS + ESM                                          | ESM only                                                                            |
+| Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                                        |
+| Tests                | Jest                                               | Vitest, 212 tests                                                                   |
 
 Dropped along the way: `prop-types`, `lodash.isequal`, `react-lifecycles-compat`,
 `react-dnd-scrollzone`, and (in v6) `immer`.
 
 Beyond the table, v6 rewrote the tree-mutation internals — `changeNodeAtPath` is ~70×
 faster and a drag hover ~6.5× cheaper on a 10k-node tree — and stopped remounting every
-row on each parent render. Two long-standing correctness bugs were fixed in the process.
-See [CHANGELOG.md](./CHANGELOG.md) for measurements and [MODERNIZATION.md](./MODERNIZATION.md)
-for what is still planned.
+row on each parent render. v7 moved drag and drop onto a maintained `react-dnd` fork and
+added keyboard drag and drop. See [CHANGELOG.md](./CHANGELOG.md) for the details and
+[MODERNIZATION.md](./MODERNIZATION.md) for what is still planned.
 
 **Migrating from the original?** You still import a stylesheet, just from the scoped
 name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is
@@ -166,10 +166,21 @@ dragging.
 Install the package together with its peer dependencies:
 
 ```sh
-npm install @nosferatu500/react-sortable-tree react-dnd react-dnd-html5-backend
+npm install @nosferatu500/react-sortable-tree \
+  @nosferatu500/react-dnd @nosferatu500/react-dnd-html5-backend
 # or
-yarn add @nosferatu500/react-sortable-tree react-dnd react-dnd-html5-backend
+yarn add @nosferatu500/react-sortable-tree \
+  @nosferatu500/react-dnd @nosferatu500/react-dnd-html5-backend
 ```
+
+> **Upgrading from v6?** The peers changed packages: `react-dnd` and
+> `react-dnd-html5-backend` became `@nosferatu500/react-dnd` and
+> `@nosferatu500/react-dnd-html5-backend`. Upstream `react-dnd` has had no release since
+> 2022 and no declared React 19 support. If you never imported `react-dnd` yourself, the
+> install line above is the whole migration; see [CHANGELOG.md](./CHANGELOG.md) if you did.
+
+Node >= 22.12 is required, because those packages are ESM-only and 22.12 is the first
+release that can `require()` an ES module.
 
 Then import the stylesheet once, anywhere in your app:
 
@@ -204,11 +215,28 @@ export function ExampleTree() {
 }
 ```
 
-Already have a surrounding `react-dnd` context? Use the context-less export instead:
+Already have a surrounding drag-and-drop context? Use the context-less export, and wrap
+your own backend with `withTreeKeyboard` so keyboard dragging still works:
 
 ```tsx
-import { SortableTreeWithoutDndContext } from '@nosferatu500/react-sortable-tree'
+import { DndProvider } from '@nosferatu500/react-dnd'
+import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
+import {
+  SortableTreeWithoutDndContext,
+  withTreeKeyboard,
+} from '@nosferatu500/react-sortable-tree'
+
+// Once, at module scope — a new backend identity rebuilds the whole manager.
+const backend = withTreeKeyboard(HTML5Backend)
+
+;<DndProvider backend={backend}>
+  <SortableTreeWithoutDndContext treeData={treeData} onChange={setTreeData} />
+</DndProvider>
 ```
+
+`SortableTree` does this for you. A bare pointer backend has no keyboard gesture at all,
+and losing it is silent, so this matters whenever you supply the provider — including when
+you swap in `TouchBackend`.
 
 ## Component props
 
@@ -284,7 +312,7 @@ A node's `children` can also be a function — see [Lazy children](#lazy-childre
 | `onVisibilityToggle`        | `(params) => void`           | Called when node expands/collapses  |
 | `loadCollapsedLazyChildren` | `boolean`                    | Load lazy children before expanding |
 | `virtuaRef`                 | `RefObject<VListHandle>`     | Direct access to the virtual list   |
-| `dragDropManager`           | `object`                     | External react-dnd manager          |
+| `dragDropManager`           | `object`                     | External drag-and-drop manager      |
 
 #### `getNodeKey`
 
@@ -358,9 +386,37 @@ Expanding or collapsing via the keyboard goes through the same `onChange` and
 Pass `keyboardNavigation={false}` to handle the arrow keys yourself; the ARIA roles and
 the roving tabindex stay in place.
 
-> **Drag and drop is still pointer-only.** Keyboard-accessible reordering needs a drag
-> backend with a keyboard sensor, which is tracked as part of the planned move off
-> `react-dnd`.
+### Keyboard drag and drop
+
+Nodes can be reordered **and re-nested** without a pointer. Tab from a row to its drag
+handle, then:
+
+| Key                                 | Action                                   |
+| ----------------------------------- | ---------------------------------------- |
+| <kbd>Space</kbd> / <kbd>Enter</kbd> | Pick the row up — press again to drop it |
+| <kbd>↓</kbd> / <kbd>↑</kbd>         | Choose which row it lands next to        |
+| <kbd>→</kbd> / <kbd>←</kbd>         | Nest it one level deeper / shallower     |
+| <kbd>Esc</kbd>                      | Cancel, leaving the tree as it was       |
+
+Up and down choose _where_ the row lands; left and right choose _how deeply it nests_ —
+the same split as a pointer drag, where horizontal movement is the only thing that nests a
+node. They mirror under `rowDirection="rtl"`.
+
+Focus stays on the dragged row for the whole interaction and only the hover moves, so
+`isOver` and `canDrop` behave exactly as they do under the mouse and existing highlight
+styles keep working. A polite live region narrates each step — pick-up, each move, depth
+changes (including a depth the surrounding rows refuse), and where the node finally landed.
+
+Drops go through the same `onChange` and `onMoveNode` callbacks as a mouse drag.
+
+The drag handle shares its row's tab stop, so the tree stays a single tab stop however many
+rows are on screen. **Custom `nodeContentRenderer`s should do the same**: put the
+`isActiveRow` prop on whatever you connect as the drag source, or every visible row becomes
+its own tab stop.
+
+```tsx
+<div ref={connectDragSource} tabIndex={isActiveRow ? 0 : -1} />
+```
 
 ## Lazy children
 
