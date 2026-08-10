@@ -5,13 +5,17 @@ import React, { useState } from 'react'
 import {
   SortableTreeWithoutDndContext as SortableTree,
   type TreeItem,
+  withTreeKeyboard,
 } from '../../../src'
 
 // https://stackoverflow.com/a/4819886/1601953
 const isTouchDevice = !!(
   'ontouchstart' in globalThis || navigator.maxTouchPoints
 )
-const dndBackend = isTouchDevice ? TouchBackend : HTML5Backend
+// `SortableTree` composes the keyboard backend itself, but this story brings its
+// own provider — so it composes it too. Swapping in TouchBackend without this
+// would silently leave the tree undraggable by keyboard.
+const dndBackend = withTreeKeyboard(isTouchDevice ? TouchBackend : HTML5Backend)
 
 const TouchSupport: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeItem[]>([

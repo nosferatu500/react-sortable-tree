@@ -28,6 +28,14 @@ const KEYS: Array<[string, string]> = [
   ['Enter / Space', 'Toggle the focused node'],
 ]
 
+/** On a drag handle, and then during the drag it starts. */
+const DRAG_KEYS: Array<[string, string]> = [
+  ['Space / Enter', 'Pick the row up — press again to drop it'],
+  ['↓ / ↑', 'Choose which row it lands next to'],
+  ['→ / ←', 'Nest it one level deeper / shallower'],
+  ['Esc', 'Cancel, leaving the tree as it was'],
+]
+
 const KeyboardNavigation: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeItem[]>(data)
   const [keyboardNavigation, setKeyboardNavigation] = useState(true)
@@ -108,11 +116,37 @@ const KeyboardNavigation: React.FC = () => {
         way — inline renaming keeps working.
       </p>
       <p style={{ marginTop: 8, fontSize: 13 }}>
-        <strong>Drag and drop is still pointer-only.</strong> Keyboard-driven
-        reordering needs a drag backend with a keyboard sensor. One now exists —{' '}
-        <code>@nosferatu500/react-dnd-keyboard-backend</code>, via{' '}
-        <code>withKeyboard(HTML5Backend)</code> — but the tree does not wire it
-        up yet.
+        <strong>Drag and drop works from the keyboard.</strong> Tab from a row
+        to its drag handle, then:
+      </p>
+      <table
+        style={{ marginTop: 8, borderCollapse: 'collapse', fontSize: 13 }}
+        aria-label="Keyboard drag-and-drop shortcuts">
+        <tbody>
+          {DRAG_KEYS.map(([key, action]) => (
+            <tr key={key}>
+              <th
+                scope="row"
+                style={{
+                  textAlign: 'start',
+                  paddingInlineEnd: 12,
+                  fontFamily: 'monospace',
+                  fontWeight: 'normal',
+                }}>
+                {key}
+              </th>
+              <td>{action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p style={{ marginTop: 8, fontSize: 13 }}>
+        Up and down choose <em>where</em> the row lands; left and right choose{' '}
+        <em>how deeply it nests</em>, the same split as a mouse drag, and they
+        mirror under <code>rowDirection=&quot;rtl&quot;</code>. A polite live
+        region narrates each step, including where the node finally landed. The
+        drag handle shares its row&apos;s tab stop, so the tree as a whole stays
+        a single stop however many rows are on screen.
       </p>
     </div>
   )

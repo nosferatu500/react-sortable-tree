@@ -1,5 +1,14 @@
-import { DndContext, DndProvider } from '@nosferatu500/react-dnd'
+import {
+  DndContext,
+  DndProvider,
+  useDragDropManager,
+} from '@nosferatu500/react-dnd'
 import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
+import {
+  gridNavigation,
+  useDragDropAnnounce,
+  withKeyboard,
+} from '@nosferatu500/react-dnd-keyboard-backend'
 import React, {
   type ReactNode,
   useCallback,
@@ -35,6 +44,7 @@ import {
   wrapTarget,
 } from './utils/dnd-manager'
 import { slideRows } from './utils/generic-utils'
+import { createKeyboardDragController } from './utils/keyboard-drag'
 import { rowIdentity } from './utils/node-identity'
 import {
   type FlatDataItem,
@@ -517,39 +527,76 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * stable values only — otherwise each render produces new component *types*
    * and React unmounts and remounts every row.
    */
-  const latestRef = useRef({ getNodeKey, shouldCopyOnOutsideDrop })
+  const latestRef = useRef({
+    getNodeKey,
+    shouldCopyOnOutsideDrop,
+    rowDirection,
+  })
   useIsomorphicLayoutEffect(() => {
-    latestRef.current = { getNodeKey, shouldCopyOnOutsideDrop }
+    latestRef.current = { getNodeKey, shouldCopyOnOutsideDrop, rowDirection }
   })
 
-  const startDrag = useCallback(({ path }: { path: number[] }) => {
-    setState((prevState) => {
-      const result = removeNode({
-        treeData: prevState.treeData,
-        path,
-        getNodeKey: latestRef.current.getNodeKey,
-      })
-
-      if (!result) {
-        return prevState
-      }
-
-      const {
-        treeData: draggingTreeData,
-        node: draggedNode,
-        treeIndex: draggedMinimumTreeIndex,
-      } = result
-
-      return {
-        ...prevState,
-        draggingTreeData,
-        draggedNode,
-        draggedDepth: path.length - 1,
-        draggedMinimumTreeIndex,
-        dragging: true,
-      }
+  /**
+   * Supplies the horizontal intent a keyboard drag has no pointer for. Per tree
+   * rather than module-scoped, since two trees each own their own provider and
+   * could in principle be dragged in independently.
+   */
+  const manager = useDragDropManager()
+  /*
+   * `react-hooks/refs` flags `isRtl` for reading a ref inside a function handed
+   * to another function during render. It cannot see that both callbacks are only
+   * ever invoked from a keydown listener — the same shape as `getDndHandlers`
+   * below, and covered by the keyboard drag-and-drop tests.
+   */
+  // eslint-disable-next-line react-hooks/refs
+  const [keyboardDrag] = useState(() =>
+    createKeyboardDragController({
+      // `profile()` is part of the Backend interface, and CompositeBackend sums
+      // it across the pointer and keyboard halves. The keyboard backend sets its
+      // dragging flag before dispatching the first hover, so this is already
+      // true by the time the depth is first computed.
+      isKeyboardDragging: () =>
+        Boolean(manager.getBackend().profile()['keyboardDragging']),
+      isRtl: () => latestRef.current.rowDirection === 'rtl',
     })
-  }, [])
+  )
+  useEffect(() => keyboardDrag.attach(globalThis), [keyboardDrag])
+
+  const startDrag = useCallback(
+    ({ path }: { path: number[] }) => {
+      // Every drag starts with no accumulated depth, whichever device drives it.
+      keyboardDrag.reset()
+      setState((prevState) => {
+        const result = removeNode({
+          treeData: prevState.treeData,
+          path,
+          getNodeKey: latestRef.current.getNodeKey,
+        })
+
+        if (!result) {
+          return prevState
+        }
+
+        const {
+          treeData: draggingTreeData,
+          node: draggedNode,
+          treeIndex: draggedMinimumTreeIndex,
+        } = result
+
+        return {
+          ...prevState,
+          draggingTreeData,
+          draggedNode,
+          draggedDepth: path.length - 1,
+          draggedMinimumTreeIndex,
+          dragging: true,
+        }
+      })
+      // `keyboardDrag` is stable, so this stays referentially stable — which is
+      // what keeps the wrapped DnD components from being rebuilt.
+    },
+    [keyboardDrag]
+  )
 
   const moveNode = useCallback(
     ({
@@ -566,6 +613,28 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       minimumTreeIndex: number
     }) => {
       setState((prevState) => {
+        /*
+         * Commit the position the preview is showing, not a freshly computed
+         * one.
+         *
+         * The drop target recomputes `minimumTreeIndex` and `depth` from its own
+         * row props at drop time — but the last hover already slid the rows, so
+         * those props describe the row's *post-preview* position and resolve to
+         * where the node came from. A pointer drag hides this because the
+         * browser keeps firing `dragover` until the two agree; one hover
+         * followed by a drop does not, which is every keyboard drop and every
+         * single-event test.
+         *
+         * `draggedMinimumTreeIndex` / `draggedDepth` are what drew the preview,
+         * so using them makes the drop land where the user was shown it would.
+         * They are absent for a drag that never hovered a row — an external drop
+         * source, or the empty-tree placeholder — and then the drop target's own
+         * values are all there is.
+         */
+        const dropMinimumTreeIndex =
+          prevState.draggedMinimumTreeIndex ?? minimumTreeIndex
+        const dropDepth = prevState.draggedDepth ?? depth
+
         const {
           treeData,
           treeIndex,
@@ -574,8 +643,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         } = insertNode({
           treeData: prevState.draggingTreeData!,
           newNode: node,
-          depth,
-          minimumTreeIndex,
+          depth: dropDepth,
+          minimumTreeIndex: dropMinimumTreeIndex,
           expandParent: true,
           getNodeKey: latestRef.current.getNodeKey,
         })
@@ -615,6 +684,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
   const endDrag = useCallback(
     (dropResult: DropResult | null) => {
+      // The hovered row's replay closure would otherwise outlive the drag.
+      keyboardDrag.setReplayHover(undefined)
       // Drop was cancelled
       if (!dropResult) {
         setState((prevState) => ({
@@ -674,7 +745,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         })
       }
     },
-    [treeId]
+    [treeId, keyboardDrag]
   )
 
   const dragHover = useCallback(
@@ -785,6 +856,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     canNodeHaveChildren,
     canDrop,
     maxDepth,
+    keyboard: keyboardDrag,
     startDrag,
     endDrag,
     drop,
@@ -795,6 +867,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       canNodeHaveChildren,
       canDrop,
       maxDepth,
+      keyboard: keyboardDrag,
       startDrag,
       endDrag,
       drop,
@@ -880,6 +953,29 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       )
   )
 
+  /**
+   * Says where a moved node ended up.
+   *
+   * The backend narrates the drag it can see — picked up, moved over row 3 of 8,
+   * dropped — but it cannot know that the node is now a child of "Documents" at
+   * depth 2, because only the tree knows what the rows mean. Routing this
+   * through the backend's own live region keeps app and backend messages in one
+   * queue instead of two that talk over each other, and it is a no-op when the
+   * provider has no keyboard backend.
+   */
+  const announce = useDragDropAnnounce()
+  const announceMove = useEffectEvent((params: OnMoveNodeParams) => {
+    const { node, nextPath, nextParentNode } = params
+    if (!nextPath) return
+    const label = typeof node.title === 'string' ? node.title : 'Item'
+    const depth = nextPath.length
+    const parent =
+      nextParentNode && typeof nextParentNode.title === 'string'
+        ? ` under ${nextParentNode.title}`
+        : ''
+    announce(`${label} moved to depth ${depth}${parent}.`)
+  })
+
   const runLoadLazyChildren = useEffectEvent((lazyTreeData: TreeItem[]) =>
     loadLazyChildren(
       { onChange, getNodeKey, loadCollapsedLazyChildren },
@@ -900,6 +996,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       const params = pendingOnMoveNodeRef.current
       pendingOnMoveNodeRef.current = null
       emitMoveNode(params)
+      announceMove(params)
     }
 
     if (pendingOnVisibilityToggleRef.current !== null) {
@@ -1181,6 +1278,12 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (!keyboardNavigation || rows.length === 0) return
+    // The keyboard drag backend listens on the document in the capture phase and
+    // calls `preventDefault` on the keys it claims, so by the time this bubble
+    // handler runs a claimed key has already done its job. Without this check,
+    // space on a drag handle would pick the row up *and* toggle its children,
+    // and an arrow key mid-drag would move both the hover and the focused row.
+    if (event.defaultPrevented) return
     if (isFromTextEntry(event.target)) return
 
     const { key } = event
@@ -1336,6 +1439,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
             isSearchMatch={isSearchMatch}
             isSearchFocus={isSearchFocus}
             canDrag={rowCanDrag}
+            // The keyboard backend makes every drag handle focusable, which
+            // would put one tab stop per visible row inside a tree that the
+            // ARIA pattern says must have exactly one. It defers to a
+            // `tabindex` that is already there, so the handle joins the roving
+            // tabindex instead: reachable by Tab from its own row, invisible to
+            // Tab from anywhere else.
+            isActiveRow={listIndex === activeRowIndex}
             toggleChildrenVisibility={toggleChildrenVisibility}
             {...sharedProps}
             {...nodeProps}
@@ -1450,11 +1560,43 @@ export const SortableTreeWithoutDndContext = (
   )
 }
 
+/**
+ * Adds tree-shaped keyboard drag-and-drop to a pointer backend.
+ *
+ * `SortableTree` applies this to `HTML5Backend` already. Reach for it when you
+ * supply your own provider — with `SortableTreeWithoutDndContext`, or to swap in
+ * `TouchBackend` — since a bare pointer backend has no keyboard gesture at all
+ * and dropping it is silent.
+ *
+ * ```tsx
+ * <DndProvider backend={withTreeKeyboard(TouchBackend)}>
+ *   <SortableTreeWithoutDndContext … />
+ * </DndProvider>
+ * ```
+ *
+ * The navigation model is `gridNavigation({ columns: 1 })` rather than the
+ * default document-order one. A tree is a single column, so up and down should
+ * step between rows while left and right stay put — and staying put is what
+ * leaves them free to mean *depth*, matching the pointer, where horizontal
+ * movement is the only thing that nests a node. Document-order navigation maps
+ * left and right onto previous and next row, which would spend the horizontal
+ * keys on the vertical job and leave no way to nest at all.
+ *
+ * Call it once, at module scope. A new backend factory identity tears down and
+ * rebuilds the entire drag-and-drop manager.
+ */
+export const withTreeKeyboard = (
+  base: Parameters<typeof withKeyboard>[0]
+): ReturnType<typeof withKeyboard> =>
+  withKeyboard(base, { getNextTarget: gridNavigation({ columns: 1 }) })
+
+const KeyboardHTML5Backend = withTreeKeyboard(HTML5Backend)
+
 export const SortableTree = (
   props: ReactSortableTreeProps
 ): React.JSX.Element => {
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={KeyboardHTML5Backend}>
       <SortableTreeWithoutDndContext {...props} />
     </DndProvider>
   )

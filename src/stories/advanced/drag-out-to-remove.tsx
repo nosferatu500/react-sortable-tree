@@ -4,7 +4,11 @@ import React, { useState } from 'react'
 import {
   SortableTreeWithoutDndContext as SortableTree,
   type TreeItem,
+  withTreeKeyboard,
 } from '../../../src'
+
+// Own provider, so compose the keyboard backend explicitly.
+const dndBackend = withTreeKeyboard(HTML5Backend)
 
 // -------------------------
 // Create an drop target component that can receive the nodes
@@ -63,7 +67,7 @@ const DragOutToRemove: React.FC = () => {
   ])
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={dndBackend}>
       <div>
         <TrashAreaComponent>
           <div style={{ height: 300, width: 700 }}>

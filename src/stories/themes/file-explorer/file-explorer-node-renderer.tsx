@@ -33,6 +33,12 @@ export interface FileExplorerNodeRendererProps {
 
   connectDragPreview: ConnectDragPreview
   connectDragSource: ConnectDragSource
+  /**
+   * Whether this row holds the tree's single tab stop. Custom renderers should
+   * put it on whatever they connect as the drag source, so keyboard drag and
+   * drop does not add a tab stop for every visible row.
+   */
+  isActiveRow?: boolean
   parentNode?: TreeItem
   startDrag: ({ path }: { path: number[] }) => void
   endDrag: (dropResult: unknown) => void
@@ -63,6 +69,16 @@ const getFileExtension = (
   const parts = nodeTitle.split('.')
   return parts.length > 1 ? parts.at(-1) : undefined
 }
+
+/**
+ * Names the drag source for announcements. Only a plain-string title can be
+ * used; a `ReactNode` or a render function falls back to a generic name.
+ */
+const dragLabel = (nodeTitle: unknown): string =>
+  typeof nodeTitle === 'string' ? `Drag ${nodeTitle}` : 'Drag item'
+
+/** One tab stop per tree, on whichever row currently holds it. */
+const rovingTabIndex = (isActiveRow: boolean): number => (isActiveRow ? 0 : -1)
 
 const getRowClassName = ({
   isLandingPadActive,
@@ -216,6 +232,7 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
   canDrop = false,
   title = undefined,
   rowDirection = 'ltr',
+  isActiveRow = false,
 
   scaffoldBlockPxWidth: _scaffoldBlockPxWidth,
   connectDragPreview,
@@ -320,6 +337,18 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
         connectDragSource(element)
         connectDragPreview(element)
       }}
+      // This theme drags by the whole row rather than a separate handle, so the
+      // row itself is the drag source and carries the tab stop. Without an
+      // explicit `tabIndex` the keyboard backend would make every visible row
+      // focusable and the tree would stop being a single tab stop.
+      //
+      // The element really is interactive — it can be picked up and moved by
+      // keyboard — but it cannot be a `<button>`, because it wraps the chevron
+      // and the toolbar buttons and interactive elements may not nest. The
+      // backend supplies `aria-roledescription="draggable item"` at runtime.
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={rovingTabIndex(isActiveRow)}
+      aria-label={dragLabel(nodeTitle)}
       style={{ height: '100%' }}>
       {nodeContent}
     </div>

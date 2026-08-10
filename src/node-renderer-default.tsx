@@ -42,6 +42,12 @@ export interface NodeRendererProps {
   draggedNode?: TreeItem
   isOver: boolean
   canDrop?: boolean
+  /**
+   * Whether this row currently holds the tree's single tab stop. The drag handle
+   * follows it, so that keyboard drag-and-drop does not add one tab stop per
+   * visible row.
+   */
+  isActiveRow?: boolean
 }
 
 const NO_BUTTONS: React.ReactNode[] = []
@@ -86,10 +92,23 @@ const renderToggleSection = (
   )
 }
 
+/**
+ * A name for the drag handle, and therefore for what a screen reader says when
+ * the row is picked up: the keyboard backend describes a source by its
+ * `aria-label`, falling back to its text content — and the handle has none.
+ *
+ * Only a plain-string title can be used. A `ReactNode` or a render function may
+ * be anything at all, and rendering one to text here is neither possible nor
+ * cheap, so those fall back to a generic name.
+ */
+const dragHandleLabel = (node: TreeItem): string =>
+  typeof node.title === 'string' ? `Drag ${node.title}` : 'Drag item'
+
 const renderHandle = (
   node: TreeItem,
   rowDirectionClass: string | undefined,
-  connectDragSource: ConnectDragSource
+  connectDragSource: ConnectDragSource,
+  isActiveRow: boolean
 ): React.ReactNode => {
   if (typeof node.children === 'function' && node.expanded) {
     return (
@@ -109,7 +128,33 @@ const renderHandle = (
       </div>
     )
   }
-  return <div ref={connectDragSource} className="rst__moveHandle" />
+  return (
+    /*
+     * Deliberately a `div` with `role="button"` rather than a real `<button>`,
+     * even though the expand/collapse control above is one.
+     *
+     * The HTML5 backend drags a source by setting `draggable="true"` on it, and
+     * browsers have long-standing bugs dragging form controls — Firefox
+     * especially. The handle's whole job is to be dragged by a pointer, and the
+     * test suite is jsdom-only so it could not catch that regression. The role
+     * buys the same semantics at no risk; it is also exactly what the keyboard
+     * backend would write here itself.
+     */
+    <div
+      ref={connectDragSource}
+      className="rst__moveHandle"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+      role="button"
+      // The backend makes every connected source focusable, which would be one
+      // tab stop per visible row. It defers to a `tabindex` that is already
+      // there, so the handle joins the tree's single roving tab stop instead.
+      tabIndex={isActiveRow ? 0 : -1}
+      // The backend names a source from its `aria-label`, falling back to text
+      // content — and the handle has none, so announcements would say "Picked
+      // up .".
+      aria-label={dragHandleLabel(node)}
+    />
+  )
 }
 
 const NodeRendererDefault: React.FC<NodeRendererProps> = ({
@@ -126,6 +171,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   title = undefined,
   subtitle = undefined,
   rowDirection = 'ltr',
+  isActiveRow = false,
 
   scaffoldBlockPxWidth,
   connectDragPreview,
@@ -144,7 +190,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
   const handle = canDrag
-    ? renderHandle(node, rowDirectionClass, connectDragSource)
+    ? renderHandle(node, rowDirectionClass, connectDragSource, isActiveRow)
     : undefined
 
   const isDraggedDescendant = draggedNode && isDescendant(draggedNode, node)

@@ -136,12 +136,19 @@ const renderTree = (
     handlers,
     beginDrag: (row: number) =>
       act(() => backend().simulateBeginDrag([rowHandlers(row).source])),
+    /** Exactly one `dragover`, the way a single keypress or one test event does. */
+    hoverOnce: (row: number) =>
+      act(() => backend().simulateHover([rowHandlers(row).target])),
     /**
      * Hovers the row at `index`, then keeps hovering whatever ends up there
-     * until the preview settles. A browser fires `dragover` continuously while
-     * the pointer sits still, and one event is not enough: the first hover's
-     * preview reorders rows out from under the cursor, and a drop reads the
-     * hovered row's *current* position.
+     * until the preview settles — which is what a browser does, firing
+     * `dragover` continuously while the pointer sits still.
+     *
+     * This used to be load-bearing: a drop recomputed its position from row
+     * props the preview had already slid, so one hover followed by a drop landed
+     * the node back where it started, and repeating hovers was what converged
+     * it. The drop now commits the previewed position instead (see `moveNode`),
+     * so a single hover is enough — `hoverOnce` pins that.
      */
     hover: (row: number) => {
       let previous = ''
@@ -267,6 +274,29 @@ describe('drop', () => {
     expect(
       (onChange.mock.lastCall![0] as TreeItem[]).map((n) => n.title)
     ).toEqual(rowTitles())
+  })
+})
+
+describe('drop position', () => {
+  it('lands where the preview showed it, after a single hover', () => {
+    const onMoveNode = vi.fn()
+    const { beginDrag, hoverOnce, drop } = renderTree(flatTree(), {
+      onMoveNode,
+    })
+
+    beginDrag(0) // pick up 'a'
+    hoverOnce(1) // one dragover, as a keyboard drag or a lone test event gives
+    const previewed = rowTitles()
+    expect(previewed).toEqual(['b', 'a', 'c'])
+
+    drop()
+
+    // What was committed is what was on screen, rather than the node snapping
+    // back to where it was picked up from.
+    expect(rowTitles()).toEqual(previewed)
+    expect(
+      (onMoveNode.mock.lastCall![0].treeData as TreeItem[]).map((n) => n.title)
+    ).toEqual(previewed)
   })
 })
 

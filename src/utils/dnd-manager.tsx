@@ -6,6 +6,7 @@ import {
 import React, { type Ref, useCallback, useRef } from 'react'
 import type { TreeRendererProps } from '../tree-node'
 import type { TreeItem } from '../types'
+import type { KeyboardDragController } from './keyboard-drag'
 import { getDepth } from './tree-data-utils'
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect'
 
@@ -65,6 +66,8 @@ export interface TreeDndHandlers {
   canNodeHaveChildren: (node: TreeItem) => boolean
   canDrop?: (args: CanDropArgs) => boolean
   maxDepth?: number
+  /** Supplies the horizontal intent a keyboard drag has no pointer for. */
+  keyboard: KeyboardDragController
   startDrag: (item: { path: number[] }) => void
   endDrag: (dropResult: DropResult | null) => void
   drop: (dropResult: DropResult) => void
@@ -219,9 +222,17 @@ const getBlocksOffset = (
   item: DragItem,
   monitor: DropTargetMonitor<DragItem, DropResult>,
   treeId: string,
-  componentRef: React.RefObject<HTMLElement | null>
+  componentRef: React.RefObject<HTMLElement | null>,
+  keyboard: KeyboardDragController
 ): { blocksOffset: number; dragSourceInitialDepth: number } => {
   const dragSourceInitialDepth = (item.path || []).length
+
+  // A keyboard drag reports a client offset too — the centre of the hovered row
+  // — so the pointer maths below would read the width of a row as several
+  // blocks of nesting. Its horizontal intent comes from the arrow keys instead.
+  if (keyboard.isDragging()) {
+    return { blocksOffset: keyboard.blocksOffset(), dragSourceInitialDepth }
+  }
 
   if (item.treeId === treeId) {
     const direction = dropTargetProps.rowDirection === 'rtl' ? -1 : 1
@@ -260,6 +271,7 @@ const getTargetDepth = (
   componentRef: React.RefObject<HTMLElement | null>,
   canNodeHaveChildren: (node: TreeItem) => boolean,
   treeId: string,
+  keyboard: KeyboardDragController,
   maxDepth?: number
 ) => {
   let dropTargetDepth = 0
@@ -279,7 +291,8 @@ const getTargetDepth = (
     item,
     monitor,
     treeId,
-    componentRef
+    componentRef,
+    keyboard
   )
 
   let targetDepth = Math.min(
@@ -302,9 +315,16 @@ const canDrop = (
   dropTargetProps: DropTargetProps,
   item: DragItem,
   monitor: DropTargetMonitor<DragItem, DropResult>,
-  treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined
+  treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined,
+  keyboard: KeyboardDragController
 ) => {
-  if (!monitor.isOver()) {
+  // Under a pointer, only the row beneath the cursor is a candidate, and this
+  // keeps `canDrop` in collected props meaning "here". A keyboard drag has no
+  // cursor: the backend asks every target whether it accepts the item *before*
+  // hovering anything, to decide where to hover first. Answering "not over, so
+  // no" to all of them reports the tree as having no drop targets at all and
+  // unwinds the drag immediately.
+  if (!keyboard.isDragging() && !monitor.isOver()) {
     return false
   }
   const rowAbove = dropTargetProps.getPrevRow()
@@ -334,6 +354,64 @@ const canDrop = (
   return true
 }
 
+/** Everything one row's hover needs, gathered so the work can live at module scope. */
+interface HoverContext {
+  propsRef: React.RefObject<DropTargetProps & { listIndex: number }>
+  item: DragItem
+  monitor: DropTargetMonitor<DragItem, DropResult>
+  nodeRef: React.RefObject<HTMLElement | null>
+  treeId: string
+  getHandlers: GetTreeDndHandlers
+}
+
+/**
+ * Tells the tree where the dragged node would land right now.
+ *
+ * `force` skips the redraw guard, which exists to drop the stream of identical
+ * `dragover` events a pointer produces. An arrow key changing the depth replays
+ * the same hover on the same row, which the guard would dismiss as a no-op —
+ * `dragHover` still ignores genuine repeats of the same depth and position.
+ */
+const performHover = (context: HoverContext, force: boolean): void => {
+  const { propsRef, item, monitor, nodeRef, treeId, getHandlers } = context
+  const currentProps = propsRef.current
+  const { canNodeHaveChildren, maxDepth, keyboard, dragHover } = getHandlers()
+  const targetDepth = getTargetDepth(
+    currentProps,
+    item,
+    monitor,
+    nodeRef,
+    canNodeHaveChildren,
+    treeId,
+    keyboard,
+    maxDepth
+  )
+  const draggedNode = item.node
+  const needsRedraw =
+    currentProps.node !== draggedNode ||
+    targetDepth !== currentProps.path.length - 1
+
+  if (!force && !needsRedraw) {
+    return
+  }
+
+  if (keyboard.isDragging()) {
+    // The requested depth may have been clamped by the rows around this one.
+    keyboard.syncToDepth(targetDepth, (item.path || []).length)
+  }
+
+  dragHover({
+    node: draggedNode,
+    path: item.path,
+    minimumTreeIndex: currentProps.listIndex,
+    depth: targetDepth,
+  })
+}
+
+/** The closure an arrow key calls to re-run this row's hover at a new depth. */
+const replayHover = (context: HoverContext) => (): void =>
+  performHover(context, true)
+
 export const wrapTarget = (
   Component: AnyComponent,
   treeId: string,
@@ -360,7 +438,8 @@ export const wrapTarget = (
         accept: dndType,
         drop: (item, monitor) => {
           const currentProps = propsRef.current
-          const { canNodeHaveChildren, maxDepth, drop } = getHandlers()
+          const { canNodeHaveChildren, maxDepth, keyboard, drop } =
+            getHandlers()
           const result: DropResult = {
             node: item.node,
             path: item.path,
@@ -374,6 +453,7 @@ export const wrapTarget = (
               nodeRef,
               canNodeHaveChildren,
               treeId,
+              keyboard,
               maxDepth
             ),
           }
@@ -381,35 +461,23 @@ export const wrapTarget = (
           return result
         },
         hover: (item, monitor) => {
-          const currentProps = propsRef.current
-          const { canNodeHaveChildren, maxDepth, dragHover } = getHandlers()
-          const targetDepth = getTargetDepth(
-            currentProps,
+          const context: HoverContext = {
+            propsRef,
             item,
             monitor,
             nodeRef,
-            canNodeHaveChildren,
             treeId,
-            maxDepth
-          )
-          const draggedNode = item.node
-          const needsRedraw =
-            currentProps.node !== draggedNode ||
-            targetDepth !== currentProps.path.length - 1
-
-          if (!needsRedraw) {
-            return
+            getHandlers,
           }
-
-          dragHover({
-            node: draggedNode,
-            path: item.path,
-            minimumTreeIndex: currentProps.listIndex,
-            depth: targetDepth,
-          })
+          // Whichever row is hovered owns the replay, so a depth change always
+          // re-runs against the row the item would actually land next to.
+          getHandlers().keyboard.setReplayHover(replayHover(context))
+          performHover(context, false)
         },
-        canDrop: (item, monitor) =>
-          canDrop(propsRef.current, item, monitor, getHandlers().canDrop),
+        canDrop: (item, monitor) => {
+          const { canDrop: treeCanDrop, keyboard } = getHandlers()
+          return canDrop(propsRef.current, item, monitor, treeCanDrop, keyboard)
+        },
         collect: (monitor) => ({
           isOver: monitor.isOver(),
           canDrop: monitor.canDrop(),

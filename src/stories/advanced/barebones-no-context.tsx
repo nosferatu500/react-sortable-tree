@@ -4,7 +4,12 @@ import React, { useState } from 'react'
 import {
   SortableTreeWithoutDndContext as SortableTree,
   type TreeItem,
+  withTreeKeyboard,
 } from '../../../src'
+
+// Supplying your own provider means composing the keyboard backend yourself;
+// `SortableTree` is the variant that does it for you.
+const dndBackend = withTreeKeyboard(HTML5Backend)
 
 const BarebonesNoContext: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeItem[]>([
@@ -13,7 +18,7 @@ const BarebonesNoContext: React.FC = () => {
 
   return (
     <div style={{ height: 300, width: 700 }}>
-      <DndProvider backend={HTML5Backend}>
+      <DndProvider backend={dndBackend}>
         <SortableTree
           aria-label="Tree inside an existing dnd context"
           treeData={treeData}

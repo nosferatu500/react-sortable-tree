@@ -4,7 +4,11 @@ import React, { useState } from 'react'
 import {
   SortableTreeWithoutDndContext as SortableTree,
   type TreeItem,
+  withTreeKeyboard,
 } from '../../../src'
+
+// Own provider, so compose the keyboard backend explicitly.
+const dndBackend = withTreeKeyboard(HTML5Backend)
 
 // -------------------------
 // Create an drag source component that can be dragged into the tree
@@ -48,7 +52,7 @@ const ExternalNode: React.FC = () => {
   ])
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={dndBackend}>
       <div>
         <div style={{ height: 300, width: 700 }}>
           <SortableTree

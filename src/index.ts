@@ -9,6 +9,7 @@ export * from './types'
 export {
   SortableTree,
   SortableTreeWithoutDndContext,
+  withTreeKeyboard,
 } from './react-sortable-tree'
 
 export type {
