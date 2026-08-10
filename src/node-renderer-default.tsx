@@ -1,5 +1,8 @@
+import type {
+  ConnectDragPreview,
+  ConnectDragSource,
+} from '@nosferatu500/react-dnd'
 import React, { type JSX } from 'react'
-import type { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
 import type { NodeData, TreeItem, TreeItemContent } from './types'
 import { classnames } from './utils/classnames'
 import { isDescendant } from './utils/tree-data-utils'
@@ -106,12 +109,7 @@ const renderHandle = (
       </div>
     )
   }
-  return (
-    <div
-      ref={connectDragSource as unknown as React.Ref<HTMLDivElement>}
-      className="rst__moveHandle"
-    />
-  )
+  return <div ref={connectDragSource} className="rst__moveHandle" />
 }
 
 const NodeRendererDefault: React.FC<NodeRendererProps> = ({
@@ -172,7 +170,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
 
       <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
         <div
-          ref={connectDragPreview as unknown as React.Ref<HTMLDivElement>}
+          ref={connectDragPreview}
           className={classnames(
             'rst__row',
             isLandingPadActive ? 'rst__rowLandingPad' : '',

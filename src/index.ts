@@ -2,8 +2,8 @@ export * from './utils/default-handlers'
 export * from './utils/tree-data-utils'
 export * from './types'
 
-// Export the tree component without the react-dnd DragDropContext,
-// for when component is used with other components using react-dnd.
+// Export the tree component without the DragDropContext, for when the component
+// is used alongside other components that already provide one.
 // see: https://github.com/gaearon/react-dnd/issues/186
 
 export {

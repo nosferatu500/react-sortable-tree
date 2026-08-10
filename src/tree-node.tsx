@@ -1,5 +1,5 @@
+import type { ConnectDropTarget } from '@nosferatu500/react-dnd'
 import React, { Children, type JSX, type ReactNode, cloneElement } from 'react'
-import type { ConnectDropTarget } from 'react-dnd'
 import type { TreeItem } from './types'
 import { classnames } from './utils/classnames'
 import type { FlatDataItem } from './utils/tree-data-utils'
@@ -194,7 +194,7 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   return (
     <div
       {...otherProps}
-      ref={connectDropTarget as unknown as React.Ref<HTMLDivElement>}
+      ref={connectDropTarget}
       style={{ height: `${calculatedRowHeight}px` }}
       className={classnames('rst__node', rowDirectionClass ?? '')}>
       {scaffold}

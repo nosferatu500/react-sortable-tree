@@ -1,5 +1,5 @@
+import type { ConnectDropTarget } from '@nosferatu500/react-dnd'
 import React, { Children, cloneElement, type ReactNode } from 'react'
-import type { ConnectDropTarget } from 'react-dnd'
 import type { TreeItem, TreeItemDropResult } from './types'
 
 type TreePlaceholderProps = {
@@ -23,7 +23,7 @@ const TreePlaceholder = ({
   ...otherProps
 }: TreePlaceholderProps): React.JSX.Element => {
   return (
-    <div ref={connectDropTarget as unknown as React.Ref<HTMLDivElement>}>
+    <div ref={connectDropTarget}>
       {Children.map(children, (child) =>
         cloneElement(child as React.ReactElement<Record<string, unknown>>, {
           canDrop,

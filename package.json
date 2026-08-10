@@ -43,7 +43,7 @@
     "**/*.css"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "devEngines": {
     "runtime": {
@@ -122,8 +122,8 @@
     "prettier": "^3.9.6",
     "publint": "^0.3.23",
     "react": "^19.2.8",
-    "react-dnd-test-backend": "^16.0.1",
-    "react-dnd-touch-backend": "^16.0.1",
+    "@nosferatu500/react-dnd-test-backend": "^19.0.0",
+    "@nosferatu500/react-dnd-touch-backend": "^19.0.0",
     "react-dom": "^19.2.8",
     "storybook": "^10.5.6",
     "tsdown": "^0.22.14",
@@ -134,13 +134,13 @@
   },
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dnd": "^16.0.0",
-    "react-dnd-html5-backend": "^16.0.0",
+    "@nosferatu500/react-dnd": "^19.0.0",
+    "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "react-dnd": "^16.0.0",
-    "react-dnd-html5-backend": "^16.0.0",
+    "@nosferatu500/react-dnd": "^19.0.0",
+    "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
     "virtua": "^0.50.0"
   }
 }

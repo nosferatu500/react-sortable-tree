@@ -109,8 +109,10 @@ const KeyboardNavigation: React.FC = () => {
       </p>
       <p style={{ marginTop: 8, fontSize: 13 }}>
         <strong>Drag and drop is still pointer-only.</strong> Keyboard-driven
-        reordering needs a drag backend with a keyboard sensor, and is planned
-        alongside the move off <code>react-dnd</code>.
+        reordering needs a drag backend with a keyboard sensor. One now exists —{' '}
+        <code>@nosferatu500/react-dnd-keyboard-backend</code>, via{' '}
+        <code>withKeyboard(HTML5Backend)</code> — but the tree does not wire it
+        up yet.
       </p>
     </div>
   )

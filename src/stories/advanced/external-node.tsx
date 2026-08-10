@@ -1,6 +1,6 @@
+import { DndProvider, useDrag } from '@nosferatu500/react-dnd'
+import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import React, { useState } from 'react'
-import { DndProvider, useDrag } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
 import {
   SortableTreeWithoutDndContext as SortableTree,
   type TreeItem,
@@ -27,9 +27,7 @@ const YourExternalNodeComponent = ({ node }: { node: { title: string } }) => {
 
   return (
     <div
-      // react-dnd's connectors are callable refs but aren't structurally a
-      // React.Ref, so they need a cast — same as src/node-renderer-default.tsx.
-      ref={drag as unknown as React.Ref<HTMLDivElement>}
+      ref={drag}
       style={{
         display: 'inline-block',
         padding: '3px 5px',

@@ -536,8 +536,9 @@ describe('SortableTreeWithoutDndContext', () => {
   })
 
   it('renders inside an existing provider', async () => {
-    const { DndProvider } = await import('react-dnd')
-    const { HTML5Backend } = await import('react-dnd-html5-backend')
+    const { DndProvider } = await import('@nosferatu500/react-dnd')
+    const { HTML5Backend } =
+      await import('@nosferatu500/react-dnd-html5-backend')
     render(
       <DndProvider backend={HTML5Backend}>
         {sized(

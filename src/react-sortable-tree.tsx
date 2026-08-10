@@ -1,3 +1,5 @@
+import { DndContext, DndProvider } from '@nosferatu500/react-dnd'
+import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import React, {
   type ReactNode,
   useCallback,
@@ -10,8 +12,6 @@ import React, {
   useState,
   useTransition,
 } from 'react'
-import { DndContext, DndProvider } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
 import { VList, type VListHandle } from 'virtua'
 import NodeRendererDefault from './node-renderer-default'
 import PlaceholderRendererDefault from './placeholder-renderer-default'

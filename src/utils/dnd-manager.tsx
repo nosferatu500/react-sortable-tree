@@ -1,5 +1,9 @@
+import {
+  type DropTargetMonitor,
+  useDrag,
+  useDrop,
+} from '@nosferatu500/react-dnd'
 import React, { type Ref, useCallback, useRef } from 'react'
-import { type DropTargetMonitor, useDrag, useDrop } from 'react-dnd'
 import type { TreeRendererProps } from '../tree-node'
 import type { TreeItem } from '../types'
 import { getDepth } from './tree-data-utils'
@@ -203,15 +207,23 @@ export const wrapPlaceholder = (
   return DroppablePlaceholder
 }
 
+/*
+ * `item` is threaded through rather than read back off the monitor.
+ * `monitor.getItem()` is typed `T | null` — it really is null before a drag
+ * opens — while the `item` argument these callbacks receive is non-null for the
+ * whole of `drop` / `hover` / `canDrop`. Passing it explicitly is what the
+ * fork's migration notes recommend, and it removes the null checks entirely.
+ */
 const getBlocksOffset = (
   dropTargetProps: DropTargetProps,
+  item: DragItem,
   monitor: DropTargetMonitor<DragItem, DropResult>,
   treeId: string,
   componentRef: React.RefObject<HTMLElement | null>
 ): { blocksOffset: number; dragSourceInitialDepth: number } => {
-  const dragSourceInitialDepth = (monitor.getItem().path || []).length
+  const dragSourceInitialDepth = (item.path || []).length
 
-  if (monitor.getItem().treeId === treeId) {
+  if (item.treeId === treeId) {
     const direction = dropTargetProps.rowDirection === 'rtl' ? -1 : 1
     const diff = monitor.getDifferenceFromInitialOffset()
     const x = diff ? diff.x : 0
@@ -243,6 +255,7 @@ const getBlocksOffset = (
 
 const getTargetDepth = (
   dropTargetProps: DropTargetProps,
+  item: DragItem,
   monitor: DropTargetMonitor<DragItem, DropResult>,
   componentRef: React.RefObject<HTMLElement | null>,
   canNodeHaveChildren: (node: TreeItem) => boolean,
@@ -263,6 +276,7 @@ const getTargetDepth = (
 
   const { blocksOffset, dragSourceInitialDepth } = getBlocksOffset(
     dropTargetProps,
+    item,
     monitor,
     treeId,
     componentRef
@@ -274,8 +288,7 @@ const getTargetDepth = (
   )
 
   if (maxDepth !== undefined) {
-    const draggedNode = monitor.getItem().node
-    const draggedChildDepth = getDepth(draggedNode)
+    const draggedChildDepth = getDepth(item.node)
     targetDepth = Math.max(
       0,
       Math.min(targetDepth, maxDepth - draggedChildDepth - 1)
@@ -287,6 +300,7 @@ const getTargetDepth = (
 
 const canDrop = (
   dropTargetProps: DropTargetProps,
+  item: DragItem,
   monitor: DropTargetMonitor<DragItem, DropResult>,
   treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined
 ) => {
@@ -307,12 +321,11 @@ const canDrop = (
   }
 
   if (typeof treeRefCanDrop === 'function') {
-    const { node } = monitor.getItem()
     return treeRefCanDrop({
-      node,
-      prevPath: monitor.getItem().path,
-      prevParent: monitor.getItem().parentNode,
-      prevTreeIndex: monitor.getItem().treeIndex,
+      node: item.node,
+      prevPath: item.path,
+      prevParent: item.parentNode,
+      prevTreeIndex: item.treeIndex,
       nextPath: dropTargetProps.path,
       nextParent: dropTargetProps.parentNode,
       nextTreeIndex: dropTargetProps.treeIndex,
@@ -345,10 +358,9 @@ export const wrapTarget = (
     >(
       () => ({
         accept: dndType,
-        drop: (_item, monitor) => {
+        drop: (item, monitor) => {
           const currentProps = propsRef.current
           const { canNodeHaveChildren, maxDepth, drop } = getHandlers()
-          const item = monitor.getItem()
           const result: DropResult = {
             node: item.node,
             path: item.path,
@@ -357,6 +369,7 @@ export const wrapTarget = (
             minimumTreeIndex: currentProps.treeIndex,
             depth: getTargetDepth(
               currentProps,
+              item,
               monitor,
               nodeRef,
               canNodeHaveChildren,
@@ -372,6 +385,7 @@ export const wrapTarget = (
           const { canNodeHaveChildren, maxDepth, dragHover } = getHandlers()
           const targetDepth = getTargetDepth(
             currentProps,
+            item,
             monitor,
             nodeRef,
             canNodeHaveChildren,
@@ -394,8 +408,8 @@ export const wrapTarget = (
             depth: targetDepth,
           })
         },
-        canDrop: (_item, monitor) =>
-          canDrop(propsRef.current, monitor, getHandlers().canDrop),
+        canDrop: (item, monitor) =>
+          canDrop(propsRef.current, item, monitor, getHandlers().canDrop),
         collect: (monitor) => ({
           isOver: monitor.isOver(),
           canDrop: monitor.canDrop(),
@@ -404,10 +418,7 @@ export const wrapTarget = (
       [dndType, treeId, getHandlers]
     )
 
-    const combinedRef = useCombinedRefs(
-      dropConnector as unknown as Ref<HTMLElement>,
-      nodeRef
-    )
+    const combinedRef = useCombinedRefs(dropConnector, nodeRef)
 
     return (
       <Component

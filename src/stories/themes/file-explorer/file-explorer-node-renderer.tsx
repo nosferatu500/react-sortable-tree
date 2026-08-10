@@ -1,5 +1,8 @@
+import type {
+  ConnectDragPreview,
+  ConnectDragSource,
+} from '@nosferatu500/react-dnd'
 import React, { type JSX } from 'react'
-import type { ConnectDragPreview, ConnectDragSource } from 'react-dnd'
 import type { NodeData, TreeItem, TreeItemContent } from '../../../types'
 import { classnames } from '../../../utils/classnames'
 import { isDescendant } from '../../../utils/tree-data-utils'
@@ -308,12 +311,17 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
 
   // Wrap with drag source if draggable
   const draggableContent = canDrag ? (
+    // Source and preview share one element. Connectors are ordinary ref
+    // callbacks now, so they attach directly — but two of them need a
+    // block-bodied callback rather than `ref={(n) => a(b(n))}`, which would
+    // hand React the connector's return value.
     <div
-      // react-dnd's connectors are callable refs but aren't structurally a
-      // React.Ref, so they need a cast — same as src/node-renderer-default.tsx.
-      ref={connectDragSource as unknown as React.Ref<HTMLDivElement>}
+      ref={(element) => {
+        connectDragSource(element)
+        connectDragPreview(element)
+      }}
       style={{ height: '100%' }}>
-      {connectDragPreview(nodeContent)}
+      {nodeContent}
     </div>
   ) : (
     nodeContent

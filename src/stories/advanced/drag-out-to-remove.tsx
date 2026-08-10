@@ -1,6 +1,6 @@
+import { DndProvider, useDrop } from '@nosferatu500/react-dnd'
+import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import React, { useState } from 'react'
-import { DndProvider, useDrop } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
 import {
   SortableTreeWithoutDndContext as SortableTree,
   type TreeItem,
@@ -43,9 +43,7 @@ const TrashAreaComponent = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div
-      // react-dnd's connectors are callable refs but aren't structurally a
-      // React.Ref, so they need a cast — same as src/node-renderer-default.tsx.
-      ref={drop as unknown as React.Ref<HTMLDivElement>}
+      ref={drop}
       style={{
         height: '100vh',
         padding: 50,
