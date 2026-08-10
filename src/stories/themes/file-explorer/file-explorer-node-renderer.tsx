@@ -345,7 +345,8 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
       // The element really is interactive — it can be picked up and moved by
       // keyboard — but it cannot be a `<button>`, because it wraps the chevron
       // and the toolbar buttons and interactive elements may not nest. The
-      // backend supplies `aria-roledescription="draggable item"` at runtime.
+      // backend notices those descendants and gives it `role="group"` rather
+      // than `role="button"`, plus `aria-roledescription="draggable item"`.
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={rovingTabIndex(isActiveRow)}
       aria-label={dragLabel(nodeTitle)}

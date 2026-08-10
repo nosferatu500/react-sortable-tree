@@ -1,6 +1,6 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "description": "Accessible drag-and-drop sortable tree for React 19, with virtualized rendering and first-class TypeScript types",
   "homepage": "https://nosferatu500.github.io/react-sortable-tree",
   "type": "module",
@@ -142,7 +142,7 @@
   "dependencies": {
     "@nosferatu500/react-dnd": "^19.0.0",
     "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
-    "@nosferatu500/react-dnd-keyboard-backend": "^19.0.0",
+    "@nosferatu500/react-dnd-keyboard-backend": "^19.1.0",
     "virtua": "^0.50.0"
   }
 }

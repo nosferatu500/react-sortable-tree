@@ -417,6 +417,15 @@ const performHover = (context: HoverContext, force: boolean): void => {
     keyboard,
     maxDepth
   )
+  if (keyboard.isDragging()) {
+    // Ahead of the redraw guard on purpose: this records what depth the rows
+    // around the insertion point actually allowed, which is true whether or not
+    // anything needs redrawing. Recording it only on redraw left the first arrow
+    // key with no previous depth to compare against, so a request that was
+    // refused outright was announced as though it had worked.
+    keyboard.syncToDepth(targetDepth, (item.path || []).length)
+  }
+
   const draggedNode = item.node
   const needsRedraw =
     currentProps.node !== draggedNode ||
@@ -424,11 +433,6 @@ const performHover = (context: HoverContext, force: boolean): void => {
 
   if (!force && !needsRedraw) {
     return
-  }
-
-  if (keyboard.isDragging()) {
-    // The requested depth may have been clamped by the rows around this one.
-    keyboard.syncToDepth(targetDepth, (item.path || []).length)
   }
 
   dragHover({

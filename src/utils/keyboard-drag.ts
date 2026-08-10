@@ -1,32 +1,41 @@
+import type { OnNavigate } from '@nosferatu500/react-dnd-keyboard-backend'
+
 /**
  * Depth control for keyboard drags.
  *
- * Under the mouse, how deeply a node nests comes from how far the pointer moved
- * horizontally — `getBlocksOffset` divides that distance by the scaffold block
- * width. A keyboard drag has no pointer, so this supplies the same quantity
- * from the left/right arrow keys and the rest of the depth maths is unchanged.
+ * Under a pointer, how deeply a node nests comes from horizontal travel:
+ * `getBlocksOffset` divides that distance by the scaffold block width. A keyboard
+ * drag has no pointer, so this supplies the same quantity from the left and right
+ * arrow keys and the rest of the depth maths is untouched.
  *
- * Two details make it work:
+ * The pointer path cannot simply be left to yield zero: the keyboard backend
+ * *does* report a client offset — `centerOf(node)` at pick-up and on every hover
+ * — and rows are full width, so the horizontal difference between a handle and a
+ * hovered row is a couple of hundred pixels. Read as pointer travel that is
+ * several levels of nesting, which used to drop every keyboard-dragged node as
+ * deep as the tree allowed.
  *
- * - **The keyboard backend does report a client offset**, so the pointer maths
- *   cannot simply be left to return zero. `beginDrag` and every `hover` pass
- *   `centerOf(node)`, and rows are full width — so the horizontal difference
- *   between the source handle and a hovered row is a couple of hundred pixels,
- *   which the pointer path would read as several blocks of nesting and drop
- *   every keyboard-dragged node as deep as the tree allows.
- * - **A `Window` capture listener runs before a `Document` one.** The backend
- *   attaches its `keydown` to the document in the capture phase and skips any
- *   event whose `defaultPrevented` is already set, so claiming left/right here
- *   takes them away from its target navigation without patching or racing it.
- *   Up/down are left alone and still move between rows.
+ * Arrow keys arrive through the backend's `onNavigate` hook, which fires before
+ * the hover moves and lets the application keep the key. Up and down are left
+ * alone and still move between rows; left and right are taken for depth. The
+ * hook replaced an earlier trick — a `Window` capture listener racing ahead of
+ * the backend's `Document` one — that existed only because there was no
+ * supported way in.
  */
 
-/** What the controller needs from the tree, read at event time. */
+/** What a controller needs from its tree, read at event time. */
 export interface KeyboardDragOptions {
-  /** Whether the keyboard backend — rather than a pointer — drives this drag. */
+  /** Whether the keyboard backend, rather than a pointer, drives this drag. */
   isKeyboardDragging: () => boolean
   /** Right means deeper in ltr and shallower in rtl, as elsewhere in the tree. */
   isRtl: () => boolean
+  /**
+   * Speaks through the backend's live region. Required, because the backend
+   * announces only what it did itself: a key the tree takes for depth would
+   * otherwise pass in silence, which a screen-reader user cannot distinguish
+   * from a key that did nothing.
+   */
+  announce: (message: string) => void
 }
 
 export interface KeyboardDragController {
@@ -34,7 +43,7 @@ export interface KeyboardDragController {
   isDragging: () => boolean
   /** The keyboard analogue of the pointer's horizontal travel, in blocks. */
   blocksOffset: () => number
-  /** Clears the accumulated depth. Called when any drag starts. */
+  /** Clears the accumulated depth. Called whenever a drag starts. */
   reset: () => void
   /**
    * Registered by whichever row is hovered, so an arrow key can re-run that
@@ -44,54 +53,82 @@ export interface KeyboardDragController {
   /**
    * Re-derives the offset from the depth actually reached.
    *
-   * `getTargetDepth` clamps its result to what the surrounding rows allow, so a
-   * request to go deeper than that is silently capped. Without this, those
-   * presses would bank up and the user would have to unwind every one of them
-   * before the opposite arrow appeared to do anything.
+   * `getTargetDepth` clamps to what the surrounding rows allow, so a request to
+   * nest deeper than that is capped. Without this, those presses bank up and the
+   * user has to unwind every one before the opposite arrow appears to do
+   * anything.
    */
   syncToDepth: (achievedDepth: number, sourceInitialDepth: number) => void
-  /**
-   * Starts listening. Returns the matching cleanup.
-   *
-   * Typed as the `EventTarget` slice actually used, so `globalThis` is accepted
-   * — it is not assignable to `Window` under `lib.dom`.
-   */
-  attach: (
-    target: Pick<Window, 'addEventListener' | 'removeEventListener'>
-  ) => () => void
+  /** Starts receiving arrow keys. Returns the matching cleanup. */
+  register: () => () => void
+}
+
+/** The half of a controller the module-level dispatcher talks to. */
+interface NavigationHandler {
+  /** Returns whether this tree took the key for depth. */
+  handleNavigate: (direction: string) => boolean
+}
+
+const handlers = new Set<NavigationHandler>()
+
+/**
+ * Handed to `withKeyboard` once, at module scope, because a backend factory has
+ * to be stable — while the controllers are per tree.
+ *
+ * Every mounted tree is offered the key. Each asks its own manager whether *it*
+ * is the one being dragged, so at most one acts; a cross-tree drag reaches both
+ * the source tree and the one being dropped into, which is what keeps their
+ * depth offsets in step.
+ */
+export const treeOnNavigate: OnNavigate = (event) => {
+  let claimed = false
+  for (const handler of handlers) {
+    if (handler.handleNavigate(event.direction)) claimed = true
+  }
+  // Keeps the key from moving the hover. The backend has already taken it from
+  // the page either way — a drag in progress owns the arrow keys.
+  if (claimed) event.preventDefault()
 }
 
 export const createKeyboardDragController = (
   options: KeyboardDragOptions
 ): KeyboardDragController => {
   let offset = 0
+  let lastDepth: number | undefined
   let replayHover: (() => void) | undefined
 
-  const handleKeyDown = (event: KeyboardEvent): void => {
-    // Mirrors the backend's own guards: an already-claimed key, or a chord,
-    // belongs to someone else.
-    if (event.defaultPrevented) return
-    if (event.metaKey || event.ctrlKey || event.altKey) return
-    if (!options.isKeyboardDragging()) return
+  const handler: NavigationHandler = {
+    handleNavigate: (direction) => {
+      if (!options.isKeyboardDragging()) return false
 
-    const rtl = options.isRtl()
-    const deeper = rtl ? 'ArrowLeft' : 'ArrowRight'
-    const shallower = rtl ? 'ArrowRight' : 'ArrowLeft'
+      const rtl = options.isRtl()
+      const deeper = rtl ? 'left' : 'right'
+      const shallower = rtl ? 'right' : 'left'
 
-    let delta: number
-    if (event.key === deeper) {
-      delta = 1
-    } else if (event.key === shallower) {
-      delta = -1
-    } else {
-      return
-    }
+      let delta: number
+      if (direction === deeper) {
+        delta = 1
+      } else if (direction === shallower) {
+        delta = -1
+      } else {
+        return false
+      }
 
-    // Claim it before the backend's document-capture listener runs, so the key
-    // changes depth instead of moving to another row.
-    event.preventDefault()
-    offset += delta
-    replayHover?.()
+      const before = lastDepth
+      offset += delta
+      replayHover?.()
+
+      // `replayHover` runs the hover synchronously, so `lastDepth` is now the
+      // depth that was actually reached — which may be the same one, if the rows
+      // around the insertion point would not allow another level.
+      if (lastDepth === undefined) return true
+      options.announce(
+        lastDepth === before
+          ? `Depth ${lastDepth + 1}, unchanged.`
+          : `Depth ${lastDepth + 1}.`
+      )
+      return true
+    },
   }
 
   return {
@@ -99,21 +136,20 @@ export const createKeyboardDragController = (
     blocksOffset: () => offset,
     reset: () => {
       offset = 0
+      lastDepth = undefined
     },
     setReplayHover: (replay) => {
       replayHover = replay
     },
     syncToDepth: (achievedDepth, sourceInitialDepth) => {
+      lastDepth = achievedDepth
       // The inverse of `getTargetDepth`'s `sourceInitialDepth + offset - 1`.
       offset = achievedDepth - sourceInitialDepth + 1
     },
-    attach: (target) => {
-      // Capture, and on the window rather than the document, so this runs ahead
-      // of the backend's own document-capture listener.
-      const listenerOptions = { capture: true } as const
-      target.addEventListener('keydown', handleKeyDown, listenerOptions)
+    register: () => {
+      handlers.add(handler)
       return () => {
-        target.removeEventListener('keydown', handleKeyDown, listenerOptions)
+        handlers.delete(handler)
       }
     },
   }

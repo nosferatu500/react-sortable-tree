@@ -101,6 +101,21 @@ describe('keyboard drag', () => {
     expect(liveRegion()).toMatch(/Drag a/i)
   })
 
+  it('does not move the row merely by picking it up', async () => {
+    const user = userEvent.setup()
+    render(<Controlled />)
+
+    // The last row, which is where this used to be visible: the backend hovered
+    // the first eligible target on pick-up, so lifting 'c' previewed it jumping
+    // to the top before the user had pressed anything. It now prefers the target
+    // containing the source.
+    handleAt(2).focus()
+    await user.keyboard(' ')
+
+    expect(itemTitles()).toEqual(['a', 'b', 'c'])
+    expect(liveRegion()).toMatch(/over c/i)
+  })
+
   it('reorders the tree when dropped on another row', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
@@ -176,6 +191,34 @@ describe('depth control', () => {
     const move = onMoveNode.mock.lastCall![0]
     expect(move.nextPath).toHaveLength(1)
     expect(depths()).toEqual([1, 1, 1])
+  })
+
+  it('announces the new depth, since the backend cannot', async () => {
+    const user = userEvent.setup()
+    render(<Controlled />)
+
+    handleAt(0).focus()
+    await user.keyboard(' ')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{ArrowRight}')
+
+    // The tree took this key through `onNavigate`, so the backend said nothing
+    // about it. Silence is indistinguishable from a key that did nothing.
+    expect(liveRegion()).toMatch(/depth 2/i)
+  })
+
+  it('says so when a depth request is refused', async () => {
+    const user = userEvent.setup()
+    render(<Controlled />)
+
+    handleAt(0).focus()
+    await user.keyboard(' ')
+    // Hovering its own row at the top, where there is nothing above to nest
+    // under, so the request clamps.
+    await user.keyboard('{ArrowRight}')
+
+    expect(liveRegion()).toMatch(/unchanged/i)
   })
 
   it('un-nests again when the shallower arrow is pressed', async () => {

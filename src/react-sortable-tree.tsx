@@ -6,6 +6,7 @@ import {
 import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import {
   gridNavigation,
+  isKeyboardDrag,
   useDragDropAnnounce,
   withKeyboard,
 } from '@nosferatu500/react-dnd-keyboard-backend'
@@ -44,7 +45,10 @@ import {
   wrapTarget,
 } from './utils/dnd-manager'
 import { slideRows } from './utils/generic-utils'
-import { createKeyboardDragController } from './utils/keyboard-drag'
+import {
+  createKeyboardDragController,
+  treeOnNavigate,
+} from './utils/keyboard-drag'
 import { rowIdentity } from './utils/node-identity'
 import {
   type FlatDataItem,
@@ -544,25 +548,22 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * could in principle be dragged in independently.
    */
   const manager = useDragDropManager()
+  const announce = useDragDropAnnounce()
   /*
    * `react-hooks/refs` flags `isRtl` for reading a ref inside a function handed
-   * to another function during render. It cannot see that both callbacks are only
-   * ever invoked from a keydown listener — the same shape as `getDndHandlers`
+   * to another function during render. It cannot see that these callbacks are
+   * only ever invoked from a key event — the same shape as `getDndHandlers`
    * below, and covered by the keyboard drag-and-drop tests.
    */
   // eslint-disable-next-line react-hooks/refs
   const [keyboardDrag] = useState(() =>
     createKeyboardDragController({
-      // `profile()` is part of the Backend interface, and CompositeBackend sums
-      // it across the pointer and keyboard halves. The keyboard backend sets its
-      // dragging flag before dispatching the first hover, so this is already
-      // true by the time the depth is first computed.
-      isKeyboardDragging: () =>
-        Boolean(manager.getBackend().profile()['keyboardDragging']),
+      isKeyboardDragging: () => isKeyboardDrag(manager),
       isRtl: () => latestRef.current.rowDirection === 'rtl',
+      announce,
     })
   )
-  useEffect(() => keyboardDrag.attach(globalThis), [keyboardDrag])
+  useEffect(() => keyboardDrag.register(), [keyboardDrag])
 
   const startDrag = useCallback(
     ({ path }: { path: number[] }) => {
@@ -965,7 +966,6 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * queue instead of two that talk over each other, and it is a no-op when the
    * provider has no keyboard backend.
    */
-  const announce = useDragDropAnnounce()
   const announceMove = useEffectEvent((params: OnMoveNodeParams) => {
     const { node, nextPath, nextParentNode } = params
     if (!nextPath) return
@@ -1604,13 +1604,22 @@ export const SortableTreeWithoutDndContext = (
  * </DndProvider>
  * ```
  *
- * The navigation model is `gridNavigation({ columns: 1 })` rather than the
- * default document-order one. A tree is a single column, so up and down should
- * step between rows while left and right stay put — and staying put is what
- * leaves them free to mean *depth*, matching the pointer, where horizontal
- * movement is the only thing that nests a node. Document-order navigation maps
- * left and right onto previous and next row, which would spend the horizontal
- * keys on the vertical job and leave no way to nest at all.
+ * Two options make it tree-shaped:
+ *
+ * - `gridNavigation({ columns: 1 })` rather than the default document-order
+ *   model. A tree is a single column, so up and down should step between rows
+ *   while left and right stay put — and staying put is what leaves them free to
+ *   mean *depth*, matching the pointer, where horizontal movement is the only
+ *   thing that nests a node. Document-order navigation maps left and right onto
+ *   previous and next row, spending the horizontal keys on the vertical job and
+ *   leaving no way to nest at all.
+ * - `onNavigate` takes left and right for depth, and lets up and down through.
+ *
+ * `applyAriaAttributes` is deliberately left alone. The backend never overwrites
+ * an attribute an element already carries, so the drag handle's own `tabIndex`
+ * wins and the tree keeps a single tab stop — while a custom renderer that says
+ * nothing still gets a focusable, described drag source rather than one that
+ * cannot be picked up at all.
  *
  * Call it once, at module scope. A new backend factory identity tears down and
  * rebuilds the entire drag-and-drop manager.
@@ -1618,7 +1627,10 @@ export const SortableTreeWithoutDndContext = (
 export const withTreeKeyboard = (
   base: Parameters<typeof withKeyboard>[0]
 ): ReturnType<typeof withKeyboard> =>
-  withKeyboard(base, { getNextTarget: gridNavigation({ columns: 1 }) })
+  withKeyboard(base, {
+    getNextTarget: gridNavigation({ columns: 1 }),
+    onNavigate: treeOnNavigate,
+  })
 
 const KeyboardHTML5Backend = withTreeKeyboard(HTML5Backend)
 

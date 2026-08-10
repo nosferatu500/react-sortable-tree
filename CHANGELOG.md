@@ -1,5 +1,156 @@
 # Changelog
 
+## [7.0.0] - 2026-08-10
+
+### Breaking: the `react-dnd` peer dependency changed packages
+
+6.0.0 asked for `react-dnd@^16` and `react-dnd-html5-backend@^16`. 7.0.0 asks for
+a maintained fork instead:
+
+```diff
+- npm i react-dnd react-dnd-html5-backend
++ npm i @nosferatu500/react-dnd @nosferatu500/react-dnd-html5-backend
+```
+
+If you never imported `react-dnd` yourself, that is the whole migration — install
+the two scoped packages and remove the two unscoped ones. Nothing in this
+library's own API changed as a result.
+
+**If you do import it** — a custom `nodeContentRenderer`, your own drag source or
+drop target, `SortableTreeWithoutDndContext` with your own `DndProvider` — then
+change your imports to the scoped names and note three things from the fork:
+
+- **Connectors are ordinary ref callbacks.** `ref={connectDragSource}` typechecks
+  directly; delete any `as unknown as React.Ref` cast. Two connectors on one
+  element need a block-bodied callback — never `ref={(n) => drag(drop(n))}`,
+  which hands React the connector's return value.
+- **`monitor.getItem()` is typed `T | null`**, which it always was at runtime.
+  Prefer the non-null `item` argument that `drop`, `hover`, `canDrop` and `end`
+  already receive.
+- **The packages are ESM only** and need Node >= 22.12; see `engines` below.
+
+**Why:** upstream `react-dnd` has had no release since 2022, no declared React 19
+support, and an open React 19 bug where `isDragging` reads `false` when dragging
+downwards. Its connector types were also the sole reason this library needed
+`as unknown as React.Ref` casts internally.
+
+This is why 7.0.0 is a major rather than a patch on 6.0.0: a peer dependency
+pointing at a differently-named package cannot be satisfied by an existing
+install, so it needs the version bump that makes consumers look.
+
+### Fixed: `ReferenceError: dndType is not defined` on an empty tree
+
+**Upgrade if you are on 6.0.0.** Rendering a tree with no rows threw immediately,
+and the drag-end and placeholder-drop callbacks were broken the same way.
+
+The React Compiler *outlines* callbacks it judges to be constant, moving them to
+module scope. Its capture analysis missed variables belonging to an enclosing
+factory: the internal drag-and-drop wrappers are built by functions that take
+`dndType`, `treeId` and `getHandlers` as parameters, and the compiled output
+referenced those from module scope, where they do not exist.
+
+The three wrappers now opt out of the compiler. They are thin wrappers around
+`useDrag`/`useDrop`; the memoization that matters is in the row renderers and the
+tree-data helpers, which are still compiled.
+
+**This shipped because nothing tested the built bundle** — the suite runs against
+sources, so compiler output was never executed. `npm run test:build` now renders
+the real bundle, including the empty-tree path, and it runs in CI after `build`
+and again in `prepublishOnly`.
+
+### Added: drag and drop from the keyboard
+
+The last accessibility gap is closed. `SortableTree` composes
+`@nosferatu500/react-dnd-keyboard-backend`, so a node can be picked up, moved,
+nested and dropped without a pointer, and a polite live region narrates it.
+
+Tab from a row to its drag handle, then:
+
+| Key                       | Action                                     |
+| ------------------------- | ------------------------------------------ |
+| <kbd>Space</kbd> / <kbd>Enter</kbd> | Pick up; press again to drop      |
+| <kbd>↓</kbd> <kbd>↑</kbd> | Choose which row it lands next to           |
+| <kbd>→</kbd> <kbd>←</kbd> | Nest one level deeper / shallower           |
+| <kbd>Esc</kbd>            | Cancel, leaving the tree as it was          |
+
+Up and down choose *where*, left and right choose *how deeply* — the same split
+as a pointer drag, where horizontal movement is the only thing that nests a node.
+They mirror under `rowDirection="rtl"`. Announcements cover pick-up, each move,
+depth changes (including a request the surrounding rows refuse) and where the
+node finally landed.
+
+Nothing to configure, and no change to `useDrag`/`useDrop` usage.
+
+### Added: `withTreeKeyboard`
+
+```tsx
+import { withTreeKeyboard } from '@nosferatu500/react-sortable-tree'
+
+<DndProvider backend={withTreeKeyboard(TouchBackend)}>
+  <SortableTreeWithoutDndContext … />
+</DndProvider>
+```
+
+`SortableTree` already applies it to `HTML5Backend`. Reach for it whenever you
+supply your own provider — with `SortableTreeWithoutDndContext`, or to swap in
+`TouchBackend`. A bare pointer backend has no keyboard gesture at all, and losing
+it is silent, so this is not an optional nicety for those setups.
+
+### Fixed: a drop could land the node back where it started
+
+A drop recomputed its position from row props that the last hover had already
+slid, so the position it committed could resolve to the node's origin instead of
+where the preview showed it. A pointer drag hid this because the browser keeps
+firing `dragover` until the two agree — but a single hover followed by a drop did
+not, which is every keyboard drop.
+
+Drops now commit the position the preview was showing. Pointer drags no longer
+depend on hover convergence either.
+
+### Fixed: the roving tabindex could desync after a drop
+
+A keyboard drop leaves focus on the dragged row while the row lands somewhere
+new, so the tab stop and the focused element ended up on different rows and the
+next arrow key acted on the wrong one. The tab stop now follows the moved row,
+and only when focus is actually inside the tree.
+
+### Changed: node content renderers receive `isActiveRow`
+
+Custom `nodeContentRenderer` implementations get a new `isActiveRow: boolean`.
+Put it on whatever you connect as the drag source:
+
+```tsx
+<div ref={connectDragSource} tabIndex={isActiveRow ? 0 : -1} />
+```
+
+The keyboard backend makes every connected drag source focusable, which would be
+one tab stop per visible row in a tree the ARIA pattern says must have exactly
+one. An explicit `tabIndex` keeps the handle inside the tree's single roving tab
+stop — the backend never overwrites an attribute the element already carries.
+
+**If your renderer spreads unknown props onto a DOM element**, destructure
+`isActiveRow` out first, or React will warn about an unrecognized attribute.
+
+The default renderer's drag handle also gained `role="button"` and an
+`aria-label` — without a name, announcements said "Picked up ." for every row.
+
+### Changed: `engines.node` is now `>=22.12`
+
+Raised from `>=22`, because `@nosferatu500/react-dnd` 19 requires it. Node 22.12
+is the first release that can `require()` an ES module, which is what lets those
+packages ship ESM only.
+
+### Changed: `@nosferatu500/react-dnd-keyboard-backend` 19.1.0
+
+Uses the release's new APIs: `isKeyboardDrag()` to tell a keyboard drag from a
+pointer one, and `onNavigate` to take the horizontal arrows for depth. Both
+replaced workarounds — reading a diagnostics counter off the backend, and a
+`Window` capture listener racing the backend's own `Document` one.
+
+Two upstream fixes are visible here: picking a row up no longer previews it
+jumping to the top of the tree, and a drag source that wraps controls of its own
+now gets `role="group"` rather than an invalid nested `role="button"`.
+
 ## [6.0.0] - 2026-07-31
 
 ### Breaking Changes
