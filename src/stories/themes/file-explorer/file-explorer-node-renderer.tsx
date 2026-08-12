@@ -43,6 +43,8 @@ export interface FileExplorerNodeRendererProps {
   startDrag: ({ path }: { path: number[] }) => void
   endDrag: (dropResult: unknown) => void
   isDragging: boolean
+  /** Whether an asynchronous `onDrop` for this node is still in flight. */
+  isSettling?: boolean
   didDrop: boolean
   draggedNode?: TreeItem
   isOver: boolean
@@ -233,6 +235,9 @@ const FileExplorerNodeRenderer: React.FC<FileExplorerNodeRendererProps> = ({
   title = undefined,
   rowDirection = 'ltr',
   isActiveRow = false,
+  // Destructured, not used: `wrapSource` passes it to every node content
+  // renderer, and anything left in `otherProps` is spread onto a DOM node.
+  isSettling: _isSettling = false,
 
   scaffoldBlockPxWidth: _scaffoldBlockPxWidth,
   connectDragPreview,

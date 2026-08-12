@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React, { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SortableTree } from './react-sortable-tree'
 import { at } from './test-helpers'
 import type { TreeItem } from './types'
@@ -296,15 +296,63 @@ describe('focus after a drop', () => {
 })
 
 describe('announcing the outcome', () => {
-  it('says where the node landed', async () => {
-    const user = userEvent.setup()
-    render(<Controlled />)
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
+  /** Picks up the top row, moves it down one, and drops it. */
+  const dragFirstRowDown = async (user: ReturnType<typeof userEvent.setup>) => {
     handleAt(0).focus()
     await user.keyboard(' ')
     await user.keyboard('{ArrowDown}')
     await user.keyboard(' ')
+  }
+
+  it('says where the node landed', async () => {
+    const user = userEvent.setup()
+    render(<Controlled />)
+
+    await dragFirstRowDown(user)
 
     expect(liveRegion()).toMatch(/moved to depth/i)
+  })
+
+  it('says "moving" until an awaited save resolves, and only then "moved"', async () => {
+    // Announcing the move as done at commit time is a lie a screen-reader user
+    // cannot catch: if the save then fails the rows snap back in silence.
+    const user = userEvent.setup()
+    const save = Promise.withResolvers<void>()
+    render(<Controlled onDrop={() => save.promise} />)
+
+    await dragFirstRowDown(user)
+
+    expect(itemTitles()).toEqual(['b', 'a', 'c'])
+    expect(liveRegion()).toMatch(/moving to depth/i)
+    expect(liveRegion()).not.toMatch(/moved to depth/i)
+
+    await act(async () => {
+      save.resolve()
+    })
+
+    expect(liveRegion()).toMatch(/moved to depth/i)
+  })
+
+  it('says the move failed, and puts the rows back, when the save rejects', async () => {
+    // dnd-core also hands the rejection to `reportError`; stubbed because an
+    // uncaught error fails the whole run without failing any single test.
+    vi.stubGlobal('reportError', vi.fn())
+    const user = userEvent.setup()
+    const save = Promise.withResolvers<void>()
+    render(<Controlled onDrop={() => save.promise} />)
+
+    await dragFirstRowDown(user)
+    expect(itemTitles()).toEqual(['b', 'a', 'c'])
+
+    await act(async () => {
+      save.reject(new Error('save failed'))
+    })
+
+    expect(liveRegion()).toMatch(/could not be moved/i)
+    expect(itemTitles()).toEqual(['a', 'b', 'c'])
   })
 })

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import React from 'react'
 import { describe, expect, it } from 'vitest'
 import KeyboardNavigation from './accessibility/keyboard-navigation'
+import AsyncDrop from './advanced/async-drop'
 import LargeTree from './advanced/large-tree'
 import LazyChildren from './basics/lazy-children'
 
@@ -74,6 +75,32 @@ describe('Accessibility/KeyboardNavigation story', () => {
     rows[0]!.focus()
     await userEvent.keyboard('{ArrowDown}')
     expect(document.activeElement).toBe(rows[0])
+  })
+})
+
+describe('Advanced/AsyncDrop story', () => {
+  /*
+   * Renders and toggles only. The story uses `SortableTree`, so its drag and drop
+   * runs on the HTML5 backend, which cannot be driven from jsdom — the settling,
+   * revert and announcement behaviour is covered against the TestBackend in
+   * `utils/dnd-manager.test.tsx` instead.
+   */
+  it('renders the tree and the failure toggle', async () => {
+    render(<AsyncDrop />)
+
+    expect(rowTitles()).toEqual([
+      'Inbox',
+      'Projects',
+      'Roadmap',
+      'Budget',
+      'Archive',
+    ])
+    expect(screen.getByText('Drag a row to save a move.')).toBeDefined()
+
+    const fail = screen.getByLabelText(/make the save fail/)
+    expect((fail as HTMLInputElement).checked).toBe(false)
+    await userEvent.click(fail)
+    expect((fail as HTMLInputElement).checked).toBe(true)
   })
 })
 

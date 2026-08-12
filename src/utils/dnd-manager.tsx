@@ -53,6 +53,21 @@ interface DropResult {
 }
 
 /**
+ * What `end` can tell the tree about a drag that has just finished.
+ *
+ * `end` fires when the *drag* ends, which for an asynchronous drop is before the
+ * drop has settled — and `getDropResult()` reads `null` for that whole window.
+ * A cancelled drag reads `null` too, so the result alone cannot tell them apart.
+ * `didDrop()` can, which is why the phase travels alongside the result.
+ */
+export interface EndDragPhase {
+  /** A drop target took the item, whether or not its result is readable yet. */
+  dropped: boolean
+  /** The drop returned a promise and is still in flight. */
+  settling: boolean
+}
+
+/**
  * Everything the wrapped components need from the tree, read at event time.
  *
  * These arrive behind a stable getter rather than as direct arguments so that
@@ -69,8 +84,17 @@ export interface TreeDndHandlers {
   /** Supplies the horizontal intent a keyboard drag has no pointer for. */
   keyboard: KeyboardDragController
   startDrag: (item: { path: number[] }) => void
-  endDrag: (dropResult: DropResult | null) => void
-  drop: (dropResult: DropResult) => void
+  endDrag: (dropResult: DropResult | null, phase: EndDragPhase) => void
+  /**
+   * Commits the drop, and returns a promise only when the tree has something to
+   * wait for — a consumer `onDrop` that returned one. Staying synchronous
+   * otherwise is deliberate: it is what keeps `getDropResult()` readable inside
+   * `end`, which the cross-tree bookkeeping depends on.
+   *
+   * `signal` aborts when the drop can no longer affect anything, which today
+   * means a new drag has taken the drop-result slot.
+   */
+  drop: (dropResult: DropResult, signal: AbortSignal) => Promise<void> | void
   dragHover: (args: {
     node: TreeItem
     path: number[]
@@ -159,7 +183,11 @@ export const wrapSource = (
       propsRef.current = props
     })
 
-    const [{ isDragging }, drag, preview] = useDrag(
+    const [{ isDragging, isSettling }, drag, preview] = useDrag<
+      DragItem,
+      DropResult,
+      { isDragging: boolean; isSettling: boolean }
+    >(
       () => ({
         type: dndType,
         item: () => {
@@ -174,10 +202,22 @@ export const wrapSource = (
           }
         },
         end: (_item, monitor) => {
-          getHandlers().endDrag(monitor.getDropResult() as DropResult)
+          // The result is `null` for the whole settling window, which reads
+          // exactly like a cancelled drag — and `endDrag` unwinds the move when
+          // it sees one. `didDrop()` is the discriminator, so it goes along.
+          getHandlers().endDrag(monitor.getDropResult(), {
+            dropped: monitor.didDrop(),
+            settling: monitor.isSettling(),
+          })
         },
         collect: (monitor) => ({
           isDragging: monitor.isDragging(),
+          // Read from the source rather than the target that took the drop. A
+          // row here is its own drop target, and committing the move re-renders
+          // it at the new position — so the target is gone before the settle
+          // finishes, while the source travels with the node. The fork's own
+          // monitor docs say to read it from the source in exactly this case.
+          isSettling: monitor.isSettling(),
         }),
       }),
       [dndType, getHandlers]
@@ -189,11 +229,36 @@ export const wrapSource = (
         connectDragSource={drag}
         connectDragPreview={preview}
         isDragging={isDragging}
+        isSettling={isSettling}
         didDrop={false}
       />
     )
   }
   return DraggableSource
+}
+
+/**
+ * Hands dnd-core the promise that opens a settling phase, without losing the
+ * drop result.
+ *
+ * A synchronous commit returns the result exactly as it always did, so a tree
+ * with no async `onDrop` keeps `getDropResult()` readable inside `end` — which
+ * is what the cross-tree copy-or-remove bookkeeping there reads. Only a tree
+ * that really has something to wait for returns a promise, and it resolves to
+ * the same result so the drop result is readable again once the settle finishes.
+ */
+const settleWith = (
+  pending: Promise<void> | void,
+  result: DropResult
+): DropResult | Promise<DropResult> => {
+  if (!pending) return result
+  // An async IIFE rather than `async` on the function itself: that would return
+  // a promise from the synchronous branch too, which is the branch that has to
+  // keep `getDropResult()` readable inside `end`.
+  return (async () => {
+    await pending
+    return result
+  })()
 }
 
 export const wrapPlaceholder = (
@@ -205,10 +270,14 @@ export const wrapPlaceholder = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppablePlaceholder: React.FC<any> = (props) => {
     'use no memo'
-    const [{ isOver, canDrop }, dropRef] = useDrop(
+    const [{ isOver, canDrop }, dropRef] = useDrop<
+      DragItem,
+      DropResult,
+      { isOver: boolean; canDrop: boolean }
+    >(
       () => ({
         accept: dndType,
-        drop: (item: DragItem) => {
+        drop: (item, _monitor, signal) => {
           const { node, path, treeIndex } = item
           const result: DropResult = {
             node,
@@ -218,8 +287,7 @@ export const wrapPlaceholder = (
             minimumTreeIndex: 0,
             depth: 0,
           }
-          getHandlers().drop(result)
-          return result
+          return settleWith(getHandlers().drop(result, signal), result)
         },
         collect: (monitor) => ({
           isOver: monitor.isOver(),
@@ -472,7 +540,7 @@ export const wrapTarget = (
     >(
       () => ({
         accept: dndType,
-        drop: (item, monitor) => {
+        drop: (item, monitor, signal) => {
           const currentProps = propsRef.current
           const { canNodeHaveChildren, maxDepth, keyboard, drop } =
             getHandlers()
@@ -493,8 +561,7 @@ export const wrapTarget = (
               maxDepth
             ),
           }
-          drop(result)
-          return result
+          return settleWith(drop(result, signal), result)
         },
         hover: (item, monitor) => {
           const context: HoverContext = {

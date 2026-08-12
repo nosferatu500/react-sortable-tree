@@ -96,8 +96,9 @@
     "@arethetypeswrong/cli": "^0.18.5",
     "@babel/core": "^7.29.7",
     "@eslint/js": "^10.0.1",
-    "@nosferatu500/react-dnd-test-backend": "^19.0.0",
-    "@nosferatu500/react-dnd-touch-backend": "^19.0.0",
+    "@nosferatu500/dnd-core": "^19.2.0",
+    "@nosferatu500/react-dnd-test-backend": "^19.2.0",
+    "@nosferatu500/react-dnd-touch-backend": "^19.2.0",
     "@storybook/addon-docs": "^10.5.6",
     "@storybook/addon-links": "^10.5.6",
     "@storybook/react-vite": "^10.5.6",
@@ -134,15 +135,15 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
-    "@nosferatu500/react-dnd": "^19.0.0",
-    "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "@nosferatu500/react-dnd": "^19.2.0",
+    "@nosferatu500/react-dnd-html5-backend": "^19.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "dependencies": {
-    "@nosferatu500/react-dnd": "^19.0.0",
-    "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
-    "@nosferatu500/react-dnd-keyboard-backend": "^19.1.0",
-    "virtua": "^0.50.0"
+    "@nosferatu500/react-dnd": "^19.2.0",
+    "@nosferatu500/react-dnd-html5-backend": "^19.2.0",
+    "@nosferatu500/react-dnd-keyboard-backend": "^19.2.0",
+    "virtua": "^0.50.1"
   }
 }

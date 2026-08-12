@@ -30,7 +30,7 @@ has been rebuilt.
 | Runtime dependencies | 7                                                  | 4                                                                                   |
 | Module format        | CJS + ESM                                          | ESM only                                                                            |
 | Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                                        |
-| Tests                | Jest                                               | Vitest, 212 tests                                                                   |
+| Tests                | Jest                                               | Vitest, 220 tests                                                                   |
 
 **Migrating from the original?** You still import a stylesheet, just from the scoped
 name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is
@@ -231,6 +231,20 @@ const backend = withTreeKeyboard(HTML5Backend)
 and losing it is silent, so this matters whenever you supply the provider — including when
 you swap in `TouchBackend`.
 
+You do not have to choose one pointer backend. `composeBackends` runs several at once, so
+mouse and touch both work with no feature detection between them:
+
+```jsx
+import { composeBackends } from '@nosferatu500/dnd-core'
+
+const backend = withTreeKeyboard(composeBackends(HTML5Backend, TouchBackend))
+```
+
+`withTreeKeyboard` flattens a composite rather than nesting one, so this stays a single
+backend as far as the provider is concerned. Only compose backends that answer different
+gestures — `HTML5Backend` listens for `dragstart` and `TouchBackend` for `touchstart`, which
+do not overlap unless you turn on `TouchBackend`'s `enableMouseEvents`.
+
 ## Component props
 
 All props are typed in `ReactSortableTreeProps` (see `src/react-sortable-tree.tsx`).
@@ -275,16 +289,55 @@ A node's `children` can also be a function — see [Lazy children](#lazy-childre
 
 ### Drag & drop
 
-| Prop                      | Type                               | Default      | Description                            |
-| ------------------------- | ---------------------------------- | ------------ | -------------------------------------- |
-| `canDrag`                 | `boolean \| ((params) => boolean)` | `true`       | Whether nodes can be dragged           |
-| `canDrop`                 | `(params) => boolean`              | -            | Validate if a drop is allowed          |
-| `canNodeHaveChildren`     | `(node) => boolean`                | `() => true` | Whether a node can have children       |
-| `maxDepth`                | `number`                           | -            | Maximum nesting depth                  |
-| `shouldCopyOnOutsideDrop` | `boolean \| ((params) => boolean)` | `false`      | Copy node when dropped outside         |
-| `dndType`                 | `string`                           | -            | Custom drag type for multi-tree setups |
-| `onMoveNode`              | `(params) => void`                 | -            | Called after a node is moved           |
-| `onDragStateChanged`      | `(params) => void`                 | -            | Called when drag state changes         |
+| Prop                      | Type                                | Default      | Description                            |
+| ------------------------- | ----------------------------------- | ------------ | -------------------------------------- |
+| `canDrag`                 | `boolean \| ((params) => boolean)`  | `true`       | Whether nodes can be dragged           |
+| `canDrop`                 | `(params) => boolean`               | -            | Validate if a drop is allowed          |
+| `canNodeHaveChildren`     | `(node) => boolean`                 | `() => true` | Whether a node can have children       |
+| `maxDepth`                | `number`                            | -            | Maximum nesting depth                  |
+| `shouldCopyOnOutsideDrop` | `boolean \| ((params) => boolean)`  | `false`      | Copy node when dropped outside         |
+| `dndType`                 | `string`                            | -            | Custom drag type for multi-tree setups |
+| `onMoveNode`              | `(params) => void`                  | -            | Called after a node is moved           |
+| `onDrop`                  | `(params, signal) => Promise\|void` | -            | Persists a move, and is awaited        |
+| `onDragStateChanged`      | `(params) => void`                  | -            | Called when drag state changes         |
+
+#### `onDrop` — saving a move that can fail
+
+`onChange` and `onMoveNode` both fire the moment a move commits and cannot fail: they say
+_this happened_. `onDrop` says _make this stick_, and it is **awaited**, so returning a
+promise gives the tree the three states a save really has instead of one:
+
+```jsx
+<SortableTree
+  treeData={treeData}
+  onChange={setTreeData}
+  onDrop={async ({ treeData }, signal) => {
+    await fetch('/api/tree', {
+      method: 'PUT',
+      body: JSON.stringify(treeData),
+      signal,
+    })
+  }}
+/>
+```
+
+- **While it is pending** the move is already committed, so the tree is not frozen under the
+  cursor. The moved row gets `aria-busy` and the `rst__rowSettling` class, and a custom
+  `nodeContentRenderer` receives `isSettling`.
+- **If it resolves**, the move is announced to screen readers as done — only now, rather than
+  optimistically at drop time.
+- **If it rejects**, the tree reverts to the data from before the drop and emits `onChange`
+  with it. A consumer that only listens to `onChange` still ends up consistent, and a screen
+  reader hears that the move failed instead of silence.
+
+`signal` aborts once the drop can no longer affect anything — today, when a new drag starts.
+Forward it to `fetch`; an `AbortError` after it fires is treated as the tree's own doing and
+neither reverts nor announces. The rejection reason also reaches `monitor.getDropError()` and
+the environment's uncaught-error handling, so a failure is never silent even with nothing
+rendering it.
+
+Omitting `onDrop` keeps drops entirely synchronous, exactly as before. See the
+`Advanced/AsyncDrop` story.
 
 ### Search
 
@@ -401,6 +454,11 @@ styles keep working. A polite live region narrates each step — pick-up, each m
 changes (including a depth the surrounding rows refuse), and where the node finally landed.
 
 Drops go through the same `onChange` and `onMoveNode` callbacks as a mouse drag.
+
+With an [async `onDrop`](#ondrop--saving-a-move-that-can-fail) the landing message becomes
+three — "moving to…", then either "moved to…" or "could not be moved…". Announcing the move as
+done at drop time and then saying nothing when the save fails is a lie a screen-reader user
+cannot catch: the rows snap back in silence.
 
 The drag handle shares its row's tab stop, so the tree stays a single tab stop however many
 rows are on screen. **Custom `nodeContentRenderer`s should do the same**: put the

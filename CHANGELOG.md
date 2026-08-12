@@ -134,6 +134,16 @@ stop — the backend never overwrites an attribute the element already carries.
 The default renderer's drag handle also gained `role="button"` and an
 `aria-label` — without a name, announcements said "Picked up ." for every row.
 
+### Breaking: the React peer range is now `^19.2.0`
+
+Raised from `^19.0.0`, which understated the real floor rather than describing it.
+This library calls `useEffectEvent` — for `onChange`, `onMoveNode`,
+`onVisibilityToggle`, the search callbacks and the move announcement — and that
+hook first shipped in React **19.2**. On React 19.0 or 19.1 the old range
+installed cleanly and then failed at render.
+
+`npm install react@^19.2 react-dom@^19.2` if you are below it.
+
 ### Changed: `engines.node` is now `>=22.12`
 
 Raised from `>=22`, because `@nosferatu500/react-dnd` 19 requires it. Node 22.12
@@ -161,16 +171,69 @@ cause is each row registering with two composed backends instead of one — the 
 keyboard support — but that attribution is not yet measured. Tracked in
 [MODERNIZATION.md](./MODERNIZATION.md).
 
-### Changed: `@nosferatu500/react-dnd-keyboard-backend` 19.1.0
+### Changed: the drag-and-drop stack is on 19.2.0
 
-Uses the release's new APIs: `isKeyboardDrag()` to tell a keyboard drag from a
-pointer one, and `onNavigate` to take the horizontal arrows for depth. Both
-replaced workarounds — reading a diagnostics counter off the backend, and a
-`Window` capture listener racing the backend's own `Document` one.
+The peer range is `@nosferatu500/react-dnd` and
+`@nosferatu500/react-dnd-html5-backend` at `^19.2.0`. Nothing this library exposes
+changed with it, and neither of 19.2.0's breaking changes reaches a consumer of
+this package — they land on hand-rolled monitor doubles, and on `drop` handlers
+that return a promise.
 
-Two upstream fixes are visible here: picking a row up no longer previews it
-jumping to the top of the tree, and a drag source that wraps controls of its own
-now gets `role="group"` rather than an invalid nested `role="button"`.
+From keyboard-backend 19.1.0, this library uses `isKeyboardDrag()` to tell a
+keyboard drag from a pointer one, and `onNavigate` to take the horizontal arrows
+for depth. Both replaced workarounds — reading a diagnostics counter off the
+backend, and a `Window` capture listener racing the backend's own `Document` one.
+Two upstream fixes from it are visible here: picking a row up no longer previews
+it jumping to the top of the tree, and a drag source that wraps controls of its
+own now gets `role="group"` rather than an invalid nested `role="button"`.
+
+19.2.0 adds one thing worth knowing about if you supply your own `DndProvider`: a
+provider is no longer limited to a single backend. `composeBackends` runs several
+at once, so supporting a mouse and a finger no longer means detecting which to
+install — see `withTreeKeyboard` below. Its asynchronous drop support is what the
+new `onDrop` prop is built on.
+
+### Added: `onDrop`, for a move that has to be saved before it is real
+
+`onChange` and `onMoveNode` both fire the moment a move commits and cannot fail —
+they say *this happened*. `onDrop` says *make this stick*, and it is **awaited**:
+
+```jsx
+<SortableTree
+  treeData={treeData}
+  onChange={setTreeData}
+  onDrop={async ({ treeData }, signal) => {
+    await fetch('/api/tree', { method: 'PUT', body: JSON.stringify(treeData), signal })
+  }}
+/>
+```
+
+Returning a promise gives the tree the three states a save really has:
+
+- **pending** — the move is committed optimistically, so the tree is not frozen
+  under the cursor while a request is in flight. The moved row carries
+  `aria-busy` and the new `rst__rowSettling` class, and a custom
+  `nodeContentRenderer` receives an `isSettling` prop.
+- **resolved** — the move is announced to screen readers as done, only now.
+- **rejected** — the tree reverts to the data from before the drop and emits
+  `onChange` with it, so a consumer that only listens to `onChange` still ends up
+  consistent. Previously there was no rollback, revert or catch anywhere: a
+  failed save left the tree showing a move that never happened.
+
+`signal` aborts when the drop can no longer affect anything, so forward it to
+`fetch`. An `AbortError` after it fires is the tree's own doing and neither
+reverts nor announces. The rejection reason also reaches
+`monitor.getDropError()` and the environment's uncaught-error handling.
+
+**Nothing changes without it.** A tree with no `onDrop` keeps a fully synchronous
+drop, which is deliberate rather than incidental: it is what keeps
+`getDropResult()` readable inside `end`, where the copy-or-remove bookkeeping for
+a drop into another tree happens.
+
+Screen-reader strings for the three states are English, like the rest of them —
+the localisation gap is unchanged, not widened by a different mechanism.
+
+See the `Advanced/AsyncDrop` story.
 
 ## [6.0.0] - 2026-07-31
 

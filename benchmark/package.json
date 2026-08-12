@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@minoru/react-dnd-treeview": "3.5.4",
-    "@nosferatu500/react-dnd": "^19.0.0",
-    "@nosferatu500/react-dnd-html5-backend": "^19.0.0",
+    "@nosferatu500/react-dnd": "^19.2.0",
+    "@nosferatu500/react-dnd-html5-backend": "^19.2.0",
     "@nosferatu500/react-sortable-tree": "file:./vendor/fork.tgz",
     "react": "^19.2.8",
     "react-dnd": "^16.0.1",

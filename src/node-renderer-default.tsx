@@ -38,6 +38,12 @@ export interface NodeRendererProps {
   startDrag: ({ path }: { path: number[] }) => void
   endDrag: (dropResult: unknown) => void
   isDragging: boolean
+  /**
+   * Whether an asynchronous `onDrop` for this node is still in flight. The drag
+   * is over by then — for a pointer backend the browser's drag really has ended
+   * — so this is the only signal that the move is not yet saved.
+   */
+  isSettling?: boolean
   didDrop: boolean
   draggedNode?: TreeItem
   isOver: boolean
@@ -157,6 +163,35 @@ const renderHandle = (
   )
 }
 
+/** The row's state classes, gathered so the component itself stays readable. */
+const rowClassName = ({
+  isLandingPadActive,
+  canDrop,
+  isSettling,
+  isSearchMatch,
+  isSearchFocus,
+  rowDirectionClass,
+  className,
+}: {
+  isLandingPadActive: boolean
+  canDrop: boolean
+  isSettling: boolean
+  isSearchMatch: boolean
+  isSearchFocus: boolean
+  rowDirectionClass: string | undefined
+  className: string
+}): string =>
+  classnames(
+    'rst__row',
+    isLandingPadActive ? 'rst__rowLandingPad' : '',
+    isLandingPadActive && !canDrop ? 'rst__rowCancelPad' : '',
+    isSettling ? 'rst__rowSettling' : '',
+    isSearchMatch ? 'rst__rowSearchMatch' : '',
+    isSearchFocus ? 'rst__rowSearchFocus' : '',
+    rowDirectionClass ?? '',
+    className
+  )
+
 const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   isSearchMatch = false,
   isSearchFocus = false,
@@ -172,6 +207,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   subtitle = undefined,
   rowDirection = 'ltr',
   isActiveRow = false,
+  isSettling = false,
 
   scaffoldBlockPxWidth,
   connectDragPreview,
@@ -217,15 +253,19 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
       <div className={classnames('rst__rowWrapper', rowDirectionClass ?? '')}>
         <div
           ref={connectDragPreview}
-          className={classnames(
-            'rst__row',
-            isLandingPadActive ? 'rst__rowLandingPad' : '',
-            isLandingPadActive && !canDrop ? 'rst__rowCancelPad' : '',
-            isSearchMatch ? 'rst__rowSearchMatch' : '',
-            isSearchFocus ? 'rst__rowSearchFocus' : '',
-            rowDirectionClass ?? '',
-            className ?? ''
-          )}
+          // The move is committed but not yet saved. `aria-busy` is the standard
+          // way to say so, and it is set only while settling so a tree with no
+          // async `onDrop` emits nothing new at all.
+          aria-busy={isSettling || undefined}
+          className={rowClassName({
+            isLandingPadActive,
+            canDrop,
+            isSettling,
+            isSearchMatch,
+            isSearchFocus,
+            rowDirectionClass,
+            className,
+          })}
           style={{
             opacity: isDraggedDescendant ? 0.5 : 1,
             ...style,

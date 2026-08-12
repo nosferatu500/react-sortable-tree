@@ -2,7 +2,7 @@ import { DndProvider, useDragDropManager } from '@nosferatu500/react-dnd'
 import { TestBackend } from '@nosferatu500/react-dnd-test-backend'
 import { act, render } from '@testing-library/react'
 import React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SortableTreeWithoutDndContext } from '../react-sortable-tree'
 import { at, childrenOf } from '../test-helpers'
 import type { TreeItem } from '../types'
@@ -37,6 +37,15 @@ interface TestManager {
 
 const rowTitles = () =>
   [...document.querySelectorAll('.rst__rowTitle')].map((el) => el.textContent)
+
+/** Rows whose move is committed but whose `onDrop` has not settled yet. */
+const settlingRows = () =>
+  [...document.querySelectorAll('.rst__rowSettling .rst__rowTitle')].map(
+    (el) => el.textContent
+  )
+
+/** A promise whose settling this test controls. */
+const deferred = () => Promise.withResolvers<void>()
 
 const flatTree = (): TreeItem[] => [
   { title: 'a' },
@@ -274,6 +283,130 @@ describe('drop', () => {
     expect(
       (onChange.mock.lastCall![0] as TreeItem[]).map((n) => n.title)
     ).toEqual(rowTitles())
+  })
+})
+
+describe('async drop', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('commits the move immediately and marks the row as settling', async () => {
+    const save = deferred()
+    const { beginDrag, hover, drop } = renderTree(flatTree(), {
+      onDrop: () => save.promise,
+    })
+
+    beginDrag(0) // pick up 'a'
+    hover(1)
+    drop()
+
+    // Optimistic: the tree does not sit frozen under the cursor while a request
+    // is in flight. The row that moved is the one reporting itself unsaved.
+    expect(rowTitles()).toEqual(['b', 'a', 'c'])
+    expect(settlingRows()).toEqual(['a'])
+
+    await act(async () => {
+      save.resolve()
+    })
+
+    expect(rowTitles()).toEqual(['b', 'a', 'c'])
+    expect(settlingRows()).toEqual([])
+  })
+
+  it('does not mistake the settling window for a cancelled drag', async () => {
+    // The regression this whole phase turns on. `end` fires when the *drag*
+    // ends, which is before an async drop settles, and `getDropResult()` reads
+    // null for that entire window — exactly what a cancelled drag looks like.
+    // Keying the unwind on the result alone sent the node back to its origin on
+    // every async drop, after the user had already been shown it land.
+    const save = deferred()
+    const { beginDrag, hover, drop, endDrag } = renderTree(flatTree(), {
+      onDrop: () => save.promise,
+    })
+
+    beginDrag(0)
+    hover(1)
+    drop()
+    endDrag()
+
+    expect(rowTitles()).toEqual(['b', 'a', 'c'])
+    expect(settlingRows()).toEqual(['a'])
+
+    await act(async () => {
+      save.resolve()
+    })
+
+    expect(rowTitles()).toEqual(['b', 'a', 'c'])
+  })
+
+  it('reverts to the pre-drop tree when onDrop rejects', async () => {
+    // dnd-core hands a rejection to `reportError` so a failure is never silent.
+    // Stubbed here because an uncaught error fails the whole vitest run without
+    // failing any single test.
+    const reported = vi.fn()
+    vi.stubGlobal('reportError', reported)
+
+    const save = deferred()
+    const onChange = vi.fn()
+    const { beginDrag, hover, drop, endDrag } = renderTree(flatTree(), {
+      onDrop: () => save.promise,
+      onChange,
+    })
+
+    beginDrag(0)
+    hover(1)
+    drop()
+    endDrag()
+    expect(rowTitles()).toEqual(['b', 'a', 'c'])
+
+    await act(async () => {
+      save.reject(new Error('save failed'))
+    })
+
+    // Back where it started, and the consumer is handed that tree rather than
+    // being left holding a move that was never persisted.
+    expect(rowTitles()).toEqual(['a', 'b', 'c'])
+    expect(
+      (onChange.mock.lastCall![0] as TreeItem[]).map((n) => n.title)
+    ).toEqual(['a', 'b', 'c'])
+    expect(settlingRows()).toEqual([])
+    expect(reported).toHaveBeenCalledTimes(1)
+  })
+
+  it('hands onDrop the move params and an abort signal', async () => {
+    const onDrop = vi.fn(() => Promise.resolve())
+    const { beginDrag, hover, drop } = renderTree(flatTree(), { onDrop })
+
+    beginDrag(0)
+    hover(1)
+    await act(async () => {
+      drop()
+    })
+
+    expect(onDrop).toHaveBeenCalledTimes(1)
+    const [params, signal] = at(onDrop.mock.calls, 0) as unknown as [
+      { node: TreeItem; treeData: TreeItem[] },
+      AbortSignal,
+    ]
+    expect(params.node.title).toBe('a')
+    expect(params.treeData.map((n) => n.title)).toEqual(['b', 'a', 'c'])
+    expect(signal).toBeInstanceOf(AbortSignal)
+    expect(signal.aborted).toBe(false)
+  })
+
+  it('leaves a tree with no onDrop entirely synchronous', () => {
+    // The default path has to stay exactly as it was: no settling phase means
+    // `getDropResult()` is still readable in `end`, which is what the cross-tree
+    // copy-or-remove bookkeeping there reads.
+    const { beginDrag, hover, drop } = renderTree(flatTree())
+
+    beginDrag(0)
+    hover(1)
+    drop()
+
+    expect(rowTitles()).toEqual(['b', 'a', 'c'])
+    expect(settlingRows()).toEqual([])
   })
 })
 

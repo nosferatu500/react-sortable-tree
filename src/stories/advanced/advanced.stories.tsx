@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import AsyncDropExample from './async-drop'
 import BarebonesExampleNoContext from './barebones-no-context'
 import ChildlessNodes from './childless-nodes'
 import DragOutToRemoveExample from './drag-out-to-remove'
@@ -36,6 +37,10 @@ export const PlayingWithGenerateNodeProps: Story = {
 
 export const DragOutToRemove: Story = {
   render: () => <DragOutToRemoveExample />,
+}
+
+export const AsyncDrop: Story = {
+  render: () => <AsyncDropExample />,
 }
 
 export const OnlyExpandSearchedNodes: Story = {

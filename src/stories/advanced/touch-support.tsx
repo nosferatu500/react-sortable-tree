@@ -1,3 +1,4 @@
+import { composeBackends } from '@nosferatu500/dnd-core'
 import { DndProvider } from '@nosferatu500/react-dnd'
 import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import { TouchBackend } from '@nosferatu500/react-dnd-touch-backend'
@@ -12,10 +13,19 @@ import {
 const isTouchDevice = !!(
   'ontouchstart' in globalThis || navigator.maxTouchPoints
 )
+// All three gestures at once, which needs no feature detection at all.
+//
+// A provider takes one backend, so supporting a mouse and a finger used to mean
+// picking between them up front — and picking wrong on a hybrid laptop, which
+// reports touch support and is usually driven by a trackpad. `composeBackends`
+// runs both: HTML5 answers `dragstart` and Touch answers `touchstart`, so the
+// two never contend for the same gesture (they would only overlap under
+// TouchBackend's `enableMouseEvents`, which is left off).
+//
 // `SortableTree` composes the keyboard backend itself, but this story brings its
-// own provider — so it composes it too. Swapping in TouchBackend without this
-// would silently leave the tree undraggable by keyboard.
-const dndBackend = withTreeKeyboard(isTouchDevice ? TouchBackend : HTML5Backend)
+// own provider — so it composes it too, or the tree is silently undraggable by
+// keyboard. Nesting is fine: `withKeyboard` flattens a composite it is handed.
+const dndBackend = withTreeKeyboard(composeBackends(HTML5Backend, TouchBackend))
 
 const TouchSupport: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeItem[]>([

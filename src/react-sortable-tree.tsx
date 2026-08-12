@@ -39,6 +39,7 @@ import {
   defaultSearchMethod,
 } from './utils/default-handlers'
 import {
+  type EndDragPhase,
   type TreeDndHandlers,
   wrapPlaceholder,
   wrapSource,
@@ -169,6 +170,33 @@ export type ReactSortableTreeProps = {
   getNodeKey?: GetNodeKeyFunction
   onChange: (treeData: TreeItem[]) => void
   onMoveNode?: (params: OnMoveNodeParams) => void
+  /**
+   * Persists a completed move, and is *awaited*.
+   *
+   * `onChange` and `onMoveNode` both fire as soon as the move commits and cannot
+   * fail — they say "this happened". `onDrop` says "make this stick", so
+   * returning a promise from it gives the tree the three states a save really
+   * has instead of one:
+   *
+   * - while it is pending, the moved row's renderer receives `isSettling`, and
+   *   the drag is over as far as the pointer is concerned;
+   * - if it resolves, the move is announced to screen readers as done;
+   * - if it **rejects**, the tree reverts to the data from before the drop,
+   *   emits `onChange` with it, and announces the failure. Without this the tree
+   *   would keep showing a move the consumer never persisted.
+   *
+   * `signal` aborts when the drop can no longer affect anything — today, when a
+   * new drag starts. Forward it to `fetch`; an `AbortError` after it fires is
+   * treated as the tree's own doing and neither reverts nor announces.
+   *
+   * The rejection reason also reaches `monitor.getDropError()` and the
+   * environment's uncaught-error handling, so a failure is never silent even
+   * with nothing rendering it.
+   */
+  onDrop?: (
+    params: OnMoveNodeParams,
+    signal: AbortSignal
+  ) => Promise<void> | void
   canDrag?: boolean | ((params: GenerateNodePropsParams) => boolean)
   canDrop?: (params: CanDropParams) => boolean
   canNodeHaveChildren?: (node: TreeItem) => boolean
@@ -240,6 +268,17 @@ const isFromTextEntry = (target: EventTarget | null): boolean => {
     target.isContentEditable ||
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
   )
+}
+
+/**
+ * The promise dnd-core is holding a settling phase open on, split so the effect
+ * that has the move params can finish what the drop handler started.
+ */
+interface PendingSettle {
+  resolve: () => void
+  reject: (reason: unknown) => void
+  /** Aborted once the drop can no longer affect anything. */
+  signal: AbortSignal
 }
 
 interface ReactSortableTreeState {
@@ -415,11 +454,31 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
   })
 }
 
+/**
+ * The part every move announcement shares, so the three of them cannot drift
+ * apart. Undefined for a move with no landing path — a node that left the tree.
+ */
+const describeMove = (
+  params: OnMoveNodeParams
+): { label: string; position: string } | undefined => {
+  const { node, nextPath, nextParentNode } = params
+  if (!nextPath) return undefined
+  const parent =
+    nextParentNode && typeof nextParentNode.title === 'string'
+      ? ` under ${nextParentNode.title}`
+      : ''
+  return {
+    label: typeof node.title === 'string' ? node.title : 'Item',
+    position: `depth ${nextPath.length}${parent}`,
+  }
+}
+
 const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   const {
     treeData: treeDataProp,
     onChange,
     onMoveNode,
+    onDrop,
     onVisibilityToggle,
     onDragStateChanged,
     searchFinishCallback,
@@ -511,6 +570,24 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   )
   /** Where a just-moved node landed, so the roving tabindex can follow it. */
   const pendingMoveFocusRef = useRef<number | undefined>(undefined)
+  /**
+   * The tree as it stood before an optimistically committed move, kept only
+   * while an `onDrop` is in flight so a rejection has something to revert to.
+   *
+   * `draggingTreeData` cannot serve: it is the *preview*, with the node already
+   * lifted out. This is the last committed tree, which is what the consumer
+   * would have to be handed back.
+   */
+  const preDropTreeDataRef = useRef<TreeItem[] | null>(null)
+  /**
+   * The promise handed to dnd-core to hold the settling phase open, resolved
+   * from the effect below once `onDrop` has finished.
+   *
+   * It cannot be resolved where it is created: the move commits through
+   * `setState`, so the params `onDrop` needs only exist after React has run the
+   * updater. The effect that already emits `onMoveNode` is where both meet.
+   */
+  const pendingSettleRef = useRef<PendingSettle | null>(null)
 
   // State
   const [state, setState] = useState<ReactSortableTreeState>(() => ({
@@ -537,9 +614,15 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     getNodeKey,
     shouldCopyOnOutsideDrop,
     rowDirection,
+    onDrop,
   })
   useIsomorphicLayoutEffect(() => {
-    latestRef.current = { getNodeKey, shouldCopyOnOutsideDrop, rowDirection }
+    latestRef.current = {
+      getNodeKey,
+      shouldCopyOnOutsideDrop,
+      rowDirection,
+      onDrop,
+    }
   })
 
   /**
@@ -652,6 +735,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           getNodeKey: latestRef.current.getNodeKey,
         })
 
+        // What a rejected `onDrop` reverts to. `prevState.treeData` rather than
+        // `draggingTreeData`, which is the preview with the node already lifted
+        // out. Written here because this updater is the only place the last
+        // committed tree is in hand; re-running it produces the same value, so
+        // a double invocation under StrictMode is harmless.
+        preDropTreeDataRef.current = prevState.treeData
+
         // Deferred to an effect so the callbacks never fire mid-update
         pendingOnChangeRef.current = treeData
         pendingOnMoveNodeRef.current = {
@@ -678,19 +768,56 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     []
   )
 
+  /**
+   * Reverts an optimistically committed move after `onDrop` rejected.
+   *
+   * Mirrors `moveNode`: the internal tree is set directly *and* `onChange` is
+   * queued, because the tree is controlled and the consumer holds the copy that
+   * actually renders. Handing back the pre-drop data is the whole point — a
+   * consumer that only listens to `onChange` still ends up consistent.
+   */
+  const revertMove = useCallback((snapshot: TreeItem[]) => {
+    setState((prevState) => {
+      pendingOnChangeRef.current = snapshot
+      return { ...prevState, treeData: snapshot }
+    })
+  }, [])
+
   const drop = useCallback(
-    (dropResult: DropResult) => {
+    (dropResult: DropResult, signal: AbortSignal): Promise<void> | void => {
       moveNode(dropResult)
+
+      // No `onDrop` means nothing to wait for, and returning synchronously is
+      // what keeps this tree's drop result readable in `end` — see `settleWith`
+      // in dnd-manager. Only opt into a settling phase when one is real.
+      if (!latestRef.current.onDrop) return
+
+      // Resolved from the effect that emits `onMoveNode`: `moveNode` commits
+      // through `setState`, so the params `onDrop` is called with do not exist
+      // yet at this point.
+      return new Promise<void>((resolve, reject) => {
+        pendingSettleRef.current = { resolve, reject, signal }
+      })
     },
     [moveNode]
   )
 
   const endDrag = useCallback(
-    (dropResult: DropResult | null) => {
+    (dropResult: DropResult | null, phase: EndDragPhase) => {
       // The hovered row's replay closure would otherwise outlive the drag.
       keyboardDrag.setReplayHover(undefined)
-      // Drop was cancelled
-      if (!dropResult) {
+
+      // An async drop is still in flight, so there is no result to read yet and
+      // nothing to unwind: `drop` has already committed the move optimistically
+      // and the settling phase owns what happens next. Falling through here
+      // would clear the very state that a rejection needs to revert.
+      if (phase.dropped && !dropResult && phase.settling) {
+        return
+      }
+
+      // Drop was cancelled. Keyed on `didDrop()` rather than on the result being
+      // absent, which is also true for the settling window above.
+      if (!phase.dropped) {
         setState((prevState) => ({
           ...prevState,
           draggingTreeData: undefined,
@@ -699,8 +826,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           draggedDepth: undefined,
           dragging: false,
         }))
-      } else if (dropResult.treeId !== treeId) {
-        // The node was dropped in an external drop target or tree
+      } else if (dropResult && dropResult.treeId !== treeId) {
+        // The node was dropped in an external drop target or tree.
+        //
+        // The `dropResult &&` guard is for the type, not for a reachable state: a
+        // synchronous target that returns nothing still yields `{}` here, whose
+        // `treeId` is `undefined` and so takes this branch as it always did. A
+        // genuinely absent result means the settling case handled above.
         setState((prevState) => {
           const { node, path, treeIndex } = dropResult
           const {
@@ -965,18 +1097,76 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * through the backend's own live region keeps app and backend messages in one
    * queue instead of two that talk over each other, and it is a no-op when the
    * provider has no keyboard backend.
+   *
+   * With an async `onDrop` there are three of these rather than one. Announcing
+   * "moved" at commit time and saying nothing when the save fails is a lie a
+   * screen-reader user has no way to catch: the rows snap back in silence.
    */
   const announceMove = useEffectEvent((params: OnMoveNodeParams) => {
-    const { node, nextPath, nextParentNode } = params
-    if (!nextPath) return
-    const label = typeof node.title === 'string' ? node.title : 'Item'
-    const depth = nextPath.length
-    const parent =
-      nextParentNode && typeof nextParentNode.title === 'string'
-        ? ` under ${nextParentNode.title}`
-        : ''
-    announce(`${label} moved to depth ${depth}${parent}.`)
+    const described = describeMove(params)
+    if (described) {
+      announce(`${described.label} moved to ${described.position}.`)
+    }
   })
+
+  /** Said at commit time when a save is still in flight. */
+  const announceMovePending = useEffectEvent((params: OnMoveNodeParams) => {
+    const described = describeMove(params)
+    if (described) {
+      announce(`${described.label} moving to ${described.position}.`)
+    }
+  })
+
+  /**
+   * Waits on the consumer's `onDrop` and turns the outcome into the settling
+   * phase dnd-core is holding open.
+   *
+   * The move is already committed when this runs — optimistically, so the tree
+   * does not sit frozen under the cursor while a request is in flight. A
+   * rejection is what puts it back.
+   */
+  const runSettle = useEffectEvent(
+    (params: OnMoveNodeParams, settle: PendingSettle) => {
+      const snapshot = preDropTreeDataRef.current
+      preDropTreeDataRef.current = null
+
+      const persist = onDrop
+      if (!persist) {
+        settle.resolve()
+        return
+      }
+
+      // Everything below runs in a later microtask, where an effect event is no
+      // longer the right tool — so the message parts and `announce` itself are
+      // captured here instead of being routed back through one.
+      const described = describeMove(params)
+      void (async () => {
+        try {
+          await persist(params, settle.signal)
+          if (described) {
+            announce(`${described.label} moved to ${described.position}.`)
+          }
+          settle.resolve()
+        } catch (error) {
+          // An abort is the tree's own doing — a new drag took the drop-result
+          // slot — so it is not a failed save, and reverting would fight the
+          // drag already in progress.
+          if (!settle.signal.aborted) {
+            if (snapshot) revertMove(snapshot)
+            if (described) {
+              announce(
+                `${described.label} could not be moved to ${described.position}. Returned to its previous position.`
+              )
+            }
+          }
+          // Rejecting records the reason on `monitor.getDropError()` and hands
+          // it to the environment's uncaught-error handling; dnd-core discards
+          // an `AbortError` that followed its own abort.
+          settle.reject(error)
+        }
+      })()
+    }
+  )
 
   const runLoadLazyChildren = useEffectEvent((lazyTreeData: TreeItem[]) =>
     loadLazyChildren(
@@ -998,10 +1188,30 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       const params = pendingOnMoveNodeRef.current
       pendingOnMoveNodeRef.current = null
       emitMoveNode(params)
-      announceMove(params)
+
+      const settle = pendingSettleRef.current
+      if (settle === null) {
+        announceMove(params)
+      } else {
+        pendingSettleRef.current = null
+        announceMovePending(params)
+        runSettle(params, settle)
+      }
+
       // Where the node landed, for the roving-tabindex sync below. Recorded
       // rather than applied here: the focus state is declared further down.
       pendingMoveFocusRef.current = params.nextTreeIndex
+    }
+
+    // A settle with nothing queued behind it means the commit never happened, so
+    // there is nothing to persist. Resolving it matters more than it looks: a
+    // promise dnd-core never sees settle leaves the manager in a settling phase
+    // for good, and `isSettling()` stays true on every subsequent drag.
+    if (pendingSettleRef.current !== null) {
+      const orphaned = pendingSettleRef.current
+      pendingSettleRef.current = null
+      preDropTreeDataRef.current = null
+      orphaned.resolve()
     }
 
     if (pendingOnVisibilityToggleRef.current !== null) {
@@ -1240,7 +1450,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   // Runs after every render, like the focus effect below, because a move lands a
   // render after the drop. It cannot loop: the ref is cleared before the state
   // is set, so the next render returns at the first line.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- honoured by oxlint too; the `oxlint-` prefix silenced only one of the two linters
   useEffect(() => {
     const moved = pendingMoveFocusRef.current
     if (moved === undefined) return
@@ -1603,6 +1813,13 @@ export const SortableTreeWithoutDndContext = (
  *   <SortableTreeWithoutDndContext … />
  * </DndProvider>
  * ```
+ *
+ * A pointer backend no longer has to be *one* backend: `composeBackends` from
+ * `@nosferatu500/dnd-core` runs several at once, so mouse and touch need no
+ * feature detection between them. Hand the composite in like any other base —
+ * `withTreeKeyboard(composeBackends(HTML5Backend, TouchBackend))` — since
+ * `withKeyboard` flattens a composite rather than nesting one. The
+ * `Advanced/TouchSupport` story does exactly this.
  *
  * Two options make it tree-shaped:
  *

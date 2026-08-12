@@ -45,6 +45,18 @@
   }
 
   /**
+ * A move that is committed but whose `onDrop` has not resolved yet.
+ *
+ * Deliberately static rather than a pulse or a spinner: the row has just landed
+ * where the user asked, and animating it again would suggest it is still moving.
+ * `progress` is the cursor for exactly this — the result is on its way.
+ */
+  .rst__rowSettling {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  /**
  * Nodes matching the search conditions are highlighted
  */
   .rst__rowSearchMatch {
