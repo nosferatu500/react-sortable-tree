@@ -17,4 +17,14 @@ export type {
   GenerateNodePropsParams,
   ReactSortableTreeProps,
   ThemeProps,
+  TreeKeyboardOptions,
 } from './react-sortable-tree'
+
+// Screen-reader strings the tree itself speaks. The defaults are exported so a
+// translation can wrap one rather than rewrite it.
+export {
+  type DepthAnnouncement,
+  defaultTreeAnnouncements,
+  type MoveAnnouncement,
+  type TreeAnnouncements,
+} from './utils/announcements'

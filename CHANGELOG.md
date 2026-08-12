@@ -171,6 +171,50 @@ cause is each row registering with two composed backends instead of one — the 
 keyboard support — but that attribution is not yet measured. Tracked in
 [MODERNIZATION.md](./MODERNIZATION.md).
 
+### Added: the screen-reader announcements can be localised
+
+Keyboard drag and drop narrates itself through a live region, and **every string
+used to be hard-coded English** with no way to replace them: non-English apps got
+English announcements. Both sources now have a route out.
+
+The backend's own strings — the static instructions, pick-up, movement, drop and
+cancellation — go through `withTreeKeyboard`, which forwards the keyboard
+backend's `announcements` and `describeNode`:
+
+```jsx
+const backend = withTreeKeyboard(HTML5Backend, {
+  announcements: {
+    instructions: 'Appuyez sur Espace pour saisir cet élément.',
+    pickUp: ({ source }) => `${source} saisi.`,
+  },
+})
+```
+
+The tree's own — where a node landed, and what depth an arrow key produced — are
+per-tree rather than per-backend, so they arrive as a prop:
+
+```jsx
+<SortableTree
+  announcements={{
+    moved: ({ node, depth }) => `${node.title} : profondeur ${depth}.`,
+    depth: ({ depth, changed }) =>
+      `Profondeur ${depth}${changed ? '' : ', inchangée'}.`,
+  }}
+/>
+```
+
+Each key falls back on its own, so overriding one message leaves the rest in
+English rather than silencing them. `defaultTreeAnnouncements` is exported for
+wrapping a default instead of replacing it, along with the
+`TreeAnnouncements`, `MoveAnnouncement` and `DepthAnnouncement` types.
+
+Only `announcements` and `describeNode` are forwarded, and the
+`TreeKeyboardOptions` type says so: `getNextTarget` and `onNavigate` are what make
+the backend tree-shaped, and a consumer who replaced either would silently lose
+depth control or the vertical arrows. Call `withKeyboard` directly for that.
+
+Additive — the defaults are the previous strings verbatim.
+
 ### Changed: the drag-and-drop stack is on 19.2.0
 
 The peer range is `@nosferatu500/react-dnd` and

@@ -1,4 +1,5 @@
 import type { OnNavigate } from '@nosferatu500/react-dnd-keyboard-backend'
+import type { DepthAnnouncement } from './announcements'
 
 /**
  * Depth control for keyboard drags.
@@ -36,6 +37,15 @@ export interface KeyboardDragOptions {
    * from a key that did nothing.
    */
   announce: (message: string) => void
+  /**
+   * Builds the depth message.
+   *
+   * A function rather than a string table because the controller is created once
+   * per tree and lives for its whole lifetime, while the `announcements` prop it
+   * comes from can change on any render. Resolving it per keystroke is what lets
+   * a consumer swap language without remounting the tree.
+   */
+  describeDepth: (params: DepthAnnouncement) => string
 }
 
 export interface KeyboardDragController {
@@ -123,9 +133,10 @@ export const createKeyboardDragController = (
       // around the insertion point would not allow another level.
       if (lastDepth === undefined) return true
       options.announce(
-        lastDepth === before
-          ? `Depth ${lastDepth + 1}, unchanged.`
-          : `Depth ${lastDepth + 1}.`
+        options.describeDepth({
+          depth: lastDepth + 1,
+          changed: lastDepth !== before,
+        })
       )
       return true
     },

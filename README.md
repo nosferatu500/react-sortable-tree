@@ -30,7 +30,7 @@ has been rebuilt.
 | Runtime dependencies | 7                                                  | 4                                                                                   |
 | Module format        | CJS + ESM                                          | ESM only                                                                            |
 | Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                                        |
-| Tests                | Jest                                               | Vitest, 220 tests                                                                   |
+| Tests                | Jest                                               | Vitest, 226 tests                                                                   |
 
 **Migrating from the original?** You still import a stylesheet, just from the scoped
 name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is
@@ -389,6 +389,7 @@ every change, supply `getNodeKey` so rows can still be matched across the replac
 | `aria-label`         | `string`  | -       | Accessible name for the tree                     |
 | `aria-labelledby`    | `string`  | -       | Id of an element naming the tree                 |
 | `keyboardNavigation` | `boolean` | `true`  | Set to `false` to opt out of built-in arrow keys |
+| `announcements`      | `object`  | -       | Replaces the strings the tree speaks             |
 
 ## Accessibility
 
@@ -468,6 +469,51 @@ its own tab stop.
 ```tsx
 <div ref={connectDragSource} tabIndex={isActiveRow ? 0 : -1} />
 ```
+
+### Localising the announcements
+
+Every string a screen reader hears can be replaced. They come from two places, and both
+halves are needed to hear no English at all — the split is where the knowledge is. The
+**backend** narrates the drag it can see (pick-up, movement, drop, cancellation) and knows
+nothing about what a row means. The **tree** knows the rows are a hierarchy, and says where a
+node landed and what depth a key produced — but not which row the backend is hovering.
+
+The backend's strings go through `withTreeKeyboard`, which forwards the keyboard backend's
+`announcements` and `describeNode`:
+
+```tsx
+// Once, at module scope — a new backend identity rebuilds the whole manager.
+const backend = withTreeKeyboard(HTML5Backend, {
+  announcements: {
+    instructions: 'Appuyez sur Espace pour saisir cet élément.',
+    pickUp: ({ source }) => `${source} saisi.`,
+    move: ({ target, targetIndex, targetCount }) =>
+      `Au-dessus de ${target}, ${targetIndex} sur ${targetCount}.`,
+  },
+})
+```
+
+The tree's own go on the `announcements` prop, since they are per-tree rather than
+per-backend:
+
+```tsx
+<SortableTreeWithoutDndContext
+  announcements={{
+    moved: ({ node, parentNode, depth }) =>
+      `${node.title} déplacé à la profondeur ${depth}${parentNode ? ` sous ${parentNode.title}` : ''}.`,
+    depth: ({ depth, changed }) =>
+      `Profondeur ${depth}${changed ? '' : ', inchangée'}.`,
+    // `moving` and `moveFailed` cover the two extra states an async `onDrop` adds.
+  }}
+/>
+```
+
+Each key falls back on its own, so overriding `moved` alone leaves the others in English
+rather than silencing them. `defaultTreeAnnouncements` is exported if you would rather wrap a
+default than replace it. Only `announcements` and `describeNode` are forwarded through
+`withTreeKeyboard`: `getNextTarget` and `onNavigate` are what make the backend tree-shaped,
+and replacing either would cost you depth control or the vertical arrows — call `withKeyboard`
+directly if that is really what you want.
 
 ## Lazy children
 

@@ -1,10 +1,17 @@
+import { DndProvider } from '@nosferatu500/react-dnd'
+import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React, { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SortableTree } from './react-sortable-tree'
+import {
+  SortableTree,
+  SortableTreeWithoutDndContext,
+  withTreeKeyboard,
+} from './react-sortable-tree'
 import { at } from './test-helpers'
 import type { TreeItem } from './types'
+import type { TreeAnnouncements } from './utils/announcements'
 
 /**
  * Keyboard drag and drop, driven through the real keyboard backend.
@@ -27,6 +34,9 @@ const Controlled = ({
 }: {
   initial?: TreeItem[]
   onChange?: (t: TreeItem[]) => void
+  // Declared rather than left to the index signature below, which would widen
+  // the callbacks to `unknown` and their destructured params to `any`.
+  announcements?: TreeAnnouncements
 } & Record<string, unknown>) => {
   const [treeData, setTreeData] = useState<TreeItem[]>(initial)
   return sized(
@@ -39,6 +49,31 @@ const Controlled = ({
       aria-label="Example tree"
       {...props}
     />
+  )
+}
+
+/*
+ * A second provider with the backend's own strings replaced. At module scope
+ * because a new backend factory identity tears down and rebuilds the whole
+ * drag-and-drop manager.
+ */
+const localisedBackend = withTreeKeyboard(HTML5Backend, {
+  announcements: {
+    instructions: 'Espace pour saisir cet élément.',
+    pickUp: ({ source }) => `${source} saisi.`,
+  },
+})
+
+const LocalisedBackendTree = () => {
+  const [treeData, setTreeData] = useState<TreeItem[]>(flat())
+  return sized(
+    <DndProvider backend={localisedBackend}>
+      <SortableTreeWithoutDndContext
+        treeData={treeData}
+        onChange={setTreeData}
+        aria-label="Arbre"
+      />
+    </DndProvider>
   )
 }
 
@@ -354,5 +389,137 @@ describe('announcing the outcome', () => {
 
     expect(liveRegion()).toMatch(/could not be moved/i)
     expect(itemTitles()).toEqual(['a', 'b', 'c'])
+  })
+})
+
+/*
+ * Every string a screen reader hears has to be replaceable, and they come from
+ * two places: the backend narrates the drag it can see, the tree says what the
+ * rows mean. Both halves are needed to hear no English at all.
+ */
+describe('localising the announcements', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  /** Lands 'a' below 'b' one level deeper, so a depth message is produced too. */
+  const dragAUnderB = async (user: ReturnType<typeof userEvent.setup>) => {
+    handleAt(0).focus()
+    await user.keyboard(' ')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{ArrowRight}')
+  }
+
+  it('replaces the move message from the announcements prop', async () => {
+    const user = userEvent.setup()
+    render(
+      <Controlled
+        announcements={{
+          moved: ({ node, depth }) =>
+            `${String(node.title)} : profondeur ${depth}.`,
+        }}
+      />
+    )
+
+    handleAt(0).focus()
+    await user.keyboard(' ')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard(' ')
+
+    expect(liveRegion()).toMatch(/a : profondeur 1\./)
+    expect(liveRegion()).not.toMatch(/moved to depth/i)
+  })
+
+  it('replaces the depth message, which only the tree can produce', async () => {
+    const user = userEvent.setup()
+    render(
+      <Controlled
+        announcements={{
+          depth: ({ depth, changed }) =>
+            `niveau ${depth}${changed ? '' : ' inchangé'}.`,
+        }}
+      />
+    )
+
+    await dragAUnderB(user)
+
+    expect(liveRegion()).toMatch(/niveau 2\./)
+    expect(liveRegion()).not.toMatch(/depth 2/i)
+  })
+
+  it('falls back per key, so one override does not silence the others', async () => {
+    const user = userEvent.setup()
+    render(<Controlled announcements={{ moved: () => 'DÉPLACÉ' }} />)
+
+    await dragAUnderB(user)
+    // `depth` was not overridden, so it keeps the English default rather than
+    // going quiet — which a single `announcements ?? defaults` would have done.
+    expect(liveRegion()).toMatch(/depth 2/i)
+
+    await user.keyboard(' ') // drop
+    expect(liveRegion()).toMatch(/DÉPLACÉ/)
+  })
+
+  it('replaces the pending and failed messages of an awaited save', async () => {
+    vi.stubGlobal('reportError', vi.fn())
+    const user = userEvent.setup()
+    const save = Promise.withResolvers<void>()
+    render(
+      <Controlled
+        onDrop={() => save.promise}
+        announcements={{
+          moving: () => 'ENREGISTREMENT',
+          moveFailed: () => 'ÉCHEC',
+        }}
+      />
+    )
+
+    handleAt(0).focus()
+    await user.keyboard(' ')
+    await user.keyboard('{ArrowDown}')
+    await user.keyboard(' ')
+
+    expect(liveRegion()).toMatch(/ENREGISTREMENT/)
+
+    await act(async () => {
+      save.reject(new Error('save failed'))
+    })
+
+    expect(liveRegion()).toMatch(/ÉCHEC/)
+    expect(itemTitles()).toEqual(['a', 'b', 'c'])
+  })
+
+  it('forwards backend strings through withTreeKeyboard', async () => {
+    const user = userEvent.setup()
+    render(<LocalisedBackendTree />)
+
+    // `instructions` is the static text every drag source points at with
+    // `aria-describedby`, so it is readable without starting a drag.
+    const describedBy = handleAt(0).getAttribute('aria-describedby')
+    expect(describedBy).toBeTruthy()
+    expect(
+      document.querySelector(`#${CSS.escape(describedBy!)}`)?.textContent
+    ).toBe('Espace pour saisir cet élément.')
+
+    handleAt(0).focus()
+    await user.keyboard(' ')
+
+    expect(liveRegion()).toMatch(/saisi/)
+    expect(liveRegion()).not.toMatch(/picked up/i)
+  })
+
+  it('keeps the tree-shaped navigation options unoverridable', async () => {
+    // `getNextTarget` and `onNavigate` are what make the backend tree-shaped, so
+    // `TreeKeyboardOptions` does not admit them. Left overridable, a consumer
+    // could silently lose depth control or the vertical arrows. The horizontal
+    // key still means depth on the localised backend, which is the observable
+    // half of that.
+    const user = userEvent.setup()
+    render(<LocalisedBackendTree />)
+
+    await dragAUnderB(user)
+
+    expect(liveRegion()).toMatch(/depth 2/i)
   })
 })

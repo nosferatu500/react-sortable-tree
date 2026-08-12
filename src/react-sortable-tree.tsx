@@ -7,6 +7,7 @@ import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
 import {
   gridNavigation,
   isKeyboardDrag,
+  type KeyboardBackendOptions,
   useDragDropAnnounce,
   withKeyboard,
 } from '@nosferatu500/react-dnd-keyboard-backend'
@@ -33,6 +34,12 @@ import type {
   TreeItem,
   TreeKey,
 } from './types'
+import {
+  type DepthAnnouncement,
+  defaultTreeAnnouncements,
+  type MoveAnnouncement,
+  type TreeAnnouncements,
+} from './utils/announcements'
 import { classnames } from './utils/classnames'
 import {
   defaultGetNodeKey,
@@ -220,6 +227,25 @@ export type ReactSortableTreeProps = {
    * tabindex stay in place either way.
    */
   keyboardNavigation?: boolean
+  /**
+   * Replaces the strings the tree speaks to a screen reader — where a node
+   * landed, and what depth an arrow key produced. Override any subset.
+   *
+   * This is half of the localisation story. The other half belongs to the
+   * keyboard backend, which narrates pick-up, movement and cancellation, and is
+   * replaced through `withTreeKeyboard`'s `announcements` option. The split is
+   * where the knowledge is: the backend cannot know that a row is now a child of
+   * "Documents", and the tree cannot know which row the backend is hovering.
+   *
+   * ```tsx
+   * <SortableTree
+   *   announcements={{
+   *     moved: ({ node, depth }) => `${node.title} : profondeur ${depth}.`,
+   *   }}
+   * />
+   * ```
+   */
+  announcements?: TreeAnnouncements
 }
 
 const DEFAULT_SCAFFOLD_BLOCK_PX_WIDTH = 44
@@ -455,23 +481,41 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
 }
 
 /**
- * The part every move announcement shares, so the three of them cannot drift
- * apart. Undefined for a move with no landing path — a node that left the tree.
+ * What every move announcement is built from, so the three of them cannot drift
+ * apart. Undefined for a move with no landing path — a node that left the tree,
+ * which the tree has nothing to say about.
  */
 const describeMove = (
   params: OnMoveNodeParams
-): { label: string; position: string } | undefined => {
+): MoveAnnouncement | undefined => {
   const { node, nextPath, nextParentNode } = params
   if (!nextPath) return undefined
-  const parent =
-    nextParentNode && typeof nextParentNode.title === 'string'
-      ? ` under ${nextParentNode.title}`
-      : ''
+  // `nextParentNode` is `null` at the top level; normalised so the public
+  // announcement type has one absent value rather than two.
   return {
-    label: typeof node.title === 'string' ? node.title : 'Item',
-    position: `depth ${nextPath.length}${parent}`,
+    node,
+    parentNode: nextParentNode ?? undefined,
+    depth: nextPath.length,
   }
 }
+
+/**
+ * Resolves one move message.
+ *
+ * Falling back per key rather than wholesale is the point: overriding `moved`
+ * alone must not silence the other two, which is what a single
+ * `announcements ?? defaults` would do.
+ */
+const moveMessage = (
+  announcements: TreeAnnouncements | undefined,
+  key: 'moving' | 'moved' | 'moveFailed',
+  params: MoveAnnouncement
+): string => (announcements?.[key] ?? defaultTreeAnnouncements[key])(params)
+
+const depthMessage = (
+  announcements: TreeAnnouncements | undefined,
+  params: DepthAnnouncement
+): string => (announcements?.depth ?? defaultTreeAnnouncements.depth)(params)
 
 const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   const {
@@ -507,6 +551,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     treeNodeRenderer: treeNodeRendererProp,
     dndType: dndTypeProp,
     keyboardNavigation = true,
+    announcements,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
   } = props
@@ -615,6 +660,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     shouldCopyOnOutsideDrop,
     rowDirection,
     onDrop,
+    announcements,
   })
   useIsomorphicLayoutEffect(() => {
     latestRef.current = {
@@ -622,6 +668,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       shouldCopyOnOutsideDrop,
       rowDirection,
       onDrop,
+      announcements,
     }
   })
 
@@ -644,6 +691,10 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       isKeyboardDragging: () => isKeyboardDrag(manager),
       isRtl: () => latestRef.current.rowDirection === 'rtl',
       announce,
+      // Through the ref, not captured: the controller is created once and lives
+      // as long as the tree, while the prop it reads can change on any render.
+      describeDepth: (params) =>
+        depthMessage(latestRef.current.announcements, params),
     })
   )
   useEffect(() => keyboardDrag.register(), [keyboardDrag])
@@ -1104,17 +1155,13 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    */
   const announceMove = useEffectEvent((params: OnMoveNodeParams) => {
     const described = describeMove(params)
-    if (described) {
-      announce(`${described.label} moved to ${described.position}.`)
-    }
+    if (described) announce(moveMessage(announcements, 'moved', described))
   })
 
   /** Said at commit time when a save is still in flight. */
   const announceMovePending = useEffectEvent((params: OnMoveNodeParams) => {
     const described = describeMove(params)
-    if (described) {
-      announce(`${described.label} moving to ${described.position}.`)
-    }
+    if (described) announce(moveMessage(announcements, 'moving', described))
   })
 
   /**
@@ -1137,14 +1184,15 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       }
 
       // Everything below runs in a later microtask, where an effect event is no
-      // longer the right tool — so the message parts and `announce` itself are
-      // captured here instead of being routed back through one.
+      // longer the right tool — so the message parts, the overrides and
+      // `announce` itself are captured here instead of routed back through one.
       const described = describeMove(params)
+      const strings = announcements
       void (async () => {
         try {
           await persist(params, settle.signal)
           if (described) {
-            announce(`${described.label} moved to ${described.position}.`)
+            announce(moveMessage(strings, 'moved', described))
           }
           settle.resolve()
         } catch (error) {
@@ -1154,9 +1202,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           if (!settle.signal.aborted) {
             if (snapshot) revertMove(snapshot)
             if (described) {
-              announce(
-                `${described.label} could not be moved to ${described.position}. Returned to its previous position.`
-              )
+              announce(moveMessage(strings, 'moveFailed', described))
             }
           }
           // Rejecting records the reason on `monitor.getDropError()` and hands
@@ -1801,6 +1847,19 @@ export const SortableTreeWithoutDndContext = (
 }
 
 /**
+ * The parts of `KeyboardBackendOptions` a tree can safely hand on.
+ *
+ * Both are about *words*, which is exactly the part a consumer needs and the part
+ * this library has no business fixing. Everything else in
+ * `KeyboardBackendOptions` is about behaviour, and the two behavioural options
+ * `withTreeKeyboard` sets are what make the backend tree-shaped.
+ */
+export type TreeKeyboardOptions = Pick<
+  KeyboardBackendOptions,
+  'announcements' | 'describeNode'
+>
+
+/**
  * Adds tree-shaped keyboard drag-and-drop to a pointer backend.
  *
  * `SortableTree` applies this to `HTML5Backend` already. Reach for it when you
@@ -1838,13 +1897,36 @@ export const SortableTreeWithoutDndContext = (
  * nothing still gets a focusable, described drag source rather than one that
  * cannot be picked up at all.
  *
+ * `announcements` and `describeNode` are forwarded, which is how the backend's
+ * own strings get localised:
+ *
+ * ```tsx
+ * const backend = withTreeKeyboard(HTML5Backend, {
+ *   announcements: {
+ *     instructions: 'Appuyez sur Espace pour saisir cet élément.',
+ *     pickUp: ({ source }) => `${source} saisi.`,
+ *   },
+ * })
+ * ```
+ *
+ * Only those two, on purpose. `getNextTarget` and `onNavigate` are what make the
+ * backend tree-shaped — see above — so they are not overridable: a consumer who
+ * replaced either would silently lose depth control or the vertical arrows.
+ * Anything that specific is better served by calling `withKeyboard` directly.
+ *
+ * The tree's *own* strings — where a node landed, what depth a key produced —
+ * are a separate, per-tree concern and travel on the `announcements` prop
+ * instead. Both halves are needed to see no English at all.
+ *
  * Call it once, at module scope. A new backend factory identity tears down and
  * rebuilds the entire drag-and-drop manager.
  */
 export const withTreeKeyboard = (
-  base: Parameters<typeof withKeyboard>[0]
+  base: Parameters<typeof withKeyboard>[0],
+  options?: TreeKeyboardOptions
 ): ReturnType<typeof withKeyboard> =>
   withKeyboard(base, {
+    ...options,
     getNextTarget: gridNavigation({ columns: 1 }),
     onNavigate: treeOnNavigate,
   })
