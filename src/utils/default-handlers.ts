@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { SearchData, TreeIndex, TreeItem } from '../types'
+import type { SearchData, TreeIndex, TreeItem, UnknownNodeData } from '../types'
 
 export const defaultGetNodeKey = ({ treeIndex }: TreeIndex): number => treeIndex
 
@@ -36,33 +36,42 @@ const getReactElementText = (parent: ReactNode): string => {
   return getReactElementText(parentEle.props.children)
 }
 
-// Search for a query string inside a node property
-const stringSearch = (
-  key: string,
+/**
+ * Search for a query string inside one of a node's two text fields.
+ *
+ * `key` is the union rather than `string`: those are the only two fields this is
+ * ever called with, and a described `TData` has no index signature to reach an
+ * arbitrary one through.
+ */
+const stringSearch = <TData>(
+  key: 'title' | 'subtitle',
   searchQuery: string,
-  node: TreeItem,
+  node: TreeItem<TData>,
   path: number[],
   treeIndex: number
 ) => {
-  if (typeof node[key] === 'function') {
+  const value = node[key]
+  if (typeof value === 'function') {
     // Search within text after calling its function to generate the text
-    return String(node[key]({ node, path, treeIndex })).includes(searchQuery)
+    return String(value({ node, path, treeIndex })).includes(searchQuery)
   }
-  if (typeof node[key] === 'object') {
+  if (typeof value === 'object') {
     // Search within text inside react elements
-    return getReactElementText(node[key] as ReactNode).includes(searchQuery)
+    return getReactElementText(value as ReactNode).includes(searchQuery)
   }
 
-  // Search within string
-  return node[key] && String(node[key]).includes(searchQuery)
+  // Search within string. `Boolean(value)` rather than a null check, to keep the
+  // original truthiness test: a `null`, `''` or `0` title never matched, and
+  // `String(null).includes('ul')` would start it matching.
+  return Boolean(value) && String(value).includes(searchQuery)
 }
 
-export const defaultSearchMethod = ({
+export const defaultSearchMethod = <TData = UnknownNodeData>({
   node,
   path,
   treeIndex,
   searchQuery,
-}: SearchData): boolean => {
+}: SearchData<TData>): boolean => {
   return (
     (stringSearch('title', searchQuery, node, path, treeIndex) ||
       stringSearch('subtitle', searchQuery, node, path, treeIndex)) ??

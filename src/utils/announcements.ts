@@ -1,4 +1,4 @@
-import type { TreeItem } from '../types'
+import type { TreeItem, UnknownNodeData } from '../types'
 
 /**
  * The strings the *tree* speaks, as opposed to the ones its keyboard backend
@@ -13,13 +13,13 @@ import type { TreeItem } from '../types'
  *
  * Override any subset; anything left out keeps the English default.
  */
-export interface TreeAnnouncements {
+export interface TreeAnnouncements<TData = UnknownNodeData> {
   /** A move is committed but its `onDrop` has not resolved yet. */
-  moving?: (params: MoveAnnouncement) => string
+  moving?: (params: MoveAnnouncement<TData>) => string
   /** A move is done — after `onDrop` resolves, when there is one. */
-  moved?: (params: MoveAnnouncement) => string
+  moved?: (params: MoveAnnouncement<TData>) => string
   /** An `onDrop` rejected and the tree reverted the move. */
-  moveFailed?: (params: MoveAnnouncement) => string
+  moveFailed?: (params: MoveAnnouncement<TData>) => string
   /**
    * The depth changed, or was asked to change and could not.
    *
@@ -32,11 +32,11 @@ export interface TreeAnnouncements {
 }
 
 /** What a move message is built from. */
-export interface MoveAnnouncement {
+export interface MoveAnnouncement<TData = UnknownNodeData> {
   /** The node that moved. */
-  node: TreeItem
+  node: TreeItem<TData>
   /** Its new parent, when it has one. */
-  parentNode: TreeItem | undefined
+  parentNode: TreeItem<TData> | undefined
   /** How deep it landed, counting from 1 like the default messages do. */
   depth: number
 }
@@ -57,11 +57,11 @@ export interface DepthAnnouncement {
  * or a render function may be anything at all, and rendering one to text here is
  * neither possible nor cheap.
  */
-const nameOf = (node: TreeItem): string =>
+const nameOf = <TData>(node: TreeItem<TData>): string =>
   typeof node.title === 'string' ? node.title : 'Item'
 
 /** " under Documents", or nothing when the node landed at the top level. */
-const under = (parentNode: TreeItem | undefined): string =>
+const under = <TData>(parentNode: TreeItem<TData> | undefined): string =>
   parentNode && typeof parentNode.title === 'string'
     ? ` under ${parentNode.title}`
     : ''
@@ -70,12 +70,17 @@ const under = (parentNode: TreeItem | undefined): string =>
  * The English defaults, exported so a consumer can wrap one rather than rewrite
  * it — the common case being a translation that still wants the same shape.
  */
-export const defaultTreeAnnouncements: Required<TreeAnnouncements> = {
-  moving: ({ node, parentNode, depth }) =>
+export const defaultTreeAnnouncements: {
+  moving: <TData>(params: MoveAnnouncement<TData>) => string
+  moved: <TData>(params: MoveAnnouncement<TData>) => string
+  moveFailed: <TData>(params: MoveAnnouncement<TData>) => string
+  depth: (params: DepthAnnouncement) => string
+} = {
+  moving: <TData>({ node, parentNode, depth }: MoveAnnouncement<TData>) =>
     `${nameOf(node)} moving to depth ${depth}${under(parentNode)}.`,
-  moved: ({ node, parentNode, depth }) =>
+  moved: <TData>({ node, parentNode, depth }: MoveAnnouncement<TData>) =>
     `${nameOf(node)} moved to depth ${depth}${under(parentNode)}.`,
-  moveFailed: ({ node, parentNode, depth }) =>
+  moveFailed: <TData>({ node, parentNode, depth }: MoveAnnouncement<TData>) =>
     `${nameOf(node)} could not be moved to depth ${depth}${under(parentNode)}. Returned to its previous position.`,
   depth: ({ depth, changed }) =>
     changed ? `Depth ${depth}.` : `Depth ${depth}, unchanged.`,

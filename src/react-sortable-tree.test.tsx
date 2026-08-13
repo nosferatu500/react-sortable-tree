@@ -675,6 +675,73 @@ describe('render stability', () => {
 
     expect(rowTitles()).toEqual(['a', 'b'])
   })
+
+  /*
+   * Rows are memoized, and these are what say so.
+   *
+   * `React.memo` was tried once directly on `TreeNode` and silently did nothing:
+   * a row is `<TreeNodeRenderer><NodeContentRenderer/></TreeNodeRenderer>`, so
+   * its `children` was a fresh element every render and the shallow comparison
+   * could never pass. The boundary is now `TreeRow`, around the whole
+   * composition. Both tests below pass trivially without a memo boundary only if
+   * you count wrongly — they count *renders*, not mounts, which is exactly the
+   * distinction the earlier attempt got away with blurring.
+   *
+   * Counting in the render body is safe here because `npm test` runs against
+   * `src/`, which the React Compiler never sees.
+   */
+  const makeRenderCounter = () => {
+    const renders: string[] = []
+    const Renderer = ({ node }: { node: TreeItem }) => {
+      renders.push(String(node.title))
+      return <div className="rst__rowTitle">{String(node.title)}</div>
+    }
+    return { renders, Renderer }
+  }
+
+  it('does not re-render any row when the parent re-renders with the same data', () => {
+    const { renders, Renderer } = makeRenderCounter()
+    const data = [{ title: 'a' }, { title: 'b' }, { title: 'c' }]
+    const Wrapper = ({ tick }: { tick: number }) =>
+      sized(
+        <SortableTree
+          treeData={data}
+          onChange={() => {}}
+          nodeContentRenderer={Renderer}
+          data-tick={tick}
+        />
+      )
+
+    const { rerender } = render(<Wrapper tick={0} />)
+    renders.length = 0
+
+    act(() => rerender(<Wrapper tick={1} />))
+
+    expect(renders).toEqual([])
+  })
+
+  it('re-renders only the two rows whose active state changed on a focus move', async () => {
+    const user = userEvent.setup()
+    const { renders, Renderer } = makeRenderCounter()
+    render(
+      <Controlled
+        initial={[{ title: 'a' }, { title: 'b' }, { title: 'c' }]}
+        nodeContentRenderer={Renderer}
+      />
+    )
+
+    const rows = document.querySelectorAll<HTMLElement>('[role="treeitem"]')
+    act(() => rows[0]!.focus())
+    renders.length = 0
+
+    await user.keyboard('{ArrowDown}')
+
+    // The roving tabindex moved from 'a' to 'b'. Nothing about 'c' changed, and
+    // it used to re-render anyway — once per keypress, for every visible row.
+    expect(
+      [...new Set(renders)].toSorted((a, b) => a.localeCompare(b))
+    ).toEqual(['a', 'b'])
+  })
 })
 
 describe('row identity', () => {

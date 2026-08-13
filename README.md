@@ -30,7 +30,7 @@ has been rebuilt.
 | Runtime dependencies | 7                                                  | 4                                                                                   |
 | Module format        | CJS + ESM                                          | ESM only                                                                            |
 | Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                                        |
-| Tests                | Jest                                               | Vitest, 226 tests                                                                   |
+| Tests                | Jest                                               | Vitest, 239 tests                                                                   |
 
 **Migrating from the original?** You still import a stylesheet, just from the scoped
 name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is
@@ -267,6 +267,45 @@ const treeData: TreeItem[] = [
 
 A node's `children` can also be a function — see [Lazy children](#lazy-children).
 
+#### Typing your own node fields
+
+`TreeItem` carries whatever custom fields you put on a node. By default those are
+unchecked — `TreeItem` is as loose as it has always been — but you can describe them and have
+them checked instead:
+
+```tsx
+interface Doc {
+  id: number
+  owner: string
+}
+
+const treeData: TreeItem<Doc>[] = [
+  { id: 1, owner: 'ada', title: 'Roadmap', expanded: true, children: [...] },
+  { id: 2, owner: 'grace', title: 'Budget', ownr: 'typo' },
+  //                                        ^ error: not a field of Doc
+]
+```
+
+`TData` then flows everywhere, inferred from `treeData` — no type argument to write:
+
+```tsx
+<SortableTree
+  treeData={treeData}
+  onChange={(next) => save(next)} // next: TreeItem<Doc>[]
+  onMoveNode={({ node }) => log(node.owner)} // node.owner: string
+  canDrop={({ node, nextParent }) => nextParent?.owner === node.owner}
+/>
+```
+
+…and through every [data helper](#data-helper-functions), so a `changeNodeAtPath` on a
+`TreeItem<Doc>[]` hands back a `TreeItem<Doc>[]` rather than losing the type. Custom renderers
+take the same parameter: `NodeRendererProps<Doc>`, `TreeRendererProps<Doc>`.
+
+Pass it explicitly — `<SortableTree<Doc> …>` — when you want a mismatch reported on the
+callback that is wrong rather than on `treeData`.
+
+This is additive: leave `TreeItem` bare and nothing changes.
+
 ### Appearance & layout
 
 | Prop                   | Type                                            | Default | Description                        |
@@ -286,6 +325,11 @@ A node's `children` can also be a function — see [Lazy children](#lazy-childre
 | `nodeContentRenderer` | `ComponentType` | Custom component for node content              |
 | `treeNodeRenderer`    | `ComponentType` | Custom component for the entire tree row       |
 | `placeholderRenderer` | `ComponentType` | Custom component for empty tree state          |
+
+A custom `treeNodeRenderer` only has to render `{children}`. It does **not** need to inject
+`isOver` / `canDrop` / `draggedNode` into them — those reach the content renderer on their own,
+from outside anything you can replace. (Cloning children to inject them still works, so an
+existing renderer needs no change; it is simply unnecessary now.)
 
 ### Drag & drop
 
@@ -359,6 +403,12 @@ Omitting `onDrop` keeps drops entirely synchronous, exactly as before. See the
 | `loadCollapsedLazyChildren` | `boolean`                    | Load lazy children before expanding |
 | `virtuaRef`                 | `RefObject<VListHandle>`     | Direct access to the virtual list   |
 | `dragDropManager`           | `object`                     | External drag-and-drop manager      |
+
+Rows are memoized, so a re-render that changes nothing about a row skips it. Two props opt a
+row out of that when they are fresh references: `generateNodeProps` and a function-form
+`rowHeight`, both of which the tree has to call to find out what they return. Nothing breaks if
+they are inline arrows — only the rows that use them re-render — but on a large tree, wrapping
+them in `useCallback` is worth it.
 
 #### `getNodeKey`
 

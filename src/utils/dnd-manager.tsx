@@ -3,15 +3,16 @@ import {
   useDrag,
   useDrop,
 } from '@nosferatu500/react-dnd'
-import React, { type Ref, useCallback, useRef } from 'react'
+import React, { type Ref, useCallback, useMemo, useRef } from 'react'
 import type { TreeRendererProps } from '../tree-node'
-import type { TreeItem } from '../types'
+import type { TreeItem, UnknownNodeData } from '../types'
 import type { KeyboardDragController } from './keyboard-drag'
+import { RowDropContext, useRowDropState } from './row-drop-state'
 import { getDepth } from './tree-data-utils'
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect'
 
-type DropTargetProps = Pick<
-  TreeRendererProps,
+type DropTargetProps<TData> = Pick<
+  TreeRendererProps<TData>,
   | 'getPrevRow'
   | 'path'
   | 'rowDirection'
@@ -19,37 +20,37 @@ type DropTargetProps = Pick<
   | 'treeIndex'
   | 'listIndex'
   | 'node'
-> & { parentNode?: TreeItem }
+> & { parentNode?: TreeItem<TData> }
 
-type CanDropArgs = {
-  node: TreeItem
+type CanDropArgs<TData> = {
+  node: TreeItem<TData>
   prevPath: number[]
-  prevParent: TreeItem | undefined
+  prevParent: TreeItem<TData> | undefined
   prevTreeIndex: number
   nextPath: number[]
-  nextParent: TreeItem | undefined
+  nextParent: TreeItem<TData> | undefined
   nextTreeIndex: number
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = React.ComponentType<any>
 
-interface DragItem {
-  node: TreeItem
+interface DragItem<TData> {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
   treeId: string
-  parentNode?: TreeItem
+  parentNode?: TreeItem<TData>
 }
 
-interface DropResult {
-  node: TreeItem
+interface DropResult<TData> {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
   treeId: string
   minimumTreeIndex: number
   depth: number
-  parentNode?: TreeItem
+  parentNode?: TreeItem<TData>
 }
 
 /**
@@ -77,14 +78,14 @@ export interface EndDragPhase {
  * identity — and React reconciles by type, so every row, and every registered
  * drop target with it, would be unmounted and remounted on each parent render.
  */
-export interface TreeDndHandlers {
-  canNodeHaveChildren: (node: TreeItem) => boolean
-  canDrop?: (args: CanDropArgs) => boolean
+export interface TreeDndHandlers<TData = UnknownNodeData> {
+  canNodeHaveChildren: (node: TreeItem<TData>) => boolean
+  canDrop?: (args: CanDropArgs<TData>) => boolean
   maxDepth?: number
   /** Supplies the horizontal intent a keyboard drag has no pointer for. */
   keyboard: KeyboardDragController
   startDrag: (item: { path: number[] }) => void
-  endDrag: (dropResult: DropResult | null, phase: EndDragPhase) => void
+  endDrag: (dropResult: DropResult<TData> | null, phase: EndDragPhase) => void
   /**
    * Commits the drop, and returns a promise only when the tree has something to
    * wait for — a consumer `onDrop` that returned one. Staying synchronous
@@ -94,16 +95,20 @@ export interface TreeDndHandlers {
    * `signal` aborts when the drop can no longer affect anything, which today
    * means a new drag has taken the drop-result slot.
    */
-  drop: (dropResult: DropResult, signal: AbortSignal) => Promise<void> | void
+  drop: (
+    dropResult: DropResult<TData>,
+    signal: AbortSignal
+  ) => Promise<void> | void
   dragHover: (args: {
-    node: TreeItem
+    node: TreeItem<TData>
     path: number[]
     minimumTreeIndex: number
     depth: number
   }) => void
 }
 
-export type GetTreeDndHandlers = () => TreeDndHandlers
+export type GetTreeDndHandlers<TData = UnknownNodeData> =
+  () => TreeDndHandlers<TData>
 
 /*
  * ---------------------------------------------------------------------------
@@ -168,10 +173,10 @@ function useCombinedRefs<T>(...refs: (Ref<T> | undefined)[]) {
   )
 }
 
-export const wrapSource = (
+export const wrapSource = <TData = UnknownNodeData,>(
   Component: AnyComponent,
   dndType: string,
-  getHandlers: GetTreeDndHandlers
+  getHandlers: GetTreeDndHandlers<TData>
 ): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DraggableSource: React.FC<any> = (props) => {
@@ -183,9 +188,13 @@ export const wrapSource = (
       propsRef.current = props
     })
 
+    // The row's drop state, from the target that wraps this row. Read here
+    // rather than injected by the row renderer, which a consumer may replace.
+    const { isOver, canDrop, draggedNode } = useRowDropState()
+
     const [{ isDragging, isSettling }, drag, preview] = useDrag<
-      DragItem,
-      DropResult,
+      DragItem<TData>,
+      DropResult<TData>,
       { isDragging: boolean; isSettling: boolean }
     >(
       () => ({
@@ -231,6 +240,9 @@ export const wrapSource = (
         isDragging={isDragging}
         isSettling={isSettling}
         didDrop={false}
+        isOver={isOver}
+        canDrop={canDrop}
+        draggedNode={draggedNode}
       />
     )
   }
@@ -247,10 +259,10 @@ export const wrapSource = (
  * that really has something to wait for returns a promise, and it resolves to
  * the same result so the drop result is readable again once the settle finishes.
  */
-const settleWith = (
+const settleWith = <TData,>(
   pending: Promise<void> | void,
-  result: DropResult
-): DropResult | Promise<DropResult> => {
+  result: DropResult<TData>
+): DropResult<TData> | Promise<DropResult<TData>> => {
   if (!pending) return result
   // An async IIFE rather than `async` on the function itself: that would return
   // a promise from the synchronous branch too, which is the branch that has to
@@ -261,25 +273,25 @@ const settleWith = (
   })()
 }
 
-export const wrapPlaceholder = (
+export const wrapPlaceholder = <TData = UnknownNodeData,>(
   Component: AnyComponent,
   treeId: string,
   dndType: string,
-  getHandlers: GetTreeDndHandlers
+  getHandlers: GetTreeDndHandlers<TData>
 ): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppablePlaceholder: React.FC<any> = (props) => {
     'use no memo'
     const [{ isOver, canDrop }, dropRef] = useDrop<
-      DragItem,
-      DropResult,
+      DragItem<TData>,
+      DropResult<TData>,
       { isOver: boolean; canDrop: boolean }
     >(
       () => ({
         accept: dndType,
         drop: (item, _monitor, signal) => {
           const { node, path, treeIndex } = item
-          const result: DropResult = {
+          const result: DropResult<TData> = {
             node,
             path,
             treeIndex,
@@ -316,10 +328,10 @@ export const wrapPlaceholder = (
  * whole of `drop` / `hover` / `canDrop`. Passing it explicitly is what the
  * fork's migration notes recommend, and it removes the null checks entirely.
  */
-const getBlocksOffset = (
-  dropTargetProps: DropTargetProps,
-  item: DragItem,
-  monitor: DropTargetMonitor<DragItem, DropResult>,
+const getBlocksOffset = <TData,>(
+  dropTargetProps: DropTargetProps<TData>,
+  item: DragItem<TData>,
+  monitor: DropTargetMonitor<DragItem<TData>, DropResult<TData>>,
   treeId: string,
   componentRef: React.RefObject<HTMLElement | null>,
   keyboard: KeyboardDragController
@@ -363,12 +375,12 @@ const getBlocksOffset = (
   }
 }
 
-const getTargetDepth = (
-  dropTargetProps: DropTargetProps,
-  item: DragItem,
-  monitor: DropTargetMonitor<DragItem, DropResult>,
+const getTargetDepth = <TData,>(
+  dropTargetProps: DropTargetProps<TData>,
+  item: DragItem<TData>,
+  monitor: DropTargetMonitor<DragItem<TData>, DropResult<TData>>,
   componentRef: React.RefObject<HTMLElement | null>,
-  canNodeHaveChildren: (node: TreeItem) => boolean,
+  canNodeHaveChildren: (node: TreeItem<TData>) => boolean,
   treeId: string,
   keyboard: KeyboardDragController,
   maxDepth?: number
@@ -410,11 +422,11 @@ const getTargetDepth = (
   return targetDepth
 }
 
-const canDrop = (
-  dropTargetProps: DropTargetProps,
-  item: DragItem,
-  monitor: DropTargetMonitor<DragItem, DropResult>,
-  treeRefCanDrop: ((args: CanDropArgs) => boolean) | undefined,
+const canDrop = <TData,>(
+  dropTargetProps: DropTargetProps<TData>,
+  item: DragItem<TData>,
+  monitor: DropTargetMonitor<DragItem<TData>, DropResult<TData>>,
+  treeRefCanDrop: ((args: CanDropArgs<TData>) => boolean) | undefined,
   keyboard: KeyboardDragController
 ) => {
   // Under a pointer, only the row beneath the cursor is a candidate, and this
@@ -428,13 +440,16 @@ const canDrop = (
   }
   const rowAbove = dropTargetProps.getPrevRow()
   const abovePath = rowAbove ? rowAbove.path : []
-  const aboveNode = rowAbove ? rowAbove.node : {}
+  // Optional rather than an empty-object fallback, which only typechecked while
+  // every node had an index signature. Behaviour is identical: a missing node has
+  // no `children` either way.
+  const aboveNode = rowAbove?.node
 
   const targetDepth = dropTargetProps.path.length - 1
 
   if (
     targetDepth >= abovePath.length &&
-    typeof aboveNode.children === 'function'
+    typeof aboveNode?.children === 'function'
   ) {
     return false
   }
@@ -454,13 +469,13 @@ const canDrop = (
 }
 
 /** Everything one row's hover needs, gathered so the work can live at module scope. */
-interface HoverContext {
-  propsRef: React.RefObject<DropTargetProps & { listIndex: number }>
-  item: DragItem
-  monitor: DropTargetMonitor<DragItem, DropResult>
+interface HoverContext<TData> {
+  propsRef: React.RefObject<DropTargetProps<TData> & { listIndex: number }>
+  item: DragItem<TData>
+  monitor: DropTargetMonitor<DragItem<TData>, DropResult<TData>>
   nodeRef: React.RefObject<HTMLElement | null>
   treeId: string
-  getHandlers: GetTreeDndHandlers
+  getHandlers: GetTreeDndHandlers<TData>
 }
 
 /**
@@ -471,7 +486,10 @@ interface HoverContext {
  * the same hover on the same row, which the guard would dismiss as a no-op —
  * `dragHover` still ignores genuine repeats of the same depth and position.
  */
-const performHover = (context: HoverContext, force: boolean): void => {
+const performHover = <TData,>(
+  context: HoverContext<TData>,
+  force: boolean
+): void => {
   const { propsRef, item, monitor, nodeRef, treeId, getHandlers } = context
   const currentProps = propsRef.current
   const { canNodeHaveChildren, maxDepth, keyboard, dragHover } = getHandlers()
@@ -512,14 +530,16 @@ const performHover = (context: HoverContext, force: boolean): void => {
 }
 
 /** The closure an arrow key calls to re-run this row's hover at a new depth. */
-const replayHover = (context: HoverContext) => (): void =>
-  performHover(context, true)
+const replayHover =
+  <TData,>(context: HoverContext<TData>) =>
+  (): void =>
+    performHover(context, true)
 
-export const wrapTarget = (
+export const wrapTarget = <TData = UnknownNodeData,>(
   Component: AnyComponent,
   treeId: string,
   dndType: string,
-  getHandlers: GetTreeDndHandlers
+  getHandlers: GetTreeDndHandlers<TData>
 ): AnyComponent => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DroppableTarget: React.FC<any> = (props) => {
@@ -534,8 +554,8 @@ export const wrapTarget = (
     })
 
     const [{ isOver, canDrop: isCanDrop }, dropConnector] = useDrop<
-      DragItem,
-      DropResult,
+      DragItem<TData>,
+      DropResult<TData>,
       { isOver: boolean; canDrop: boolean }
     >(
       () => ({
@@ -544,7 +564,7 @@ export const wrapTarget = (
           const currentProps = propsRef.current
           const { canNodeHaveChildren, maxDepth, keyboard, drop } =
             getHandlers()
-          const result: DropResult = {
+          const result: DropResult<TData> = {
             node: item.node,
             path: item.path,
             treeIndex: item.treeIndex,
@@ -564,7 +584,7 @@ export const wrapTarget = (
           return settleWith(drop(result, signal), result)
         },
         hover: (item, monitor) => {
-          const context: HoverContext = {
+          const context: HoverContext<TData> = {
             propsRef,
             item,
             monitor,
@@ -591,13 +611,36 @@ export const wrapTarget = (
 
     const combinedRef = useCombinedRefs(dropConnector, nodeRef)
 
+    /*
+     * Carries the drop state past the row renderer to the content renderer.
+     *
+     * `Component` here may be a consumer's own `treeNodeRenderer`, so the values
+     * cannot be handed down as props without that renderer agreeing to forward
+     * them — which is what the old `cloneElement` in `tree-node.tsx` was for.
+     * Providing from outside it makes forwarding nobody's job.
+     *
+     * `draggedNode` comes off props rather than the monitor so this keeps
+     * behaving exactly as the `cloneElement` did, including that nothing
+     * currently supplies it. See the note in `tree-node.tsx`.
+     */
+    const dropState = useMemo(
+      () => ({
+        isOver,
+        canDrop: isCanDrop,
+        draggedNode: props.draggedNode,
+      }),
+      [isOver, isCanDrop, props.draggedNode]
+    )
+
     return (
-      <Component
-        {...props}
-        connectDropTarget={combinedRef}
-        isOver={isOver}
-        canDrop={isCanDrop}
-      />
+      <RowDropContext.Provider value={dropState}>
+        <Component
+          {...props}
+          connectDropTarget={combinedRef}
+          isOver={isOver}
+          canDrop={isCanDrop}
+        />
+      </RowDropContext.Provider>
     )
   }
   return DroppableTarget

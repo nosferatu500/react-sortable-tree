@@ -286,6 +286,77 @@ describe('drop', () => {
   })
 })
 
+describe('drop state reaching the content renderer', () => {
+  /*
+   * `isOver` and `canDrop` are collected by the row's *drop target*, while the
+   * component that renders them sits inside the row renderer — which a consumer
+   * may replace wholesale. They used to be injected with `Children.map` +
+   * `cloneElement` in `tree-node.tsx`; they now travel through `RowDropContext`,
+   * provided from `wrapTarget` so that forwarding them is nobody's job.
+   *
+   * Nothing pinned this before, in either form: the values are only non-default
+   * mid-drag, so a broken hand-off looks exactly like "not currently hovered".
+   */
+  const makeSpyRenderer = () => {
+    const seen: { title: string; isOver: boolean; canDrop: boolean }[] = []
+    const Renderer = ({
+      node,
+      isOver,
+      canDrop,
+    }: {
+      node: TreeItem
+      isOver: boolean
+      canDrop: boolean
+    }) => {
+      seen.push({ title: String(node.title), isOver, canDrop })
+      return <div className="rst__rowTitle">{String(node.title)}</div>
+    }
+    return { seen, Renderer }
+  }
+
+  it('reports not-over on every row when nothing is being dragged', () => {
+    const { seen, Renderer } = makeSpyRenderer()
+    renderTree(flatTree(), { nodeContentRenderer: Renderer })
+
+    expect(seen).toHaveLength(3)
+    expect(seen.every((row) => !row.isOver)).toBe(true)
+  })
+
+  it('reports over and droppable on the hovered row during a drag', () => {
+    const { seen, Renderer } = makeSpyRenderer()
+    const { beginDrag, hoverOnce } = renderTree(flatTree(), {
+      nodeContentRenderer: Renderer,
+    })
+
+    beginDrag(0)
+    seen.length = 0
+    hoverOnce(1)
+
+    const over = seen.filter((row) => row.isOver)
+    expect(over.length).toBeGreaterThan(0)
+    // A drop with no `canDrop` prop is always allowed, so the hovered row has to
+    // report both — `canDrop: false` here would light up `rst__rowCancelPad`.
+    expect(over.every((row) => row.canDrop)).toBe(true)
+  })
+
+  it('reports cannot-drop on the hovered row when canDrop refuses', () => {
+    const { seen, Renderer } = makeSpyRenderer()
+    const { beginDrag, hoverOnce } = renderTree(flatTree(), {
+      nodeContentRenderer: Renderer,
+      canDrop: () => false,
+    })
+
+    beginDrag(0)
+    seen.length = 0
+    hoverOnce(1)
+
+    // Both values travel together, so a hand-off that dropped `canDrop` while
+    // keeping `isOver` would pass the test above and fail this one.
+    expect(seen.some((row) => row.isOver)).toBe(true)
+    expect(seen.every((row) => !row.canDrop)).toBe(true)
+  })
+})
+
 describe('async drop', () => {
   afterEach(() => {
     vi.unstubAllGlobals()

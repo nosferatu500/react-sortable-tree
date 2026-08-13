@@ -18,7 +18,9 @@ export const at = <T>(items: readonly T[], index: number): T => {
 }
 
 /** A node's children, asserting they were resolved into an array. */
-export const childrenOf = (node: TreeItem | undefined): TreeItem[] => {
+export const childrenOf = <TData>(
+  node: TreeItem<TData> | undefined
+): TreeItem<TData>[] => {
   const children = node?.children
   if (!Array.isArray(children)) {
     throw new TypeError('expected the node to have an array of children')
@@ -27,5 +29,7 @@ export const childrenOf = (node: TreeItem | undefined): TreeItem[] => {
 }
 
 /** `node.children[index]`. */
-export const childAt = (node: TreeItem | undefined, index: number): TreeItem =>
-  at(childrenOf(node), index)
+export const childAt = <TData>(
+  node: TreeItem<TData> | undefined,
+  index: number
+): TreeItem<TData> => at(childrenOf(node), index)

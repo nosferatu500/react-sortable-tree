@@ -33,6 +33,7 @@ import type {
   GetTreeItemChildrenFn,
   TreeItem,
   TreeKey,
+  UnknownNodeData,
 } from './types'
 import {
   type DepthAnnouncement,
@@ -72,21 +73,21 @@ import {
 import { useIsomorphicLayoutEffect } from './utils/use-isomorphic-layout-effect'
 import './react-sortable-tree.css'
 
-type SearchParams = {
-  node: TreeItem
+type SearchParams<TData> = {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
   searchQuery: string
 }
 
-type SearchFinishCallbackParams = {
-  node: TreeItem
+type SearchFinishCallbackParams<TData> = {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
 }[]
 
-export type GenerateNodePropsParams = {
-  node: TreeItem
+export type GenerateNodePropsParams<TData = UnknownNodeData> = {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
   lowerSiblingCounts: number[]
@@ -94,42 +95,42 @@ export type GenerateNodePropsParams = {
   isSearchFocus: boolean
 }
 
-type ShouldCopyOnOutsideDropParams = {
-  node: TreeItem
+type ShouldCopyOnOutsideDropParams<TData> = {
+  node: TreeItem<TData>
   prevPath: number[]
   prevTreeIndex: number
 }
 
-type OnMoveNodeParams = {
-  treeData: TreeItem[]
-  node: TreeItem
-  nextParentNode: TreeItem | null
+type OnMoveNodeParams<TData> = {
+  treeData: TreeItem<TData>[]
+  node: TreeItem<TData>
+  nextParentNode: TreeItem<TData> | null
   prevPath: number[]
   prevTreeIndex: number
   nextPath?: number[]
   nextTreeIndex?: number
 }
 
-export type CanDropParams = {
-  node: TreeItem
+export type CanDropParams<TData = UnknownNodeData> = {
+  node: TreeItem<TData>
   prevPath: number[]
-  prevParent?: TreeItem
+  prevParent?: TreeItem<TData>
   prevTreeIndex: number
   nextPath: number[]
-  nextParent?: TreeItem
+  nextParent?: TreeItem<TData>
   nextTreeIndex: number
 }
 
-type OnVisibilityToggleParams = {
-  treeData: TreeItem[]
-  node: TreeItem
+type OnVisibilityToggleParams<TData> = {
+  treeData: TreeItem<TData>[]
+  node: TreeItem<TData>
   expanded: boolean
   path: number[]
 }
 
-type OnDragStateChangedParams = {
+type OnDragStateChangedParams<TData> = {
   isDragging: boolean
-  draggedNode: TreeItem | undefined
+  draggedNode: TreeItem<TData> | undefined
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,34 +150,35 @@ export type ThemeProps = {
   dndType?: string
 }
 
-export type ReactSortableTreeProps = {
+export type ReactSortableTreeProps<TData = UnknownNodeData> = {
   children?: ReactNode
   dragDropManager?: {
     getMonitor: () => unknown
   }
-  treeData: TreeItem[]
+  treeData: TreeItem<TData>[]
   style?: React.CSSProperties
   className?: string
   virtuaRef?: React.RefObject<VListHandle>
   innerStyle?: React.CSSProperties
   scaffoldBlockPxWidth?: number
   maxDepth?: number
-  searchMethod?: (params: SearchParams) => boolean
+  searchMethod?: (params: SearchParams<TData>) => boolean
   searchQuery?: string
   searchFocusOffset?: number
-  searchFinishCallback?: (params: SearchFinishCallbackParams) => void
+  searchFinishCallback?: (params: SearchFinishCallbackParams<TData>) => void
   generateNodeProps?: (
-    params: GenerateNodePropsParams
+    params: GenerateNodePropsParams<TData>
   ) => Record<string, unknown>
   treeNodeRenderer?: AnyRenderer
   nodeContentRenderer?: AnyRenderer
   placeholderRenderer?: AnyRenderer
   theme?: ThemeProps
   rowHeight?:
-    number | ((treeIndex: number, node: TreeItem, path: number[]) => number)
-  getNodeKey?: GetNodeKeyFunction
-  onChange: (treeData: TreeItem[]) => void
-  onMoveNode?: (params: OnMoveNodeParams) => void
+    | number
+    | ((treeIndex: number, node: TreeItem<TData>, path: number[]) => number)
+  getNodeKey?: GetNodeKeyFunction<TData>
+  onChange: (treeData: TreeItem<TData>[]) => void
+  onMoveNode?: (params: OnMoveNodeParams<TData>) => void
   /**
    * Persists a completed move, and is *awaited*.
    *
@@ -201,17 +203,17 @@ export type ReactSortableTreeProps = {
    * with nothing rendering it.
    */
   onDrop?: (
-    params: OnMoveNodeParams,
+    params: OnMoveNodeParams<TData>,
     signal: AbortSignal
   ) => Promise<void> | void
-  canDrag?: boolean | ((params: GenerateNodePropsParams) => boolean)
-  canDrop?: (params: CanDropParams) => boolean
-  canNodeHaveChildren?: (node: TreeItem) => boolean
+  canDrag?: boolean | ((params: GenerateNodePropsParams<TData>) => boolean)
+  canDrop?: (params: CanDropParams<TData>) => boolean
+  canNodeHaveChildren?: (node: TreeItem<TData>) => boolean
   shouldCopyOnOutsideDrop?:
-    ((params: ShouldCopyOnOutsideDropParams) => boolean) | boolean
-  onVisibilityToggle?: (params: OnVisibilityToggleParams) => void
+    ((params: ShouldCopyOnOutsideDropParams<TData>) => boolean) | boolean
+  onVisibilityToggle?: (params: OnVisibilityToggleParams<TData>) => void
   dndType?: string
-  onDragStateChanged?: (params: OnDragStateChangedParams) => void
+  onDragStateChanged?: (params: OnDragStateChangedParams<TData>) => void
   onlyExpandSearchedNodes?: boolean
   rowDirection?: string
   loadCollapsedLazyChildren?: boolean
@@ -245,7 +247,7 @@ export type ReactSortableTreeProps = {
    * />
    * ```
    */
-  announcements?: TreeAnnouncements
+  announcements?: TreeAnnouncements<TData>
 }
 
 const DEFAULT_SCAFFOLD_BLOCK_PX_WIDTH = 44
@@ -253,7 +255,7 @@ const DEFAULT_ROW_HEIGHT = 62
 const alwaysTrue = () => true
 
 /** Children the node can actually reveal, as opposed to a lazy-loader function. */
-const hasRevealableChildren = (node: TreeItem): boolean =>
+const hasRevealableChildren = <TData,>(node: TreeItem<TData>): boolean =>
   typeof node.children === 'function' ||
   (Array.isArray(node.children) && node.children.length > 0)
 
@@ -307,20 +309,20 @@ interface PendingSettle {
   signal: AbortSignal
 }
 
-interface ReactSortableTreeState {
-  draggingTreeData?: TreeItem[]
-  draggedNode?: TreeItem
+interface ReactSortableTreeState<TData> {
+  draggingTreeData?: TreeItem<TData>[]
+  draggedNode?: TreeItem<TData>
   draggedMinimumTreeIndex?: number
   draggedDepth?: number
   searchMatches: Array<{ path: number[]; treeIndex: number }>
   searchFocusTreeIndex?: number
   dragging: boolean
-  treeData: TreeItem[]
+  treeData: TreeItem<TData>[]
   ignoreOneTreeUpdate: boolean
 }
 
-interface DropResult {
-  node: TreeItem
+interface DropResult<TData> {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
   treeId: string
@@ -328,26 +330,26 @@ interface DropResult {
   depth: number
 }
 
-type SearchConfig = Pick<
-  ReactSortableTreeProps,
+type SearchConfig<TData> = Pick<
+  ReactSortableTreeProps<TData>,
   | 'onChange'
   | 'searchFinishCallback'
   | 'searchQuery'
   | 'searchMethod'
   | 'searchFocusOffset'
   | 'onlyExpandSearchedNodes'
-> & { getNodeKey: GetNodeKeyFunction }
+> & { getNodeKey: GetNodeKeyFunction<TData> }
 
-const performSearch = (
-  props: SearchConfig,
-  treeData: TreeItem[],
+const performSearch = <TData,>(
+  props: SearchConfig<TData>,
+  treeData: TreeItem<TData>[],
   seekIndex: boolean,
   expand: boolean,
   singleSearch: boolean
 ): {
   searchMatches: Array<{ path: number[]; treeIndex: number }>
   searchFocusTreeIndex?: number
-  newTreeData?: TreeItem[]
+  newTreeData?: TreeItem<TData>[]
 } => {
   const {
     onChange,
@@ -385,7 +387,7 @@ const performSearch = (
   })
 
   // Update the tree with data leaving all paths leading to matching nodes open
-  let newTreeData: TreeItem[] | undefined
+  let newTreeData: TreeItem<TData>[] | undefined
   if (expand) {
     newTreeData = expandedTreeData
     onChange(expandedTreeData)
@@ -407,21 +409,24 @@ const performSearch = (
   return { searchMatches, searchFocusTreeIndex, newTreeData }
 }
 
-type LazyChildrenConfig = Pick<
-  ReactSortableTreeProps,
+type LazyChildrenConfig<TData> = Pick<
+  ReactSortableTreeProps<TData>,
   'onChange' | 'loadCollapsedLazyChildren'
-> & { getNodeKey: GetNodeKeyFunction }
+> & { getNodeKey: GetNodeKeyFunction<TData> }
 
-const isThenable = (
+const isThenable = <TData,>(
   value: unknown
-): value is PromiseLike<TreeItem[] | undefined> =>
+): value is PromiseLike<TreeItem<TData>[] | undefined> =>
   typeof value === 'object' &&
   value !== null &&
   typeof (value as PromiseLike<unknown>).then === 'function'
 
 // Load any children in the tree that are given by a function
 // calls the onChange callback on the new treeData
-const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
+const loadLazyChildren = <TData,>(
+  props: LazyChildrenConfig<TData>,
+  treeData: TreeItem<TData>[]
+) => {
   walk({
     treeData,
     getNodeKey: props.getNodeKey,
@@ -436,12 +441,12 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
       }
 
       // Append the loaded data
-      const applyChildren = (childrenArray: TreeItem[]) =>
+      const applyChildren = (childrenArray: TreeItem<TData>[]) =>
         props.onChange(
           changeNodeAtPath({
             treeData,
             path,
-            newNode: ({ node: oldNode }: { node: TreeItem }) =>
+            newNode: ({ node: oldNode }: { node: TreeItem<TData> }) =>
               // Only replace the old node if it's the one we set off to find children
               //  for in the first place
               oldNode === node
@@ -455,7 +460,7 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
         )
 
       // Call the children fetching function
-      const result = (node.children as GetTreeItemChildrenFn)({
+      const result = (node.children as GetTreeItemChildrenFn<TData>)({
         node,
         path,
         lowerSiblingCounts,
@@ -485,9 +490,9 @@ const loadLazyChildren = (props: LazyChildrenConfig, treeData: TreeItem[]) => {
  * apart. Undefined for a move with no landing path — a node that left the tree,
  * which the tree has nothing to say about.
  */
-const describeMove = (
-  params: OnMoveNodeParams
-): MoveAnnouncement | undefined => {
+const describeMove = <TData,>(
+  params: OnMoveNodeParams<TData>
+): MoveAnnouncement<TData> | undefined => {
   const { node, nextPath, nextParentNode } = params
   if (!nextPath) return undefined
   // `nextParentNode` is `null` at the top level; normalised so the public
@@ -506,18 +511,187 @@ const describeMove = (
  * alone must not silence the other two, which is what a single
  * `announcements ?? defaults` would do.
  */
-const moveMessage = (
-  announcements: TreeAnnouncements | undefined,
+const moveMessage = <TData,>(
+  announcements: TreeAnnouncements<TData> | undefined,
   key: 'moving' | 'moved' | 'moveFailed',
-  params: MoveAnnouncement
+  params: MoveAnnouncement<TData>
 ): string => (announcements?.[key] ?? defaultTreeAnnouncements[key])(params)
 
-const depthMessage = (
-  announcements: TreeAnnouncements | undefined,
+const depthMessage = <TData,>(
+  announcements: TreeAnnouncements<TData> | undefined,
   params: DepthAnnouncement
 ): string => (announcements?.depth ?? defaultTreeAnnouncements.depth)(params)
 
-const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
+interface TreeRowProps<TData> {
+  /**
+   * The flattened row. A single object rather than its parts spread out, because
+   * `rows` is memoized: while the data is unchanged this is the same reference
+   * every render, and the memo below passes.
+   */
+  row: FlatDataItem<TData>
+  /** The row above, for the depth maths a drag does. Stable for the same reason. */
+  prevRow: FlatDataItem<TData> | undefined
+  listIndex: number
+  /**
+   * Passed as a boolean rather than as `activeRowIndex`, which would differ for
+   * every row on every focus move and re-render the whole visible window to
+   * change two rows.
+   */
+  isActiveRow: boolean
+  isSearchMatch: boolean
+  isSearchFocus: boolean
+  swapFrom: number | undefined
+  swapDepth: number | undefined
+  swapLength: number | undefined
+  rootNodeCount: number
+  scaffoldBlockPxWidth: number
+  treeId: string
+  rowDirection: string
+  rowHeight:
+    | number
+    | ((treeIndex: number, node: TreeItem<TData>, path: number[]) => number)
+  toggleChildrenVisibility: (params: {
+    node: TreeItem<TData>
+    path: number[]
+  }) => void
+  generateNodeProps?: (
+    params: GenerateNodePropsParams<TData>
+  ) => Record<string, unknown>
+  canDrag: boolean | ((params: GenerateNodePropsParams<TData>) => boolean)
+  TreeNodeRenderer: AnyRenderer
+  NodeContentRenderer: AnyRenderer
+}
+
+/**
+ * One row of the tree, memoized.
+ *
+ * The memo boundary has to be *here*, around the composition, rather than on the
+ * row renderer itself. A row is
+ * `<TreeNodeRenderer …><NodeContentRenderer …/></TreeNodeRenderer>`, so the row
+ * renderer's `children` is a fresh element on every render and a shallow
+ * comparison can never pass — `React.memo` was measured directly on `TreeNode`
+ * once and removed again for exactly that reason, as pure overhead plus a
+ * misleading signal that rows were memoized. Building the composition *inside*
+ * the memoized component puts that freshness inside the boundary, where it costs
+ * nothing.
+ *
+ * What this buys: a re-render that does not change the data no longer re-renders
+ * every visible row. Moving focus with an arrow key is the clearest case — it
+ * changes `isActiveRow` for two rows and used to re-render the whole window.
+ * Rows are virtualized, so the win is bounded by the window rather than the tree.
+ *
+ * Every prop is therefore a value or a stable reference. Two are the consumer's
+ * to keep stable, `generateNodeProps` and a function `rowHeight`, and both are
+ * *called here* rather than in the parent: an inline arrow then costs its own
+ * rows a re-render instead of defeating the memo for all of them.
+ */
+const TreeRowComponent = <TData,>({
+  row,
+  prevRow,
+  listIndex,
+  isActiveRow,
+  isSearchMatch,
+  isSearchFocus,
+  swapFrom,
+  swapDepth,
+  swapLength,
+  rootNodeCount,
+  scaffoldBlockPxWidth,
+  treeId,
+  rowDirection,
+  rowHeight,
+  toggleChildrenVisibility,
+  generateNodeProps,
+  canDrag,
+  TreeNodeRenderer,
+  NodeContentRenderer,
+}: TreeRowProps<TData>) => {
+  const { node, parentNode, path, lowerSiblingCounts, treeIndex } = row
+
+  const callbackParams = {
+    node,
+    parentNode,
+    path,
+    lowerSiblingCounts,
+    treeIndex,
+    isSearchMatch,
+    isSearchFocus,
+  }
+  const nodeProps = generateNodeProps
+    ? generateNodeProps(callbackParams as GenerateNodePropsParams<TData>)
+    : {}
+  const rowCanDrag =
+    typeof canDrag === 'function'
+      ? canDrag(callbackParams as GenerateNodePropsParams<TData>)
+      : canDrag
+
+  const sharedProps = {
+    treeIndex,
+    scaffoldBlockPxWidth,
+    node,
+    path,
+    treeId,
+    rowDirection,
+  }
+
+  // ARIA tree semantics. The DOM is flat because the list is virtualized, so
+  // depth and sibling position have to be stated explicitly rather than
+  // inferred from nesting.
+  const siblingCount = Array.isArray(parentNode?.children)
+    ? parentNode.children.length
+    : rootNodeCount
+  const lowerSiblings = lowerSiblingCounts.at(-1) ?? 0
+
+  return (
+    <TreeNodeRenderer
+      rowHeight={rowHeight}
+      listIndex={listIndex}
+      getPrevRow={() => prevRow}
+      lowerSiblingCounts={lowerSiblingCounts}
+      swapFrom={swapFrom}
+      swapLength={swapLength}
+      swapDepth={swapDepth}
+      role="treeitem"
+      aria-level={path.length}
+      aria-setsize={siblingCount}
+      aria-posinset={siblingCount - lowerSiblings}
+      aria-expanded={
+        hasRevealableChildren(node) ? node.expanded === true : undefined
+      }
+      tabIndex={isActiveRow ? 0 : -1}
+      data-rst-row={listIndex}
+      {...sharedProps}>
+      <NodeContentRenderer
+        parentNode={parentNode}
+        isSearchMatch={isSearchMatch}
+        isSearchFocus={isSearchFocus}
+        canDrag={rowCanDrag}
+        // The keyboard backend makes every drag handle focusable, which would
+        // put one tab stop per visible row inside a tree that the ARIA pattern
+        // says must have exactly one. It defers to a `tabindex` that is already
+        // there, so the handle joins the roving tabindex instead: reachable by
+        // Tab from its own row, invisible to Tab from anywhere else.
+        isActiveRow={isActiveRow}
+        toggleChildrenVisibility={toggleChildrenVisibility}
+        {...sharedProps}
+        {...nodeProps}
+      />
+    </TreeNodeRenderer>
+  )
+}
+
+/*
+ * `React.memo` erases type parameters — its overloads resolve `P` from a
+ * `FunctionComponent<P>`, so a generic component comes back inferred at
+ * `unknown` and every row prop stops matching. Asserting the original signature
+ * restores it, and is sound because `memo` changes when a component is called,
+ * never how.
+ */
+const TreeRow = React.memo(TreeRowComponent) as typeof TreeRowComponent
+
+const ReactSortableTreeInner = <TData,>(
+  props: Readonly<ReactSortableTreeProps<TData>>
+) => {
   const {
     treeData: treeDataProp,
     onChange,
@@ -601,18 +775,17 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   // Refs
   const internalListRef = useRef<VListHandle>(null)
   const listRef = virtuaRef ?? internalListRef
-  const prevTreeDataRef = useRef<TreeItem[]>(treeDataProp)
+  const prevTreeDataRef = useRef<TreeItem<TData>[]>(treeDataProp)
   const prevDeferredSearchQueryRef = useRef(deferredSearchQuery)
   const prevDeferredSearchFocusOffsetRef = useRef(deferredSearchFocusOffset)
   const prevDraggingRef = useRef(false)
   const isInitialMountRef = useRef(true)
 
   // Refs for pending callbacks (to avoid calling onChange during setState)
-  const pendingOnChangeRef = useRef<TreeItem[] | null>(null)
-  const pendingOnMoveNodeRef = useRef<OnMoveNodeParams | null>(null)
-  const pendingOnVisibilityToggleRef = useRef<OnVisibilityToggleParams | null>(
-    null
-  )
+  const pendingOnChangeRef = useRef<TreeItem<TData>[] | null>(null)
+  const pendingOnMoveNodeRef = useRef<OnMoveNodeParams<TData> | null>(null)
+  const pendingOnVisibilityToggleRef =
+    useRef<OnVisibilityToggleParams<TData> | null>(null)
   /** Where a just-moved node landed, so the roving tabindex can follow it. */
   const pendingMoveFocusRef = useRef<number | undefined>(undefined)
   /**
@@ -623,7 +796,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * lifted out. This is the last committed tree, which is what the consumer
    * would have to be handed back.
    */
-  const preDropTreeDataRef = useRef<TreeItem[] | null>(null)
+  const preDropTreeDataRef = useRef<TreeItem<TData>[] | null>(null)
   /**
    * The promise handed to dnd-core to hold the settling phase open, resolved
    * from the effect below once `onDrop` has finished.
@@ -635,7 +808,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   const pendingSettleRef = useRef<PendingSettle | null>(null)
 
   // State
-  const [state, setState] = useState<ReactSortableTreeState>(() => ({
+  const [state, setState] = useState<ReactSortableTreeState<TData>>(() => ({
     draggingTreeData: undefined,
     draggedNode: undefined,
     draggedMinimumTreeIndex: undefined,
@@ -743,7 +916,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       depth,
       minimumTreeIndex,
     }: {
-      node: TreeItem
+      node: TreeItem<TData>
       path: number[]
       treeIndex: number
       depth: number
@@ -827,7 +1000,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * actually renders. Handing back the pre-drop data is the whole point — a
    * consumer that only listens to `onChange` still ends up consistent.
    */
-  const revertMove = useCallback((snapshot: TreeItem[]) => {
+  const revertMove = useCallback((snapshot: TreeItem<TData>[]) => {
     setState((prevState) => {
       pendingOnChangeRef.current = snapshot
       return { ...prevState, treeData: snapshot }
@@ -835,7 +1008,10 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   }, [])
 
   const drop = useCallback(
-    (dropResult: DropResult, signal: AbortSignal): Promise<void> | void => {
+    (
+      dropResult: DropResult<TData>,
+      signal: AbortSignal
+    ): Promise<void> | void => {
       moveNode(dropResult)
 
       // No `onDrop` means nothing to wait for, and returning synchronously is
@@ -854,7 +1030,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   )
 
   const endDrag = useCallback(
-    (dropResult: DropResult | null, phase: EndDragPhase) => {
+    (dropResult: DropResult<TData> | null, phase: EndDragPhase) => {
       // The hovered row's replay closure would otherwise outlive the drag.
       keyboardDrag.setReplayHover(undefined)
 
@@ -901,7 +1077,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
             ? changeNodeAtPath({
                 treeData: prevState.treeData, // use treeData unaltered by the drag operation
                 path,
-                newNode: ({ node: copyNode }: { node: TreeItem }) => ({
+                newNode: ({ node: copyNode }: { node: TreeItem<TData> }) => ({
                   ...copyNode,
                 }), // create a shallow copy of the node
                 getNodeKey: currentGetNodeKey,
@@ -940,7 +1116,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       depth: draggedDepth,
       minimumTreeIndex: draggedMinimumTreeIndex,
     }: {
-      node: TreeItem
+      node: TreeItem<TData>
       depth: number
       minimumTreeIndex: number
     }) => {
@@ -984,7 +1160,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
           draggingTreeData: changeNodeAtPath({
             treeData: newDraggingTreeData,
             path: expandedParentPath.toSpliced(-1),
-            newNode: ({ node }: { node: TreeItem }) => ({
+            newNode: ({ node }: { node: TreeItem<TData> }) => ({
               ...node,
               expanded: true,
             }),
@@ -1001,12 +1177,12 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   )
 
   const toggleChildrenVisibility = useCallback(
-    ({ node: targetNode, path }: { node: TreeItem; path: number[] }) => {
+    ({ node: targetNode, path }: { node: TreeItem<TData>; path: number[] }) => {
       setState((prevState) => {
         const treeData = changeNodeAtPath({
           treeData: prevState.treeData,
           path,
-          newNode: ({ node }: { node: TreeItem }) => ({
+          newNode: ({ node }: { node: TreeItem<TData> }) => ({
             ...node,
             expanded: !node.expanded,
           }),
@@ -1038,7 +1214,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * before any effect has run, then refreshed in a layout effect — which lands
    * before any pointer event can reach them.
    */
-  const dndHandlersRef = useRef<TreeDndHandlers>({
+  const dndHandlersRef = useRef<TreeDndHandlers<TData>>({
     canNodeHaveChildren,
     canDrop,
     maxDepth,
@@ -1090,7 +1266,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   /* eslint-enable react-hooks/refs */
 
   const getRows = useCallback(
-    (rowTreeData: TreeItem[]) =>
+    (rowTreeData: TreeItem<TData>[]) =>
       getFlatDataFromTree({
         ignoreCollapsed: true,
         getNodeKey,
@@ -1102,20 +1278,20 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   // Effect events: user callbacks invoked from effects. Wrapping them keeps
   // them out of dependency arrays, so the effects below re-run when their real
   // inputs change rather than on every render.
-  const emitChange = useEffectEvent((next: TreeItem[]) => onChange(next))
-  const emitMoveNode = useEffectEvent((params: OnMoveNodeParams) =>
+  const emitChange = useEffectEvent((next: TreeItem<TData>[]) => onChange(next))
+  const emitMoveNode = useEffectEvent((params: OnMoveNodeParams<TData>) =>
     onMoveNode?.(params)
   )
   const emitVisibilityToggle = useEffectEvent(
-    (params: OnVisibilityToggleParams) => onVisibilityToggle?.(params)
+    (params: OnVisibilityToggleParams<TData>) => onVisibilityToggle?.(params)
   )
   const emitDragStateChanged = useEffectEvent(
-    (params: OnDragStateChangedParams) => onDragStateChanged?.(params)
+    (params: OnDragStateChangedParams<TData>) => onDragStateChanged?.(params)
   )
 
   const runSearch = useEffectEvent(
     (
-      searchTreeData: TreeItem[],
+      searchTreeData: TreeItem<TData>[],
       query: string | undefined,
       focusOffset: number | undefined,
       seekIndex: boolean,
@@ -1153,16 +1329,18 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * "moved" at commit time and saying nothing when the save fails is a lie a
    * screen-reader user has no way to catch: the rows snap back in silence.
    */
-  const announceMove = useEffectEvent((params: OnMoveNodeParams) => {
+  const announceMove = useEffectEvent((params: OnMoveNodeParams<TData>) => {
     const described = describeMove(params)
     if (described) announce(moveMessage(announcements, 'moved', described))
   })
 
   /** Said at commit time when a save is still in flight. */
-  const announceMovePending = useEffectEvent((params: OnMoveNodeParams) => {
-    const described = describeMove(params)
-    if (described) announce(moveMessage(announcements, 'moving', described))
-  })
+  const announceMovePending = useEffectEvent(
+    (params: OnMoveNodeParams<TData>) => {
+      const described = describeMove(params)
+      if (described) announce(moveMessage(announcements, 'moving', described))
+    }
+  )
 
   /**
    * Waits on the consumer's `onDrop` and turns the outcome into the settling
@@ -1173,7 +1351,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
    * rejection is what puts it back.
    */
   const runSettle = useEffectEvent(
-    (params: OnMoveNodeParams, settle: PendingSettle) => {
+    (params: OnMoveNodeParams<TData>, settle: PendingSettle) => {
       const snapshot = preDropTreeDataRef.current
       preDropTreeDataRef.current = null
 
@@ -1214,11 +1392,12 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     }
   )
 
-  const runLoadLazyChildren = useEffectEvent((lazyTreeData: TreeItem[]) =>
-    loadLazyChildren(
-      { onChange, getNodeKey, loadCollapsedLazyChildren },
-      lazyTreeData
-    )
+  const runLoadLazyChildren = useEffectEvent(
+    (lazyTreeData: TreeItem<TData>[]) =>
+      loadLazyChildren(
+        { onChange, getNodeKey, loadCollapsedLazyChildren },
+        lazyTreeData
+      )
   )
 
   // Effect: Execute pending callbacks after state updates
@@ -1534,11 +1713,11 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     }
   }
 
-  const toggleRow = (row: FlatDataItem) =>
+  const toggleRow = (row: FlatDataItem<TData>) =>
     toggleChildrenVisibility({ node: row.node, path: row.path as number[] })
 
   /** ArrowRight in ltr: open a closed node, else step into its first child. */
-  const expandOrEnter = (index: number, row: FlatDataItem) => {
+  const expandOrEnter = (index: number, row: FlatDataItem<TData>) => {
     if (!hasRevealableChildren(row.node)) return
     if (row.node.expanded === true) {
       focusRow(index + 1)
@@ -1548,7 +1727,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   }
 
   /** ArrowLeft in ltr: close an open node, else move up to its parent. */
-  const collapseOrLeave = (index: number, row: FlatDataItem) => {
+  const collapseOrLeave = (index: number, row: FlatDataItem<TData>) => {
     if (hasRevealableChildren(row.node) && row.node.expanded === true) {
       toggleRow(row)
       return
@@ -1632,28 +1811,32 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
     return keys
   }, [searchMatches])
 
-  // Render row function
+  /*
+   * Renders one row.
+   *
+   * Everything below the key and the two search flags lives in `TreeRow`, which
+   * is memoized — see its comment. This function stays deliberately thin: work
+   * done here runs for every visible row on every render, work done in `TreeRow`
+   * runs only for the rows whose props actually changed.
+   */
   const renderRow = useCallback(
     (
-      row: FlatDataItem,
+      row: FlatDataItem<TData>,
       {
         listIndex,
-        getPrevRow,
+        prevRow,
         swapFrom: rowSwapFrom,
         swapDepth,
         swapLength: rowSwapLength,
       }: {
         listIndex: number
-        getPrevRow: () => FlatDataItem | undefined
+        prevRow: FlatDataItem<TData> | undefined
         swapFrom: number | undefined
         swapDepth: number | undefined
         swapLength: number | undefined
       }
     ) => {
-      const { node, parentNode, path, lowerSiblingCounts, treeIndex } = row
-
-      const TreeNodeRenderer = treeNodeRenderer
-      const NodeContentRenderer = nodeContentRenderer
+      const { node, path } = row
       const nodeKey = path.at(-1)
       const isSearchMatch =
         nodeKey !== undefined && Object.hasOwn(matchKeys, nodeKey)
@@ -1666,77 +1849,30 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
       // as a key that hands one node's row instance to another node. Fall back
       // to the node's own identity in that case. See `node-identity.ts`.
       const rowKey = usesDefaultNodeKey ? rowIdentity(node) : nodeKey
-      const callbackParams = {
-        node,
-        parentNode,
-        path,
-        lowerSiblingCounts,
-        treeIndex,
-        isSearchMatch,
-        isSearchFocus,
-      }
-      const nodeProps = generateNodeProps
-        ? generateNodeProps(callbackParams as GenerateNodePropsParams)
-        : {}
-      const rowCanDrag =
-        typeof canDrag === 'function'
-          ? canDrag(callbackParams as GenerateNodePropsParams)
-          : canDrag
-
-      const sharedProps = {
-        treeIndex,
-        scaffoldBlockPxWidth,
-        node,
-        path,
-        treeId,
-        rowDirection,
-      }
-
-      // ARIA tree semantics. The DOM is flat because the list is virtualized,
-      // so depth and sibling position have to be stated explicitly rather than
-      // inferred from nesting.
-      const siblingCount = Array.isArray(parentNode?.children)
-        ? parentNode.children.length
-        : rootNodeCount
-      const lowerSiblings = lowerSiblingCounts.at(-1) ?? 0
 
       return (
-        <TreeNodeRenderer
-          rowHeight={rowHeight}
+        <TreeRow
           key={rowKey}
+          row={row}
+          prevRow={prevRow}
           listIndex={listIndex}
-          getPrevRow={getPrevRow}
-          lowerSiblingCounts={lowerSiblingCounts}
+          isActiveRow={listIndex === activeRowIndex}
+          isSearchMatch={isSearchMatch}
+          isSearchFocus={isSearchFocus}
           swapFrom={rowSwapFrom}
-          swapLength={rowSwapLength}
           swapDepth={swapDepth}
-          role="treeitem"
-          aria-level={path.length}
-          aria-setsize={siblingCount}
-          aria-posinset={siblingCount - lowerSiblings}
-          aria-expanded={
-            hasRevealableChildren(node) ? node.expanded === true : undefined
-          }
-          tabIndex={listIndex === activeRowIndex ? 0 : -1}
-          data-rst-row={listIndex}
-          {...sharedProps}>
-          <NodeContentRenderer
-            parentNode={parentNode}
-            isSearchMatch={isSearchMatch}
-            isSearchFocus={isSearchFocus}
-            canDrag={rowCanDrag}
-            // The keyboard backend makes every drag handle focusable, which
-            // would put one tab stop per visible row inside a tree that the
-            // ARIA pattern says must have exactly one. It defers to a
-            // `tabindex` that is already there, so the handle joins the roving
-            // tabindex instead: reachable by Tab from its own row, invisible to
-            // Tab from anywhere else.
-            isActiveRow={listIndex === activeRowIndex}
-            toggleChildrenVisibility={toggleChildrenVisibility}
-            {...sharedProps}
-            {...nodeProps}
-          />
-        </TreeNodeRenderer>
+          swapLength={rowSwapLength}
+          rootNodeCount={rootNodeCount}
+          scaffoldBlockPxWidth={scaffoldBlockPxWidth}
+          treeId={treeId}
+          rowDirection={rowDirection}
+          rowHeight={rowHeight}
+          toggleChildrenVisibility={toggleChildrenVisibility}
+          generateNodeProps={generateNodeProps}
+          canDrag={canDrag}
+          TreeNodeRenderer={treeNodeRenderer}
+          NodeContentRenderer={nodeContentRenderer}
+        />
       )
     },
     [
@@ -1793,7 +1929,7 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
         {(item, index) =>
           renderRow(item, {
             listIndex: index,
-            getPrevRow: () => rows[index - 1] || undefined,
+            prevRow: rows[index - 1],
             swapFrom,
             swapDepth: draggedDepth,
             swapLength,
@@ -1829,8 +1965,8 @@ const ReactSortableTreeInner = (props: Readonly<ReactSortableTreeProps>) => {
   )
 }
 
-export const SortableTreeWithoutDndContext = (
-  props: ReactSortableTreeProps
+export const SortableTreeWithoutDndContext = <TData = UnknownNodeData,>(
+  props: ReactSortableTreeProps<TData>
 ): React.JSX.Element => {
   return (
     <DndContext.Consumer>
@@ -1933,8 +2069,8 @@ export const withTreeKeyboard = (
 
 const KeyboardHTML5Backend = withTreeKeyboard(HTML5Backend)
 
-export const SortableTree = (
-  props: ReactSortableTreeProps
+export const SortableTree = <TData = UnknownNodeData,>(
+  props: ReactSortableTreeProps<TData>
 ): React.JSX.Element => {
   return (
     <DndProvider backend={KeyboardHTML5Backend}>

@@ -1,11 +1,11 @@
 import type { ConnectDropTarget } from '@nosferatu500/react-dnd'
-import React, { Children, type JSX, type ReactNode, cloneElement } from 'react'
-import type { TreeItem } from './types'
+import React, { type JSX, type ReactNode } from 'react'
+import type { TreeItem, UnknownNodeData } from './types'
 import { classnames } from './utils/classnames'
 import type { FlatDataItem } from './utils/tree-data-utils'
 import './tree-node.css'
 
-export interface TreeRendererProps {
+export interface TreeRendererProps<TData = UnknownNodeData> {
   treeIndex: number
   treeId: string
   swapFrom?: number
@@ -15,7 +15,8 @@ export interface TreeRendererProps {
   lowerSiblingCounts: number[]
   rowDirection: 'ltr' | 'rtl' | string | undefined
   rowHeight:
-    number | ((treeIndex: number, node: TreeItem, path: number[]) => number)
+    | number
+    | ((treeIndex: number, node: TreeItem<TData>, path: number[]) => number)
 
   listIndex: number
   children: JSX.Element[]
@@ -35,11 +36,11 @@ export interface TreeRendererProps {
   connectDropTarget: ConnectDropTarget
   isOver: boolean
   canDrop?: boolean
-  draggedNode?: TreeItem
+  draggedNode?: TreeItem<TData>
 
   // used in dndManager
-  getPrevRow: () => FlatDataItem | undefined
-  node: TreeItem
+  getPrevRow: () => FlatDataItem<TData> | undefined
+  node: TreeItem<TData>
   path: number[]
 }
 
@@ -92,7 +93,7 @@ const getLineClass = (
   return ''
 }
 
-const TreeNodeComponent: React.FC<TreeRendererProps> = ({
+const TreeNodeComponent = <TData,>({
   children,
   listIndex,
   swapFrom = undefined,
@@ -101,9 +102,20 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   scaffoldBlockPxWidth,
   lowerSiblingCounts,
   connectDropTarget,
-  isOver,
-  draggedNode = undefined,
-  canDrop = false,
+  /*
+   * Accepted and unused. These reach the content renderer through
+   * `RowDropContext`, provided by `wrapTarget` — see `utils/row-drop-state.ts`.
+   * They stay in the props because a custom `treeNodeRenderer` may want them for
+   * its own styling, and because the wrapper passes them either way.
+   *
+   * `draggedNode` has never been supplied by anything: the tree does not pass it
+   * down, so it was `undefined` in every `cloneElement` too. Wiring it up would
+   * switch on the `isDraggedDescendant` dimming in both node renderers, which is
+   * a visual change rather than part of this refactor.
+   */
+  isOver: _isOver,
+  draggedNode: _draggedNode = undefined,
+  canDrop: _canDrop = false,
   treeIndex,
   rowHeight,
   rowDirection = 'ltr',
@@ -113,7 +125,7 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
   node,
   path,
   ...otherProps
-}) => {
+}: TreeRendererProps<TData>): React.JSX.Element => {
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined
 
   // Construct the scaffold representing the structure of the tree
@@ -200,29 +212,23 @@ const TreeNodeComponent: React.FC<TreeRendererProps> = ({
       {scaffold}
 
       <div className="rst__nodeContent" style={contentStyle}>
-        {Children.map(children, (child) =>
-          cloneElement(child as React.ReactElement<Record<string, unknown>>, {
-            isOver,
-            canDrop,
-            draggedNode,
-          })
-        )}
+        {children}
       </div>
     </div>
   )
 }
 
 /**
- * Deliberately not wrapped in `React.memo`.
+ * Deliberately not wrapped in `React.memo` — the memo boundary is `TreeRow` in
+ * `react-sortable-tree.tsx`, one level up.
  *
- * Each row is rendered as `<TreeNodeRenderer …><NodeContentRenderer …/></…>`,
- * so `children` is a fresh element on every render and a shallow prop
- * comparison can never pass — measured: rows still re-rendered after a parent
- * re-render with the memo in place. It was pure overhead plus a misleading
- * signal that rows were memoized.
- *
- * Making memoization effective needs the row to stop taking its content as
- * `children`. Note that rows are virtualized, so only the visible window
- * ever re-renders.
+ * A memo here cannot work and was measured not working: a row renders as
+ * `<TreeNodeRenderer …><NodeContentRenderer …/></…>`, so this component's
+ * `children` is a fresh element on every render and a shallow comparison can
+ * never pass. It was pure overhead plus a misleading signal that rows were
+ * memoized. `TreeRow` builds that composition *inside* itself instead, which puts
+ * the freshness inside the boundary where it costs nothing. Do not add a memo
+ * here to "help"; add props to `TreeRow` carefully instead, and keep them values
+ * or stable references.
  */
 export default TreeNodeComponent

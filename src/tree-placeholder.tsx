@@ -1,16 +1,16 @@
 import type { ConnectDropTarget } from '@nosferatu500/react-dnd'
 import React, { Children, cloneElement, type ReactNode } from 'react'
-import type { TreeItem, TreeItemDropResult } from './types'
+import type { TreeItem, TreeItemDropResult, UnknownNodeData } from './types'
 
-type TreePlaceholderProps = {
+type TreePlaceholderProps<TData = UnknownNodeData> = {
   children: ReactNode
   // Drop target
   connectDropTarget: ConnectDropTarget
   isOver: boolean
   canDrop: boolean
-  draggedNode?: TreeItem
+  draggedNode?: TreeItem<TData>
   treeId: string
-  drop: (dropResult: TreeItemDropResult) => void
+  drop: (dropResult: TreeItemDropResult<TData>) => void
 }
 
 const TreePlaceholder = ({

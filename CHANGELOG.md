@@ -171,6 +171,81 @@ cause is each row registering with two composed backends instead of one — the 
 keyboard support — but that attribution is not yet measured. Tracked in
 [MODERNIZATION.md](./MODERNIZATION.md).
 
+### Added: `TreeItem<TData>`, so your own node fields can be checked
+
+`TreeItem` was `{ [x: string]: unknown }`, which meant a node's custom fields — the
+ids, owners and flags that are the reason to use a tree at all — were entirely
+unchecked. They can now be described:
+
+```tsx
+interface Doc {
+  id: number
+  owner: string
+}
+
+const treeData: TreeItem<Doc>[] = [
+  { id: 1, owner: 'ada', title: 'Roadmap' },
+  { id: 2, owner: 'grace', ownr: 'typo' }, // error: not a field of Doc
+]
+```
+
+`TData` is inferred from `treeData`, so there is no type argument to write, and it
+flows through every callback that receives a node (`onChange`, `onMoveNode`,
+`canDrop`, `canNodeHaveChildren`, `generateNodeProps`, `announcements`) and through
+**every data helper** — `changeNodeAtPath` on a `TreeItem<Doc>[]` now returns a
+`TreeItem<Doc>[]` instead of losing the type. Custom renderers take the same
+parameter: `NodeRendererProps<Doc>`, `TreeRendererProps<Doc>`.
+
+**Additive, not breaking.** The default is the previous index signature, so a bare
+`TreeItem` behaves exactly as it did and existing code compiles untouched. It also
+has to be: nodes legitimately carry fields the library knows nothing about, and a
+strict default would reject every consumer that stores any.
+
+One related tightening: `defaultSearchMethod` searches `title` and `subtitle`, and
+now says so in its types rather than indexing by an arbitrary string.
+
+### Performance: rows are memoized, so an unrelated re-render no longer redraws the window
+
+Moving the roving tabindex with an arrow key used to re-render every visible row,
+once per keypress. It now re-renders the two rows whose active state actually
+changed. The same applies to any re-render that does not change the data — a
+parent re-rendering for its own reasons now costs nothing per row.
+
+`React.memo` could not previously be made to work here. A row renders as
+`<TreeNodeRenderer …><NodeContentRenderer …/></TreeNodeRenderer>`, so the row
+renderer's `children` is a fresh element on every render and a shallow comparison
+can never pass; a memo placed on the row renderer was measured doing nothing and
+removed again. The boundary is now an internal `TreeRow` that builds that
+composition inside itself, which puts the freshness inside the boundary.
+
+Two consumer props are called inside that boundary rather than outside it, so an
+inline arrow costs its own rows a re-render instead of defeating the memo for
+every row: `generateNodeProps` and a function-form `rowHeight`. Passing stable
+references for those is worth it on large trees, but nothing breaks either way.
+
+Rows are virtualized, so this is bounded by the visible window rather than the
+tree size. Verified by counting renders rather than by timing — the count is in
+`react-sortable-tree.test.tsx` under "render stability", and it fails without the
+memo.
+
+### Changed: the row's drop state travels by context, not `cloneElement`
+
+`tree-node.tsx` used to inject `isOver`, `canDrop` and `draggedNode` into its
+children with `Children.map(children, child => cloneElement(child, …))` — the
+pre-hooks pattern React discourages. They now travel through an internal context.
+
+**Not a breaking change**, which is worth stating because it easily could have
+been. The provider sits in the internal drop-target wrapper, outside anything a
+consumer can replace, rather than in `TreeNode` where providing it would have
+become a custom `treeNodeRenderer`'s job. So:
+
+- a custom `nodeContentRenderer` still receives `isOver`, `canDrop` and
+  `draggedNode` as props, unchanged;
+- a custom `treeNodeRenderer` that still clones its children keeps working, since
+  it injects the same values the context carries;
+- a custom `treeNodeRenderer` can now drop the `cloneElement` entirely and just
+  render `{children}`.
+
 ### Added: the screen-reader announcements can be localised
 
 Keyboard drag and drop narrates itself through a live region, and **every string

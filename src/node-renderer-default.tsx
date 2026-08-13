@@ -3,26 +3,31 @@ import type {
   ConnectDragSource,
 } from '@nosferatu500/react-dnd'
 import React, { type JSX } from 'react'
-import type { NodeData, TreeItem, TreeItemContent } from './types'
+import type {
+  NodeData,
+  TreeItem,
+  TreeItemContent,
+  UnknownNodeData,
+} from './types'
 import { classnames } from './utils/classnames'
 import { isDescendant } from './utils/tree-data-utils'
 import './node-renderer-default.css'
 
-export interface NodeRendererProps {
-  node: TreeItem
+export interface NodeRendererProps<TData = UnknownNodeData> {
+  node: TreeItem<TData>
   path: number[]
   treeIndex: number
   isSearchMatch: boolean
   isSearchFocus: boolean
   canDrag: boolean
   scaffoldBlockPxWidth: number
-  toggleChildrenVisibility?(data: NodeData): void | undefined
+  toggleChildrenVisibility?(data: NodeData<TData>): void | undefined
   buttons?: JSX.Element[]
   className?: string
   style?: React.CSSProperties
   /** Overrides `node.title`; same value-or-function shape. */
-  title?: TreeItemContent
-  subtitle?: TreeItemContent
+  title?: TreeItemContent<TData>
+  subtitle?: TreeItemContent<TData>
   icons?: JSX.Element[]
   lowerSiblingCounts: number[]
   swapDepth?: number
@@ -34,7 +39,7 @@ export interface NodeRendererProps {
 
   connectDragPreview: ConnectDragPreview
   connectDragSource: ConnectDragSource
-  parentNode?: TreeItem
+  parentNode?: TreeItem<TData>
   startDrag: ({ path }: { path: number[] }) => void
   endDrag: (dropResult: unknown) => void
   isDragging: boolean
@@ -45,7 +50,7 @@ export interface NodeRendererProps {
    */
   isSettling?: boolean
   didDrop: boolean
-  draggedNode?: TreeItem
+  draggedNode?: TreeItem<TData>
   isOver: boolean
   canDrop?: boolean
   /**
@@ -56,15 +61,17 @@ export interface NodeRendererProps {
   isActiveRow?: boolean
 }
 
-const NO_BUTTONS: React.ReactNode[] = []
+// Typed as the prop it defaults, not as the looser `ReactNode[]`: the annotation
+// is now on the parameter, which checks defaults against the declared prop type.
+const NO_BUTTONS: JSX.Element[] = []
 const NO_STYLE: React.CSSProperties = {}
 
-const renderToggleSection = (
-  node: TreeItem,
+const renderToggleSection = <TData,>(
+  node: TreeItem<TData>,
   isDragging: boolean,
   scaffoldBlockPxWidth: number,
   rowDirectionClass: string | undefined,
-  toggleChildrenVisibility: ((data: NodeData) => void) | undefined,
+  toggleChildrenVisibility: ((data: NodeData<TData>) => void) | undefined,
   path: number[],
   treeIndex: number,
   buttonStyle: React.CSSProperties
@@ -107,11 +114,11 @@ const renderToggleSection = (
  * be anything at all, and rendering one to text here is neither possible nor
  * cheap, so those fall back to a generic name.
  */
-const dragHandleLabel = (node: TreeItem): string =>
+const dragHandleLabel = <TData,>(node: TreeItem<TData>): string =>
   typeof node.title === 'string' ? `Drag ${node.title}` : 'Drag item'
 
-const renderHandle = (
-  node: TreeItem,
+const renderHandle = <TData,>(
+  node: TreeItem<TData>,
   rowDirectionClass: string | undefined,
   connectDragSource: ConnectDragSource,
   isActiveRow: boolean
@@ -192,7 +199,7 @@ const rowClassName = ({
     className
   )
 
-const NodeRendererDefault: React.FC<NodeRendererProps> = ({
+const NodeRendererDefault = <TData,>({
   isSearchMatch = false,
   isSearchFocus = false,
   canDrag = false,
@@ -220,7 +227,7 @@ const NodeRendererDefault: React.FC<NodeRendererProps> = ({
   treeId: _treeId,
   isOver: _isOver,
   ...otherProps
-}) => {
+}: NodeRendererProps<TData>): React.JSX.Element => {
   const nodeTitle = title || node.title
   const nodeSubtitle = subtitle || node.subtitle
   const rowDirectionClass = rowDirection === 'rtl' ? 'rst__rtl' : undefined

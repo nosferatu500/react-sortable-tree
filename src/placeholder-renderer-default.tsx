@@ -1,12 +1,12 @@
 import React from 'react'
-import type { TreeItem } from './types'
+import type { TreeItem, UnknownNodeData } from './types'
 import { classnames } from './utils/classnames'
 import './placeholder-renderer-default.css'
 
-export interface PlaceholderRendererProps {
+export interface PlaceholderRendererProps<TData = UnknownNodeData> {
   isOver: boolean
   canDrop: boolean
-  draggedNode?: TreeItem
+  draggedNode?: TreeItem<TData>
 }
 
 const PlaceholderRendererDefault: React.FC<PlaceholderRendererProps> = ({
