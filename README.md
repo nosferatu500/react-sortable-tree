@@ -30,7 +30,7 @@ has been rebuilt.
 | Runtime dependencies | 7                                                  | 4                                                                                   |
 | Module format        | CJS + ESM                                          | ESM only                                                                            |
 | Styling              | plain CSS                                          | CSS custom properties, `@property`, `@layer`                                        |
-| Tests                | Jest                                               | Vitest, 239 tests                                                                   |
+| Tests                | Jest                                               | Vitest, 298 tests                                                                   |
 
 **Migrating from the original?** You still import a stylesheet, just from the scoped
 name (`import '@nosferatu500/react-sortable-tree/style.css'`). The main API change is

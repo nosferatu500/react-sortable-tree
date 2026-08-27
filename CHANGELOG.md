@@ -171,6 +171,16 @@ cause is each row registering with two composed backends instead of one — the 
 keyboard support — but that attribution is not yet measured. Tracked in
 [MODERNIZATION.md](./MODERNIZATION.md).
 
+### Tests: the coverage gaps the plan listed are closed
+
+`slideRows`, both default handlers, and each node renderer now have their own
+tests. The renderers are driven directly rather than through a tree, which is the
+only way to set `isDragging`, `didDrop`, `isOver`, `canDrop`, `isSettling` and
+`draggedNode` independently — the states they render for were otherwise never
+exercised. No behaviour change, one clarification: `defaultSearchMethod` never
+matched a falsy `title`, and now says so explicitly rather than relying on the
+value being coerced.
+
 ### Added: `TreeItem<TData>`, so your own node fields can be checked
 
 `TreeItem` was `{ [x: string]: unknown }`, which meant a node's custom fields — the
