@@ -1,5 +1,285 @@
 # Changelog
 
+## [7.1.0] - 2026-08-27
+
+One user-visible fix, three additions, a rendering-performance win, and the
+drag-and-drop stack moved to 19.2.0.
+
+**Upgrading.** This release raises two floors, both to `^19.2.0`:
+
+```sh
+npm i @nosferatu500/react-dnd@^19.2 @nosferatu500/react-dnd-html5-backend@^19.2
+npm i react@^19.2 react-dom@^19.2
+```
+
+The React one corrects a manifest that was wrong in 7.0.0 rather than withdrawing
+support — see below. The drag-and-drop one is a real requirement: `onDrop` is built
+on APIs that do not exist in 19.0 or 19.1.
+
+Nothing in the existing API changed. A tree that passes no new props behaves as it
+did, and custom `treeNodeRenderer`s and `nodeContentRenderer`s keep their contracts
+— including the `cloneElement` forwarding one of them may still be doing, which is
+now unnecessary but harmless.
+
+### Fixed: no horizontal scrollbar for rows wider than the tree
+
+**Upgrade if you have deeply nested nodes, long titles, or row buttons.** A row
+wider than the tree's container was clipped with no way to scroll to it, so the
+buttons at the end of it could not be reached at all. Reported against the
+virtualized list introduced in v6.
+
+The tree scrolls sideways again, and nothing about the API changed.
+
+The cause was subtle enough to be worth recording. `virtua` sizes its inner
+container on the scroll axis only — for a vertical list the height is the total row
+height and the width is `100%` — so a wide row is never a wide *box*, only
+overflow. Its per-row wrapper carries `contain: layout`, and layout containment
+stops that overflow counting towards the scroller's scrollable area: measured in
+Chrome, the wrapper's own `scrollWidth` reached 654px while the scroller stayed at
+620px. `overflow-x` was already `auto` and had nothing to scroll, and
+`contain: strict` on the scroller clipped the row instead.
+
+The row wrapper is this library's own component, so the fix is to drop `layout`
+from its containment and put back the one other thing that containment provided —
+a per-row stacking context — with `isolation: isolate`. Without that, the
+`z-index: -1` drop highlight (`.rst__rowLandingPad::before`) vanishes behind an
+ancestor.
+
+`benchmark/layout/horizontal-scroll.mjs` is the check; it needs a real browser,
+because jsdom has no layout and reports `scrollWidth` as 0 whatever the bug.
+
+### Added: `onDrop`, for a move that has to be saved before it is real
+
+`onChange` and `onMoveNode` both fire the moment a move commits and cannot fail —
+they say *this happened*. `onDrop` says *make this stick*, and it is **awaited**:
+
+```jsx
+<SortableTree
+  treeData={treeData}
+  onChange={setTreeData}
+  onDrop={async ({ treeData }, signal) => {
+    await fetch('/api/tree', { method: 'PUT', body: JSON.stringify(treeData), signal })
+  }}
+/>
+```
+
+Returning a promise gives the tree the three states a save really has:
+
+- **pending** — the move is committed optimistically, so the tree is not frozen
+  under the cursor while a request is in flight. The moved row carries
+  `aria-busy` and the new `rst__rowSettling` class, and a custom
+  `nodeContentRenderer` receives an `isSettling` prop.
+- **resolved** — the move is announced to screen readers as done, only now.
+- **rejected** — the tree reverts to the data from before the drop and emits
+  `onChange` with it, so a consumer that only listens to `onChange` still ends up
+  consistent. Previously there was no rollback, revert or catch anywhere: a
+  failed save left the tree showing a move that never happened.
+
+`signal` aborts when the drop can no longer affect anything, so forward it to
+`fetch`. An `AbortError` after it fires is the tree's own doing and neither
+reverts nor announces. The rejection reason also reaches
+`monitor.getDropError()` and the environment's uncaught-error handling.
+
+**Nothing changes without it.** A tree with no `onDrop` keeps a fully synchronous
+drop, which is deliberate rather than incidental: it is what keeps
+`getDropResult()` readable inside `end`, where the copy-or-remove bookkeeping for
+a drop into another tree happens.
+
+Screen-reader strings for the three states are English, like the rest of them —
+the localisation gap is unchanged, not widened by a different mechanism.
+
+See the `Advanced/AsyncDrop` story.
+
+### Added: the screen-reader announcements can be localised
+
+Keyboard drag and drop narrates itself through a live region, and **every string
+used to be hard-coded English** with no way to replace them: non-English apps got
+English announcements. Both sources now have a route out.
+
+The backend's own strings — the static instructions, pick-up, movement, drop and
+cancellation — go through `withTreeKeyboard`, which forwards the keyboard
+backend's `announcements` and `describeNode`:
+
+```jsx
+const backend = withTreeKeyboard(HTML5Backend, {
+  announcements: {
+    instructions: 'Appuyez sur Espace pour saisir cet élément.',
+    pickUp: ({ source }) => `${source} saisi.`,
+  },
+})
+```
+
+The tree's own — where a node landed, and what depth an arrow key produced — are
+per-tree rather than per-backend, so they arrive as a prop:
+
+```jsx
+<SortableTree
+  announcements={{
+    moved: ({ node, depth }) => `${node.title} : profondeur ${depth}.`,
+    depth: ({ depth, changed }) =>
+      `Profondeur ${depth}${changed ? '' : ', inchangée'}.`,
+  }}
+/>
+```
+
+Each key falls back on its own, so overriding one message leaves the rest in
+English rather than silencing them. `defaultTreeAnnouncements` is exported for
+wrapping a default instead of replacing it, along with the
+`TreeAnnouncements`, `MoveAnnouncement` and `DepthAnnouncement` types.
+
+Only `announcements` and `describeNode` are forwarded, and the
+`TreeKeyboardOptions` type says so: `getNextTarget` and `onNavigate` are what make
+the backend tree-shaped, and a consumer who replaced either would silently lose
+depth control or the vertical arrows. Call `withKeyboard` directly for that.
+
+Additive — the defaults are the previous strings verbatim.
+
+### Added: `TreeItem<TData>`, so your own node fields can be checked
+
+`TreeItem` was `{ [x: string]: unknown }`, which meant a node's custom fields — the
+ids, owners and flags that are the reason to use a tree at all — were entirely
+unchecked. They can now be described:
+
+```tsx
+interface Doc {
+  id: number
+  owner: string
+}
+
+const treeData: TreeItem<Doc>[] = [
+  { id: 1, owner: 'ada', title: 'Roadmap' },
+  { id: 2, owner: 'grace', ownr: 'typo' }, // error: not a field of Doc
+]
+```
+
+`TData` is inferred from `treeData`, so there is no type argument to write, and it
+flows through every callback that receives a node (`onChange`, `onMoveNode`,
+`canDrop`, `canNodeHaveChildren`, `generateNodeProps`, `announcements`) and through
+**every data helper** — `changeNodeAtPath` on a `TreeItem<Doc>[]` now returns a
+`TreeItem<Doc>[]` instead of losing the type. Custom renderers take the same
+parameter: `NodeRendererProps<Doc>`, `TreeRendererProps<Doc>`.
+
+**Additive, not breaking.** The default is the previous index signature, so a bare
+`TreeItem` behaves exactly as it did and existing code compiles untouched. It also
+has to be: nodes legitimately carry fields the library knows nothing about, and a
+strict default would reject every consumer that stores any.
+
+One related tightening: `defaultSearchMethod` searches `title` and `subtitle`, and
+now says so in its types rather than indexing by an arbitrary string.
+
+### Performance: rows are memoized, so an unrelated re-render no longer redraws the window
+
+Moving the roving tabindex with an arrow key used to re-render every visible row,
+once per keypress. It now re-renders the two rows whose active state actually
+changed. The same applies to any re-render that does not change the data — a
+parent re-rendering for its own reasons now costs nothing per row.
+
+`React.memo` could not previously be made to work here. A row renders as
+`<TreeNodeRenderer …><NodeContentRenderer …/></TreeNodeRenderer>`, so the row
+renderer's `children` is a fresh element on every render and a shallow comparison
+can never pass; a memo placed on the row renderer was measured doing nothing and
+removed again. The boundary is now an internal `TreeRow` that builds that
+composition inside itself, which puts the freshness inside the boundary.
+
+Two consumer props are called inside that boundary rather than outside it, so an
+inline arrow costs its own rows a re-render instead of defeating the memo for
+every row: `generateNodeProps` and a function-form `rowHeight`. Passing stable
+references for those is worth it on large trees, but nothing breaks either way.
+
+Rows are virtualized, so this is bounded by the visible window rather than the
+tree size. Verified by counting renders rather than by timing — the count is in
+`react-sortable-tree.test.tsx` under "render stability", and it fails without the
+memo.
+
+### Changed: the drag-and-drop stack is on 19.2.0
+
+The peer range for `@nosferatu500/react-dnd` and
+`@nosferatu500/react-dnd-html5-backend` is now `^19.2.0`. This is a real
+requirement rather than housekeeping: `onDrop` below is built on `isSettling()` and
+`getDropError()`, which do not exist in 19.0 or 19.1.
+
+Neither of 19.2.0's own breaking changes reaches a consumer of this package. They
+land on hand-rolled monitor test doubles, and on `drop` handlers that return a
+promise — and the tree only returns one when you supply `onDrop`.
+
+Two of its fixes arrive for free, with nothing to configure: `canDrop` is consulted
+once per `dragover` instead of twice, and a file dragged over the page while a
+component unmounts no longer wedges every later `DndProvider`.
+
+One thing is worth knowing if you supply your own `DndProvider`: a provider is no
+longer limited to a single backend. `composeBackends` runs several at once, so
+supporting a mouse and a finger no longer means detecting which to install up front
+and getting hybrid laptops wrong. See the README's `withTreeKeyboard` section; the
+`Advanced/TouchSupport` story now does exactly this.
+
+Multi-item drag was deliberately left out. 19.2.0 documented it as a pattern rather
+than adding API for it, and in a tree it means building multi-select — selection
+state, a custom `isDragging`, a drag-layer count, and moving several subtrees at
+once. That is a feature in its own right, not a dependency bump.
+
+### Changed: the React peer range is now `^19.2.0`
+
+Raised from `^19.0.0`, which was simply wrong. This library calls `useEffectEvent`
+— for `onChange`, `onMoveNode`, `onVisibilityToggle`, the search callbacks and the
+move announcement — and that hook first shipped in React **19.2**. 7.0.0 already
+called it in nine places while declaring `^19.0.0`, so on React 19.0 or 19.1 it
+installed cleanly and then threw at render.
+
+Nothing that worked before stops working: this describes the floor the code always
+had, rather than withdrawing support.
+
+`npm install react@^19.2 react-dom@^19.2` if you are below it.
+
+### Changed: the row's drop state travels by context, not `cloneElement`
+
+`tree-node.tsx` used to inject `isOver`, `canDrop` and `draggedNode` into its
+children with `Children.map(children, child => cloneElement(child, …))` — the
+pre-hooks pattern React discourages. They now travel through an internal context.
+
+**Not a breaking change**, which is worth stating because it easily could have
+been. The provider sits in the internal drop-target wrapper, outside anything a
+consumer can replace, rather than in `TreeNode` where providing it would have
+become a custom `treeNodeRenderer`'s job. So:
+
+- a custom `nodeContentRenderer` still receives `isOver`, `canDrop` and
+  `draggedNode` as props, unchanged;
+- a custom `treeNodeRenderer` that still clones its children keeps working, since
+  it injects the same values the context carries;
+- a custom `treeNodeRenderer` can now drop the `cloneElement` entirely and just
+  render `{children}`.
+
+### Tests: the known coverage gaps are closed
+
+`slideRows`, both default handlers, and each node renderer now have their own
+tests. The renderers are driven directly rather than through a tree, which is the
+only way to set `isDragging`, `didDrop`, `isOver`, `canDrop`, `isSettling` and
+`draggedNode` independently — the states they render for were otherwise never
+exercised. No behaviour change, one clarification: `defaultSearchMethod` never
+matched a falsy `title`, and now says so explicitly rather than relying on the
+value being coerced.
+
+### Measured: two numbers chased down
+
+Two figures in 7.0.0's notes above have since been chased down.
+
+**The "Expand a group" cell is not the keyboard backend.** The standing theory was
+that every row registers with two composed backends rather than one.
+`benchmark/attribution/keyboard-cost.mjs` measured it — same tree, same page, only
+the backend changed, sides alternating per trial — at **0.0–0.3 ms** against a
+~0.9 ms gap. Real, bounded, and not what the cell is about. It is also not a
+virtualization trade-off that reverses at scale: the original wins that column at
+100, 1,000 and 10,000 nodes alike. The remainder is still unattributed.
+
+That harness is worth knowing about for its own sake. Timing one expand per trial
+put the difference at +0.28 ms, then −0.23, then +0.48 — `performance.now()` is
+clamped to 100µs and a single commit lands at 1–2 ms, so a single run of it would
+have "confirmed" the theory it was built to test. The method, and the rest of the
+traps behind these numbers, are in [benchmark/README.md](./benchmark/README.md).
+
+**The shipping-cost table has not been re-measured** since the drag-and-drop stack
+moved to 19.2.0, so those four numbers still describe the 19.0 stack. The runtime
+table is unaffected.
+
 ## [7.0.0] - 2026-08-10
 
 ### Breaking: the `react-dnd` peer dependency changed packages
@@ -96,33 +376,6 @@ supply your own provider — with `SortableTreeWithoutDndContext`, or to swap in
 `TouchBackend`. A bare pointer backend has no keyboard gesture at all, and losing
 it is silent, so this is not an optional nicety for those setups.
 
-### Fixed: no horizontal scrollbar for rows wider than the tree
-
-**Upgrade if you have deeply nested nodes, long titles, or row buttons.** A row
-wider than the tree's container was clipped with no way to scroll to it, so the
-buttons at the end of it could not be reached at all. Reported against the
-virtualized list introduced in v6.
-
-The tree scrolls sideways again, and nothing about the API changed.
-
-The cause was subtle enough to be worth recording. `virtua` sizes its inner
-container on the scroll axis only — for a vertical list the height is the total row
-height and the width is `100%` — so a wide row is never a wide *box*, only
-overflow. Its per-row wrapper carries `contain: layout`, and layout containment
-stops that overflow counting towards the scroller's scrollable area: measured in
-Chrome, the wrapper's own `scrollWidth` reached 654px while the scroller stayed at
-620px. `overflow-x` was already `auto` and had nothing to scroll, and
-`contain: strict` on the scroller clipped the row instead.
-
-The row wrapper is this library's own component, so the fix is to drop `layout`
-from its containment and put back the one other thing that containment provided —
-a per-row stacking context — with `isolation: isolate`. Without that, the
-`z-index: -1` drop highlight (`.rst__rowLandingPad::before`) vanishes behind an
-ancestor.
-
-`benchmark/layout/horizontal-scroll.mjs` is the check; it needs a real browser,
-because jsdom has no layout and reports `scrollWidth` as 0 whatever the bug.
-
 ### Fixed: a drop could land the node back where it started
 
 A drop recomputed its position from row props that the last hover had already
@@ -161,16 +414,6 @@ stop — the backend never overwrites an attribute the element already carries.
 The default renderer's drag handle also gained `role="button"` and an
 `aria-label` — without a name, announcements said "Picked up ." for every row.
 
-### Breaking: the React peer range is now `^19.2.0`
-
-Raised from `^19.0.0`, which understated the real floor rather than describing it.
-This library calls `useEffectEvent` — for `onChange`, `onMoveNode`,
-`onVisibilityToggle`, the search callbacks and the move announcement — and that
-hook first shipped in React **19.2**. On React 19.0 or 19.1 the old range
-installed cleanly and then failed at render.
-
-`npm install react@^19.2 react-dom@^19.2` if you are below it.
-
 ### Changed: `engines.node` is now `>=22.12`
 
 Raised from `>=22`, because `@nosferatu500/react-dnd` 19 requires it. Node 22.12
@@ -193,203 +436,20 @@ The ~2.9 kB of extra JS is keyboard dragging and its live region.
 
 Runtime is unchanged within run-to-run noise at every tree size, with one exception:
 **expanding a group costs about 1 ms more on small trees** (2.4 → 3.1 ms at 1,000 nodes),
-which is enough for the original v2.8.0 to take that cell on a separated range. The likely
-cause is each row registering with two composed backends instead of one — the price of
-keyboard support — but that attribution is not yet measured. Tracked in
-[MODERNIZATION.md](./MODERNIZATION.md).
+which is enough for the original v2.8.0 to take that cell on a separated range. The reading
+at the time was that each row registers with two composed backends instead of one — the price
+of keyboard support. That was measured after 7.0.0 shipped and **ruled out**; see 7.1.0.
 
-### Tests: the coverage gaps the plan listed are closed
+### Changed: `@nosferatu500/react-dnd-keyboard-backend` 19.1.0
 
-`slideRows`, both default handlers, and each node renderer now have their own
-tests. The renderers are driven directly rather than through a tree, which is the
-only way to set `isDragging`, `didDrop`, `isOver`, `canDrop`, `isSettling` and
-`draggedNode` independently — the states they render for were otherwise never
-exercised. No behaviour change, one clarification: `defaultSearchMethod` never
-matched a falsy `title`, and now says so explicitly rather than relying on the
-value being coerced.
+Uses the release's new APIs: `isKeyboardDrag()` to tell a keyboard drag from a
+pointer one, and `onNavigate` to take the horizontal arrows for depth. Both
+replaced workarounds — reading a diagnostics counter off the backend, and a
+`Window` capture listener racing the backend's own `Document` one.
 
-### Added: `TreeItem<TData>`, so your own node fields can be checked
-
-`TreeItem` was `{ [x: string]: unknown }`, which meant a node's custom fields — the
-ids, owners and flags that are the reason to use a tree at all — were entirely
-unchecked. They can now be described:
-
-```tsx
-interface Doc {
-  id: number
-  owner: string
-}
-
-const treeData: TreeItem<Doc>[] = [
-  { id: 1, owner: 'ada', title: 'Roadmap' },
-  { id: 2, owner: 'grace', ownr: 'typo' }, // error: not a field of Doc
-]
-```
-
-`TData` is inferred from `treeData`, so there is no type argument to write, and it
-flows through every callback that receives a node (`onChange`, `onMoveNode`,
-`canDrop`, `canNodeHaveChildren`, `generateNodeProps`, `announcements`) and through
-**every data helper** — `changeNodeAtPath` on a `TreeItem<Doc>[]` now returns a
-`TreeItem<Doc>[]` instead of losing the type. Custom renderers take the same
-parameter: `NodeRendererProps<Doc>`, `TreeRendererProps<Doc>`.
-
-**Additive, not breaking.** The default is the previous index signature, so a bare
-`TreeItem` behaves exactly as it did and existing code compiles untouched. It also
-has to be: nodes legitimately carry fields the library knows nothing about, and a
-strict default would reject every consumer that stores any.
-
-One related tightening: `defaultSearchMethod` searches `title` and `subtitle`, and
-now says so in its types rather than indexing by an arbitrary string.
-
-### Performance: rows are memoized, so an unrelated re-render no longer redraws the window
-
-Moving the roving tabindex with an arrow key used to re-render every visible row,
-once per keypress. It now re-renders the two rows whose active state actually
-changed. The same applies to any re-render that does not change the data — a
-parent re-rendering for its own reasons now costs nothing per row.
-
-`React.memo` could not previously be made to work here. A row renders as
-`<TreeNodeRenderer …><NodeContentRenderer …/></TreeNodeRenderer>`, so the row
-renderer's `children` is a fresh element on every render and a shallow comparison
-can never pass; a memo placed on the row renderer was measured doing nothing and
-removed again. The boundary is now an internal `TreeRow` that builds that
-composition inside itself, which puts the freshness inside the boundary.
-
-Two consumer props are called inside that boundary rather than outside it, so an
-inline arrow costs its own rows a re-render instead of defeating the memo for
-every row: `generateNodeProps` and a function-form `rowHeight`. Passing stable
-references for those is worth it on large trees, but nothing breaks either way.
-
-Rows are virtualized, so this is bounded by the visible window rather than the
-tree size. Verified by counting renders rather than by timing — the count is in
-`react-sortable-tree.test.tsx` under "render stability", and it fails without the
-memo.
-
-### Changed: the row's drop state travels by context, not `cloneElement`
-
-`tree-node.tsx` used to inject `isOver`, `canDrop` and `draggedNode` into its
-children with `Children.map(children, child => cloneElement(child, …))` — the
-pre-hooks pattern React discourages. They now travel through an internal context.
-
-**Not a breaking change**, which is worth stating because it easily could have
-been. The provider sits in the internal drop-target wrapper, outside anything a
-consumer can replace, rather than in `TreeNode` where providing it would have
-become a custom `treeNodeRenderer`'s job. So:
-
-- a custom `nodeContentRenderer` still receives `isOver`, `canDrop` and
-  `draggedNode` as props, unchanged;
-- a custom `treeNodeRenderer` that still clones its children keeps working, since
-  it injects the same values the context carries;
-- a custom `treeNodeRenderer` can now drop the `cloneElement` entirely and just
-  render `{children}`.
-
-### Added: the screen-reader announcements can be localised
-
-Keyboard drag and drop narrates itself through a live region, and **every string
-used to be hard-coded English** with no way to replace them: non-English apps got
-English announcements. Both sources now have a route out.
-
-The backend's own strings — the static instructions, pick-up, movement, drop and
-cancellation — go through `withTreeKeyboard`, which forwards the keyboard
-backend's `announcements` and `describeNode`:
-
-```jsx
-const backend = withTreeKeyboard(HTML5Backend, {
-  announcements: {
-    instructions: 'Appuyez sur Espace pour saisir cet élément.',
-    pickUp: ({ source }) => `${source} saisi.`,
-  },
-})
-```
-
-The tree's own — where a node landed, and what depth an arrow key produced — are
-per-tree rather than per-backend, so they arrive as a prop:
-
-```jsx
-<SortableTree
-  announcements={{
-    moved: ({ node, depth }) => `${node.title} : profondeur ${depth}.`,
-    depth: ({ depth, changed }) =>
-      `Profondeur ${depth}${changed ? '' : ', inchangée'}.`,
-  }}
-/>
-```
-
-Each key falls back on its own, so overriding one message leaves the rest in
-English rather than silencing them. `defaultTreeAnnouncements` is exported for
-wrapping a default instead of replacing it, along with the
-`TreeAnnouncements`, `MoveAnnouncement` and `DepthAnnouncement` types.
-
-Only `announcements` and `describeNode` are forwarded, and the
-`TreeKeyboardOptions` type says so: `getNextTarget` and `onNavigate` are what make
-the backend tree-shaped, and a consumer who replaced either would silently lose
-depth control or the vertical arrows. Call `withKeyboard` directly for that.
-
-Additive — the defaults are the previous strings verbatim.
-
-### Changed: the drag-and-drop stack is on 19.2.0
-
-The peer range is `@nosferatu500/react-dnd` and
-`@nosferatu500/react-dnd-html5-backend` at `^19.2.0`. Nothing this library exposes
-changed with it, and neither of 19.2.0's breaking changes reaches a consumer of
-this package — they land on hand-rolled monitor doubles, and on `drop` handlers
-that return a promise.
-
-From keyboard-backend 19.1.0, this library uses `isKeyboardDrag()` to tell a
-keyboard drag from a pointer one, and `onNavigate` to take the horizontal arrows
-for depth. Both replaced workarounds — reading a diagnostics counter off the
-backend, and a `Window` capture listener racing the backend's own `Document` one.
-Two upstream fixes from it are visible here: picking a row up no longer previews
-it jumping to the top of the tree, and a drag source that wraps controls of its
-own now gets `role="group"` rather than an invalid nested `role="button"`.
-
-19.2.0 adds one thing worth knowing about if you supply your own `DndProvider`: a
-provider is no longer limited to a single backend. `composeBackends` runs several
-at once, so supporting a mouse and a finger no longer means detecting which to
-install — see `withTreeKeyboard` below. Its asynchronous drop support is what the
-new `onDrop` prop is built on.
-
-### Added: `onDrop`, for a move that has to be saved before it is real
-
-`onChange` and `onMoveNode` both fire the moment a move commits and cannot fail —
-they say *this happened*. `onDrop` says *make this stick*, and it is **awaited**:
-
-```jsx
-<SortableTree
-  treeData={treeData}
-  onChange={setTreeData}
-  onDrop={async ({ treeData }, signal) => {
-    await fetch('/api/tree', { method: 'PUT', body: JSON.stringify(treeData), signal })
-  }}
-/>
-```
-
-Returning a promise gives the tree the three states a save really has:
-
-- **pending** — the move is committed optimistically, so the tree is not frozen
-  under the cursor while a request is in flight. The moved row carries
-  `aria-busy` and the new `rst__rowSettling` class, and a custom
-  `nodeContentRenderer` receives an `isSettling` prop.
-- **resolved** — the move is announced to screen readers as done, only now.
-- **rejected** — the tree reverts to the data from before the drop and emits
-  `onChange` with it, so a consumer that only listens to `onChange` still ends up
-  consistent. Previously there was no rollback, revert or catch anywhere: a
-  failed save left the tree showing a move that never happened.
-
-`signal` aborts when the drop can no longer affect anything, so forward it to
-`fetch`. An `AbortError` after it fires is the tree's own doing and neither
-reverts nor announces. The rejection reason also reaches
-`monitor.getDropError()` and the environment's uncaught-error handling.
-
-**Nothing changes without it.** A tree with no `onDrop` keeps a fully synchronous
-drop, which is deliberate rather than incidental: it is what keeps
-`getDropResult()` readable inside `end`, where the copy-or-remove bookkeeping for
-a drop into another tree happens.
-
-Screen-reader strings for the three states are English, like the rest of them —
-the localisation gap is unchanged, not widened by a different mechanism.
-
-See the `Advanced/AsyncDrop` story.
+Two upstream fixes are visible here: picking a row up no longer previews it
+jumping to the top of the tree, and a drag source that wraps controls of its own
+now gets `role="group"` rather than an invalid nested `role="button"`.
 
 ## [6.0.0] - 2026-07-31
 
@@ -664,9 +724,10 @@ of a 60 fps frame budget in v5, 5% in v6. Behind it:
 - **The tsconfig runs with `noUncheckedIndexedAccess`, `verbatimModuleSyntax`,
   `erasableSyntaxOnly` and `isolatedDeclarations`.** Consumer-visible effects are limited
   to the `ThemeProps` export above and explicit return types in the emitted `.d.ts`; the
-  `searchFocusOffset` crash below was found by the first of those flags. Details and the
-  measurements behind the traversal loops are in
-  [MODERNIZATION.md](./MODERNIZATION.md) 4.5.
+  `searchFocusOffset` crash below was found by the first of those flags. The traversal loops
+  in `tree-data-utils.ts` keep their indexed form because `.entries()` measured 5–17% slower on
+  the flatten path; the comment there says so, and the measurement method is in
+  [benchmark/README.md](./benchmark/README.md).
 
 ### Testing
 

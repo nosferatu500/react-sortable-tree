@@ -2,7 +2,7 @@
  * Answers one question: is the extra ~1 ms on "Expand a group" the cost of
  * composing the keyboard backend over the pointer one?
  *
- * Method, from MODERNIZATION.md's appendix — the same trap applies here as to the
+ * Method, from ../README.md ("Method: proving a before/after") — the same traps apply here
  * tree-data microbenchmarks:
  *
  * - both variants in one process, on one page, so JIT state is shared;

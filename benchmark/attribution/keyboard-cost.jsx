@@ -10,7 +10,8 @@
  *
  * Both variants live on one page and are mounted one at a time, so the runner can
  * alternate them trial by trial — JIT state and GC drift then hit both sides
- * equally, which single-shot timings do not. See MODERNIZATION.md's appendix.
+ * equally, which single-shot timings do not. See ../README.md, "Method: proving a
+ * before/after".
  */
 import { DndProvider } from '@nosferatu500/react-dnd'
 import { HTML5Backend } from '@nosferatu500/react-dnd-html5-backend'
@@ -100,8 +101,8 @@ register({
    * One expand is not measurable: `performance.now()` is clamped to 100µs and a
    * single commit lands at 1–2 ms, so the reading quantises to a handful of
    * values and any real difference disappears into the step. Summing many and
-   * dividing recovers the resolution — the same reason the appendix's harness
-   * takes an iteration count.
+   * dividing recovers the resolution — the same reason the Node-side harness in
+   * ../README.md takes an iteration count.
    */
   async expandRepeatedly(cycles) {
     let total = 0
