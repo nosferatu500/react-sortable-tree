@@ -36,3 +36,4 @@ yarn-error.log
 .nvmrc
 
 storybook-static/
+/benchmark/.repro

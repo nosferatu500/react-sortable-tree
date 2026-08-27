@@ -96,6 +96,33 @@ supply your own provider — with `SortableTreeWithoutDndContext`, or to swap in
 `TouchBackend`. A bare pointer backend has no keyboard gesture at all, and losing
 it is silent, so this is not an optional nicety for those setups.
 
+### Fixed: no horizontal scrollbar for rows wider than the tree
+
+**Upgrade if you have deeply nested nodes, long titles, or row buttons.** A row
+wider than the tree's container was clipped with no way to scroll to it, so the
+buttons at the end of it could not be reached at all. Reported against the
+virtualized list introduced in v6.
+
+The tree scrolls sideways again, and nothing about the API changed.
+
+The cause was subtle enough to be worth recording. `virtua` sizes its inner
+container on the scroll axis only — for a vertical list the height is the total row
+height and the width is `100%` — so a wide row is never a wide *box*, only
+overflow. Its per-row wrapper carries `contain: layout`, and layout containment
+stops that overflow counting towards the scroller's scrollable area: measured in
+Chrome, the wrapper's own `scrollWidth` reached 654px while the scroller stayed at
+620px. `overflow-x` was already `auto` and had nothing to scroll, and
+`contain: strict` on the scroller clipped the row instead.
+
+The row wrapper is this library's own component, so the fix is to drop `layout`
+from its containment and put back the one other thing that containment provided —
+a per-row stacking context — with `isolation: isolate`. Without that, the
+`z-index: -1` drop highlight (`.rst__rowLandingPad::before`) vanishes behind an
+ancestor.
+
+`benchmark/layout/horizontal-scroll.mjs` is the check; it needs a real browser,
+because jsdom has no layout and reports `scrollWidth` as 0 whatever the bug.
+
 ### Fixed: a drop could land the node back where it started
 
 A drop recomputed its position from row props that the last hover had already

@@ -260,9 +260,37 @@ const hasRevealableChildren = <TData,>(node: TreeItem<TData>): boolean =>
   (Array.isArray(node.children) && node.children.length > 0)
 
 /**
- * Virtua wraps every row in a positioned div. Left as a plain `<div>` that
- * wrapper sits between `role="tree"` and `role="treeitem"` and breaks the
- * ownership the ARIA tree pattern requires, so it is marked presentational.
+ * Restores horizontal scrolling, which virtua's row wrapper would otherwise
+ * suppress.
+ *
+ * A deeply nested row is wider than the viewport — the scaffold indents it by
+ * `scaffoldBlockPxWidth` per level and `.rst__nodeContent` is absolutely
+ * positioned past that — and the tree has to scroll sideways to reach it, or the
+ * row's buttons are unreachable.
+ *
+ * Virtua sizes its inner container on the scroll axis only: for a vertical list
+ * the height is the total row height and the width is `100%`. Nothing across the
+ * axis is ever wider than the scroller, so a wide row is pure *overflow* — and
+ * the wrapper's `contain: layout` stops that overflow counting towards any
+ * ancestor's scrollable area. Measured: the wrapper's own `scrollWidth` grew to
+ * 654px while the scroller stayed at 620px, so `overflow-x: auto` had nothing to
+ * scroll and `contain: strict` on the scroller clipped the row instead.
+ *
+ * Dropping `layout` from the containment is what fixes it, and it has to be done
+ * here: virtua sets that `contain` inline, which a stylesheet cannot override
+ * without `!important`, and this component *is* the wrapper it styles.
+ *
+ * `isolation: isolate` puts back the one thing `contain: layout` also did — make
+ * each row a stacking context. Without it `.rst__rowLandingPad::before`
+ * (`z-index: -1`) escapes behind an ancestor and the drop highlight disappears,
+ * and the `z-index: 3` drag lines stop being scoped to their own row.
+ *
+ * `style` is spread first so this only replaces the two properties and inherits
+ * whatever else virtua sets, including any it adds later.
+ *
+ * Also `role="none"`: left as a plain `<div>` this wrapper sits between
+ * `role="tree"` and `role="treeitem"` and breaks the ownership the ARIA tree
+ * pattern requires.
  */
 const PresentationalItem = ({
   style,
@@ -274,7 +302,10 @@ const PresentationalItem = ({
   index: number
   ref?: React.Ref<HTMLDivElement>
 }) => (
-  <div ref={ref} role="none" style={style}>
+  <div
+    ref={ref}
+    role="none"
+    style={{ ...style, contain: 'style', isolation: 'isolate' }}>
     {children}
   </div>
 )

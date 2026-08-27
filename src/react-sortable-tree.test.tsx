@@ -136,6 +136,50 @@ describe('rendering', () => {
   })
 })
 
+/*
+ * A deeply nested row is wider than the viewport and the tree has to scroll
+ * sideways to reach its buttons. jsdom has no layout, so it cannot check that a
+ * scrollbar appears — what it can check is the one property the fix turns on, and
+ * the reason it exists is worth stating here because the property looks arbitrary.
+ *
+ * Virtua's row wrapper carries `contain: layout style`, and layout containment
+ * stops the row's overflow counting towards the scroller's scrollable area:
+ * measured in Chrome, the wrapper's own `scrollWidth` reached 654px while the
+ * scroller stayed at 620px, so there was nothing to scroll and
+ * `contain: strict` on the scroller clipped the row. `benchmark/layout/`
+ * has the browser check that actually proves the scrolling.
+ */
+describe('horizontal scrolling', () => {
+  const rowWrapper = () =>
+    document.querySelector('.rst__node')!.parentElement as HTMLElement
+
+  it('does not let the row wrapper contain layout', () => {
+    render(<Controlled />)
+    // The assertion is "no layout containment", not "contain: style" — what
+    // breaks scrolling is the `layout` keyword, whatever else is alongside it.
+    expect(rowWrapper().style.contain).not.toContain('layout')
+  })
+
+  it('keeps each row a stacking context', () => {
+    // `contain: layout` also made every row one, and the drop highlight depends
+    // on it: `.rst__rowLandingPad::before` is `z-index: -1` and escapes behind an
+    // ancestor without it, and the `z-index: 3` drag lines stop being scoped to
+    // their own row.
+    render(<Controlled />)
+    expect(rowWrapper().style.isolation).toBe('isolate')
+  })
+
+  it('leaves virtua’s own positioning on the wrapper alone', () => {
+    // The style is merged, not replaced: virtua positions every row through it,
+    // so dropping any of this would unstack the whole list.
+    render(<Controlled />)
+    const { style } = rowWrapper()
+    expect(style.position).toBe('absolute')
+    expect(style.width).toBe('100%')
+    expect(style.left).toBe('0px')
+  })
+})
+
 describe('expand and collapse', () => {
   it('expands a collapsed node and reveals its children', async () => {
     const user = userEvent.setup()
