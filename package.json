@@ -1,6 +1,6 @@
 {
   "name": "@nosferatu500/react-sortable-tree",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Accessible drag-and-drop sortable tree for React 19, with virtualized rendering and first-class TypeScript types",
   "homepage": "https://nosferatu500.github.io/react-sortable-tree",
   "type": "module",
