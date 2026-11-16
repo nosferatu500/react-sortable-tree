@@ -9,7 +9,7 @@ const getStack = (
   hasNeedle: boolean | number = false
 ): TreeItem => {
   if (left === 0) {
-    return hasNeedle ? { title: 'Needle' } : { title }
+    return { title: hasNeedle ? 'Needle' : title }
   }
 
   return {

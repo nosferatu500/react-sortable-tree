@@ -87,8 +87,8 @@ const getRowClassName = ({
   canDrop,
   isSearchMatch,
   isSearchFocus,
-  rowDirectionClass,
-  className,
+  rowDirectionClass = '',
+  className = '',
 }: {
   isLandingPadActive: boolean
   canDrop: boolean
@@ -103,8 +103,8 @@ const getRowClassName = ({
     isLandingPadActive && !canDrop ? 'rst__fe-rowCancelPad' : '',
     isSearchMatch ? 'rst__fe-rowSearchMatch' : '',
     isSearchFocus ? 'rst__fe-rowSearchFocus' : '',
-    rowDirectionClass ?? '',
-    className ?? ''
+    rowDirectionClass,
+    className
   )
 
 const ChevronRightIcon = () => (

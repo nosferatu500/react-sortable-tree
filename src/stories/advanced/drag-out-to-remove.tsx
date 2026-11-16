@@ -17,29 +17,24 @@ const dndBackend = withTreeKeyboard(HTML5Backend)
 // This type must be assigned to the tree via the `dndType` prop as well
 const trashAreaType = 'yourNodeType'
 
-// Shape the tree puts into the drag layer. Declaring it lets useDrop type
-// `item`, instead of it arriving as `unknown` and blocking the spread below.
-type TreeDragItem = {
-  node: TreeItem
-  path: number[]
-  treeIndex: number
-  treeId: string
-}
-
 const TrashAreaComponent = ({ children }: { children: React.ReactNode }) => {
+  // Shape the tree puts into the drag layer. Declaring it lets useDrop type
+  // `item`, instead of it arriving as `unknown` and blocking the spread below.
+  type TreeDragItem = {
+    node: TreeItem
+    path: number[]
+    treeIndex: number
+    treeId: string
+  }
+
   const [{ isOver }, drop] = useDrop<
     TreeDragItem,
     TreeDragItem | undefined,
     { isOver: boolean }
   >(() => ({
     accept: trashAreaType,
-    drop: (item, monitor) => {
-      if (monitor.didDrop()) {
-        return undefined
-      }
-
-      return { ...item, treeId: 'trash' }
-    },
+    drop: (item, monitor) =>
+      monitor.didDrop() ? undefined : { ...item, treeId: 'trash' },
     collect: (monitor) => ({
       isOver: monitor.isOver({ shallow: true }),
     }),

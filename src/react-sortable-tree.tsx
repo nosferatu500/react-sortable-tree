@@ -322,11 +322,10 @@ const NAVIGATION_KEYS = new Set([
 
 /** True when the key event came from a control that needs the keystroke. */
 const isFromTextEntry = (target: EventTarget | null): boolean => {
-  if (!(target instanceof HTMLElement)) return false
-  return (
-    target.isContentEditable ||
-    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-  )
+  return target instanceof HTMLElement
+    ? target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+    : false
 }
 
 /**
@@ -414,7 +413,7 @@ const performSearch = <TData,>(
     searchMethod: searchMethod || defaultSearchMethod,
     searchFocusOffset,
     expandAllMatchPaths: expand && !singleSearch,
-    expandFocusMatchPaths: !!expand,
+    expandFocusMatchPaths: expand,
   })
 
   // Update the tree with data leaving all paths leading to matching nodes open
@@ -1470,11 +1469,11 @@ const ReactSortableTreeInner = <TData,>(
       orphaned.resolve()
     }
 
-    if (pendingOnVisibilityToggleRef.current !== null) {
-      const params = pendingOnVisibilityToggleRef.current
-      pendingOnVisibilityToggleRef.current = null
-      emitVisibilityToggle(params)
-    }
+    if (pendingOnVisibilityToggleRef.current === null) return
+
+    const params = pendingOnVisibilityToggleRef.current
+    pendingOnVisibilityToggleRef.current = null
+    emitVisibilityToggle(params)
   })
 
   // Effect: Initial mount - load lazy children and perform initial search
@@ -1494,9 +1493,8 @@ const ReactSortableTreeInner = <TData,>(
         ...prev,
         searchMatches: searchResult.searchMatches,
         searchFocusTreeIndex: searchResult.searchFocusTreeIndex,
-        ignoreOneTreeUpdate: searchResult.newTreeData
-          ? true
-          : prev.ignoreOneTreeUpdate,
+        ignoreOneTreeUpdate:
+          searchResult.newTreeData !== undefined || prev.ignoreOneTreeUpdate,
       }))
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1538,25 +1536,25 @@ const ReactSortableTreeInner = <TData,>(
     })
 
     // Outside of setState to avoid "Cannot call startTransition while rendering"
-    if (shouldSearch) {
-      runLoadLazyChildren(treeDataProp)
+    if (!shouldSearch) return
 
-      startSearchTransition(() => {
-        const searchResult = runSearch(
-          treeDataProp,
-          searchQuery,
-          searchFocusOffset,
-          false,
-          false,
-          false
-        )
-        setState((prev) => ({
-          ...prev,
-          searchMatches: searchResult.searchMatches,
-          searchFocusTreeIndex: undefined,
-        }))
-      })
-    }
+    runLoadLazyChildren(treeDataProp)
+
+    startSearchTransition(() => {
+      const searchResult = runSearch(
+        treeDataProp,
+        searchQuery,
+        searchFocusOffset,
+        false,
+        false,
+        false
+      )
+      setState((prev) => ({
+        ...prev,
+        searchMatches: searchResult.searchMatches,
+        searchFocusTreeIndex: undefined,
+      }))
+    })
   }, [treeDataProp, searchQuery, searchFocusOffset])
 
   // Effect: Handle deferred search query changes
@@ -1588,9 +1586,8 @@ const ReactSortableTreeInner = <TData,>(
         ...prev,
         searchMatches: searchResult.searchMatches,
         searchFocusTreeIndex: searchResult.searchFocusTreeIndex,
-        ignoreOneTreeUpdate: searchResult.newTreeData
-          ? true
-          : prev.ignoreOneTreeUpdate,
+        ignoreOneTreeUpdate:
+          searchResult.newTreeData !== undefined || prev.ignoreOneTreeUpdate,
       }))
     })
   }, [deferredSearchQuery, deferredSearchFocusOffset, state.treeData])
@@ -1722,10 +1719,10 @@ const ReactSortableTreeInner = <TData,>(
     const element = containerRef.current?.querySelector<HTMLElement>(
       `[data-rst-row="${CSS.escape(String(target))}"]`
     )
-    if (element) {
-      pendingFocusRef.current = undefined
-      element.focus()
-    }
+    if (!element) return
+
+    pendingFocusRef.current = undefined
+    element.focus()
   })
 
   /**
@@ -1773,14 +1770,19 @@ const ReactSortableTreeInner = <TData,>(
   }
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (!keyboardNavigation || rows.length === 0) return
-    // The keyboard drag backend listens on the document in the capture phase and
+    // The `defaultPrevented` check: the keyboard drag backend listens on the document in the capture phase and
     // calls `preventDefault` on the keys it claims, so by the time this bubble
     // handler runs a claimed key has already done its job. Without this check,
     // space on a drag handle would pick the row up *and* toggle its children,
     // and an arrow key mid-drag would move both the hover and the focused row.
-    if (event.defaultPrevented) return
-    if (isFromTextEntry(event.target)) return
+    if (
+      !keyboardNavigation ||
+      rows.length === 0 ||
+      event.defaultPrevented ||
+      isFromTextEntry(event.target)
+    ) {
+      return
+    }
 
     const { key } = event
     const isToggleKey = key === 'Enter' || key === ' '

@@ -152,45 +152,45 @@ const TreeNodeComponent = <TData,>({
       />
     )
 
-    if (treeIndex !== listIndex && i === swapDepth) {
-      // This row has been shifted, and is at the depth of
-      // the line pointing to the new destination
-      let highlightLineClass: string
-      if (listIndex === swapFrom! + swapLength! - 1) {
-        // This block is on the bottom (target) line
-        // This block points at the target block (where the row will go when released)
-        highlightLineClass = 'rst__highlightBottomLeftCorner'
-      } else if (treeIndex === swapFrom) {
-        // This block is on the top (source) line
-        highlightLineClass = 'rst__highlightTopLeftCorner'
-      } else {
-        // This block is between the bottom and top
-        highlightLineClass = 'rst__highlightLineVertical'
-      }
+    if (treeIndex === listIndex || i !== swapDepth) continue
 
-      const style =
-        rowDirection === 'rtl'
-          ? {
-              width: scaffoldBlockPxWidth,
-              right: scaffoldBlockPxWidth * i,
-            }
-          : {
-              width: scaffoldBlockPxWidth,
-              left: scaffoldBlockPxWidth * i,
-            }
-
-      scaffold.push(
-        <div
-          key={i}
-          style={style}
-          className={classnames(
-            'rst__absoluteLineBlock',
-            highlightLineClass,
-            rowDirectionClass ?? ''
-          )}
-        />
-      )
+    // This row has been shifted, and is at the depth of
+    // the line pointing to the new destination
+    let highlightLineClass: string
+    if (listIndex === swapFrom! + swapLength! - 1) {
+      // This block is on the bottom (target) line
+      // This block points at the target block (where the row will go when released)
+      highlightLineClass = 'rst__highlightBottomLeftCorner'
+    } else if (treeIndex === swapFrom) {
+      // This block is on the top (source) line
+      highlightLineClass = 'rst__highlightTopLeftCorner'
+    } else {
+      // This block is between the bottom and top
+      highlightLineClass = 'rst__highlightLineVertical'
     }
+
+    const style =
+      rowDirection === 'rtl'
+        ? {
+            width: scaffoldBlockPxWidth,
+            right: scaffoldBlockPxWidth * i,
+          }
+        : {
+            width: scaffoldBlockPxWidth,
+            left: scaffoldBlockPxWidth * i,
+          }
+
+    scaffold.push(
+      <div
+        key={i}
+        style={style}
+        className={classnames(
+          'rst__absoluteLineBlock',
+          highlightLineClass,
+          rowDirectionClass ?? ''
+        )}
+      />
+    )
   }
 
   const contentStyle =

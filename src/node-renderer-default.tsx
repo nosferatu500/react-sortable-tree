@@ -177,7 +177,7 @@ const rowClassName = ({
   isSettling,
   isSearchMatch,
   isSearchFocus,
-  rowDirectionClass,
+  rowDirectionClass = '',
   className,
 }: {
   isLandingPadActive: boolean
@@ -195,7 +195,7 @@ const rowClassName = ({
     isSettling ? 'rst__rowSettling' : '',
     isSearchMatch ? 'rst__rowSearchMatch' : '',
     isSearchFocus ? 'rst__rowSearchFocus' : '',
-    rowDirectionClass ?? '',
+    rowDirectionClass,
     className
   )
 

@@ -398,12 +398,9 @@ export const getVisibleNodeInfoAtIndex = <TData = UnknownNodeData>({
     isPseudoRoot: true,
   })
 
-  if (result.node) {
-    return result as TreeNode<TData> &
-      TreePath & { lowerSiblingCounts: number[] }
-  }
-
-  return null
+  return result.node
+    ? (result as TreeNode<TData> & TreePath & { lowerSiblingCounts: number[] })
+    : null
 }
 
 export const walk = <TData = UnknownNodeData>({

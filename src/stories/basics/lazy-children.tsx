@@ -54,9 +54,8 @@ const makeData = (note: (message: string) => void): TreeItem[] => {
   ]
 }
 
-type LogEntry = { id: number; message: string }
-
 const LazyChildren: React.FC = () => {
+  type LogEntry = { id: number; message: string }
   const [log, setLog] = useState<LogEntry[]>([])
   const [loadCollapsedLazyChildren, setLoadCollapsedLazyChildren] =
     useState(false)

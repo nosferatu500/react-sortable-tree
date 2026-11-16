@@ -140,6 +140,9 @@ export default defineConfig(
       'unicorn/prefer-module': 'off',
       'unicorn/no-useless-undefined': 'off',
       'unicorn/single-line-block-comment-style': 'off',
+      // Keep conventional ` * `-prefixed JSDoc blocks (also what Prettier and
+      // TSDoc tooling expect).
+      'unicorn/no-asterisk-prefix-in-documentation-comments': 'off',
     },
   },
 
