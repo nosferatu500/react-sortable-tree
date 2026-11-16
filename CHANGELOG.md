@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+**Upgrading.** This release raises the React floor to `^19.3.0`:
+
+```sh
+npm i react@^19.3 react-dom@^19.3
+```
+
+### Changed: the React peer range is now `^19.3.0`
+
+Raised from `^19.2.0`. React 19.3 is now the version this library is built and
+tested against, and the only one it is supported on.
+
+Unlike the 7.1.0 change, this one does withdraw support: a project on React 19.2
+gets a peer-dependency conflict on install rather than a working tree.
+
+`npm install react@^19.3 react-dom@^19.3` if you are below it.
+
 ## [7.1.0] - 2026-08-27
 
 One user-visible fix, three additions, a rendering-performance win, and the
