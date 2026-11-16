@@ -21,11 +21,16 @@ afterEach(cleanup)
 // A fourth gap is not about row counts but about unhandled rejections:
 //
 //   4. `Element.prototype.scrollTo`, which jsdom does not implement (only
-//      `window.scrollTo` exists). Virtua's scroller calls it for a *smooth*
-//      scroll and assigns `scrollTop` otherwise, so only the smooth path
-//      trips — which is the one `searchFocusOffset` takes. It rejects inside
-//      virtua's own async scroll loop, so the test still passes while vitest
-//      reports an unhandled error and exits non-zero.
+//      `window.scrollTo` exists). Virtua's scroller calls it for every
+//      programmatic scroll, smooth or instant (before 0.54 an instant one
+//      assigned `scrollTop` instead). It rejects inside virtua's own async
+//      scroll loop, so the test still passes while vitest reports an unhandled
+//      error and exits non-zero.
+//
+// Deliberately not stubbed: `Element.prototype.scrollBy`, which jsdom also
+// lacks. Virtua only calls it to compensate when a row above the viewport turns
+// out to be a different size than estimated, and every row here measures
+// `ROW_HEIGHT`, so that path cannot run. Give rows varying heights and it will.
 
 const VIEWPORT_HEIGHT = 600
 const VIEWPORT_WIDTH = 800
@@ -80,15 +85,18 @@ function flushResizeObservers() {
   }
 }
 
+// `await` rather than `.then()`: testing-library's async `act` hands back a
+// bare thenable whose `then` returns nothing to chain on.
+async function flushOnceSettled<T>(pending: T): Promise<Awaited<T>> {
+  const value = await pending
+  flushResizeObservers()
+  return value
+}
+
 /** Flush once `result` is in hand — after it settles, if it is a promise. */
 function flushAfter<T>(result: T): T {
   if (typeof (result as { then?: unknown } | null)?.then === 'function') {
-    // `Promise.resolve`, because testing-library's async `act` hands back a
-    // bare thenable whose `then` returns nothing to chain on.
-    return Promise.resolve(result).then((value) => {
-      flushResizeObservers()
-      return value
-    }) as T
+    return flushOnceSettled(result) as T
   }
   flushResizeObservers()
   return result
@@ -177,7 +185,7 @@ class TestResizeObserver implements ResizeObserver {
 }
 
 beforeEach(() => {
-  globalThis.ResizeObserver = TestResizeObserver
+  vi.stubGlobal('ResizeObserver', TestResizeObserver)
 
   Object.defineProperty(HTMLElement.prototype, 'offsetParent', {
     configurable: true,

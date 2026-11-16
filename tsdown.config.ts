@@ -60,8 +60,7 @@ const reactCompilerPlugin = () => ({
         plugins: [['babel-plugin-react-compiler', {}]],
       })
 
-      if (!result?.code) return null
-      return { code: result.code, map: result.map }
+      return result?.code ? { code: result.code, map: result.map } : null
     },
   },
 })

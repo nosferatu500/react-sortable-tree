@@ -30,14 +30,16 @@ export default defineConfig(
     ],
   },
 
-  // Base Configuration (JS & TS) - source files only (covered by tsconfig.json)
+  // Base Configuration (JS & TS) - everything tsconfig.json includes: the
+  // source, plus the root-level build and test configs. Without the root glob
+  // those files get the JS parser and fail on their first type annotation.
   {
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommended,
       // ...tseslint.configs.recommendedTypeChecked, // Uncomment if you want strict type-aware rules
     ],
-    files: ['src/**/*.{ts,tsx}'],
+    files: ['src/**/*.{ts,tsx}', '*.ts'],
     languageOptions: {
       ecmaVersion: 2025,
       sourceType: 'module',

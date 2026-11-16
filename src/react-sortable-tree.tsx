@@ -1770,11 +1770,12 @@ const ReactSortableTreeInner = <TData,>(
   }
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    // The `defaultPrevented` check: the keyboard drag backend listens on the document in the capture phase and
-    // calls `preventDefault` on the keys it claims, so by the time this bubble
-    // handler runs a claimed key has already done its job. Without this check,
-    // space on a drag handle would pick the row up *and* toggle its children,
-    // and an arrow key mid-drag would move both the hover and the focused row.
+    // Why `defaultPrevented` is here: the keyboard drag backend listens on the
+    // document in the capture phase and calls `preventDefault` on the keys it
+    // claims, so by the time this bubble handler runs a claimed key has already
+    // done its job. Without the check, space on a drag handle would pick the
+    // row up *and* toggle its children, and an arrow key mid-drag would move
+    // both the hover and the focused row.
     if (
       !keyboardNavigation ||
       rows.length === 0 ||
