@@ -1,5 +1,6 @@
 import { cleanup } from '@testing-library/react'
-import { afterEach, beforeEach } from 'vitest'
+import { act as reactAct } from 'react'
+import { afterEach, beforeEach, vi } from 'vitest'
 
 // `globals: false`, so React Testing Library's automatic cleanup hook never
 // registers itself. Unmount between tests explicitly or trees leak across them.
@@ -44,6 +45,84 @@ const boxOf = (el: Element) => ({
   height: isViewport(el) ? VIEWPORT_HEIGHT : ROW_HEIGHT,
 })
 
+/**
+ * Observers with a first delivery still owed.
+ *
+ * A real observer never calls back from inside `observe()`; it delivers once
+ * the current task is done. Virtua (0.54+) depends on that: it observes the
+ * viewport before it has finished wiring up the scroller its callback reaches
+ * for, so a callback from inside `observe()` throws. The deliveries are queued
+ * here instead and flushed as soon as the render, `act` or event that caused
+ * them returns (see the `@testing-library/react` wrapper below), which keeps
+ * the tree fully laid out by the time a test's next line runs.
+ */
+const pendingObservers = new Set<TestResizeObserver>()
+
+function flushResizeObservers() {
+  if (pendingObservers.size === 0) return
+
+  // Testing-library only raises this flag for the duration of its own `act`,
+  // and this runs just after one.
+  const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+  const previous = env.IS_REACT_ACT_ENVIRONMENT
+  env.IS_REACT_ACT_ENVIRONMENT = true
+  try {
+    // A delivery re-renders the list, which mounts and observes more rows.
+    while (pendingObservers.size > 0) {
+      const batch = [...pendingObservers]
+      pendingObservers.clear()
+      reactAct(() => {
+        for (const observer of batch) observer.deliver()
+      })
+    }
+  } finally {
+    env.IS_REACT_ACT_ENVIRONMENT = previous
+  }
+}
+
+/** Flush once `result` is in hand — after it settles, if it is a promise. */
+function flushAfter<T>(result: T): T {
+  if (typeof (result as { then?: unknown } | null)?.then === 'function') {
+    // `Promise.resolve`, because testing-library's async `act` hands back a
+    // bare thenable whose `then` returns nothing to chain on.
+    return Promise.resolve(result).then((value) => {
+      flushResizeObservers()
+      return value
+    }) as T
+  }
+  flushResizeObservers()
+  return result
+}
+
+// Every way a test can cause a render goes through one of these four, so
+// flushing behind each is what makes the queued deliveries look synchronous.
+vi.mock('@testing-library/react', async (importOriginal) => {
+  const rtl = await importOriginal<typeof import('@testing-library/react')>()
+  const { eventWrapper, asyncWrapper } = rtl.getConfig()
+
+  rtl.configure({
+    eventWrapper: (cb) => flushAfter(eventWrapper(cb)),
+    asyncWrapper: (cb) => flushAfter(asyncWrapper(cb)),
+  })
+
+  const render = ((...args: Parameters<typeof rtl.render>) => {
+    const view = rtl.render(...args)
+    flushResizeObservers()
+    return {
+      ...view,
+      rerender: (...ui: Parameters<typeof view.rerender>) => {
+        view.rerender(...ui)
+        flushResizeObservers()
+      },
+    }
+  }) as typeof rtl.render
+
+  const act = ((cb: Parameters<typeof rtl.act>[0]) =>
+    flushAfter(rtl.act(cb))) as typeof rtl.act
+
+  return { ...rtl, render, act }
+})
+
 class TestResizeObserver implements ResizeObserver {
   #callback: ResizeObserverCallback
   #targets = new Set<Element>()
@@ -56,7 +135,10 @@ class TestResizeObserver implements ResizeObserver {
     this.#targets.add(target)
     // Real observers fire once on observe with the element's current size.
     // Virtua relies on that first delivery to learn the viewport height.
-    this.#deliver()
+    pendingObservers.add(this)
+    // Fallback for renders that bypass the wrapped testing-library entry
+    // points; a no-op when the flush has already happened.
+    queueMicrotask(flushResizeObservers)
   }
 
   unobserve(target: Element) {
@@ -65,9 +147,10 @@ class TestResizeObserver implements ResizeObserver {
 
   disconnect() {
     this.#targets.clear()
+    pendingObservers.delete(this)
   }
 
-  #deliver() {
+  deliver() {
     const entries = [...this.#targets].map((target) => {
       const { width, height } = boxOf(target)
       const size = { inlineSize: width, blockSize: height }
